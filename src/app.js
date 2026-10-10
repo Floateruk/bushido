@@ -4,13 +4,18 @@ const LIBKEY = "bushido-library-v1";
 let LIB = JSON.parse(JSON.stringify(SEED.lib));
 try { const saved = JSON.parse(localStorage.getItem(LIBKEY)); if (saved) { Object.assign(LIB.cards, saved.cards); Object.assign(LIB.equip, saved.equip); Object.assign(LIB.glossary, saved.glossary); } } catch (e) {}
 function saveLib() { try { localStorage.setItem(LIBKEY, JSON.stringify(LIB)); } catch (e) {} }
+/* How much rules detail a library card holds, so a blank PDF never replaces full card data */
+const richness = c => !c ? -1 : c.kind === "profile"
+  ? c.models.reduce((a, m) => a + (m.traits || "").length + 20 * ((m.weapons || []).length + (m.feats || []).length + (m.notes || []).length), 0)
+  : (c.text || "").length;
 function addToLibrary(parsed) {
   for (const c of parsed.cards) {
     if (c.kind === "profile") {
       c.models.forEach(m => m.weapons.filter(w => w.eq).forEach(w => LIB.equip[norm(w.n)] = { n: w.n, weapon: w }));
-      c.equip.forEach(e => LIB.equip[norm(e.n)] = { n: e.n, d: e.d });
-      LIB.cards[norm(c.title)] = { ...c, models: c.models.map(m => ({ ...m, weapons: m.weapons.filter(w => !w.eq) })) };
-    } else LIB.cards[norm(c.title)] = c;
+      c.equip.forEach(e => { if (!LIB.equip[norm(e.n)] || !LIB.equip[norm(e.n)].feat) LIB.equip[norm(e.n)] = { n: e.n, d: e.d }; });
+      const entry = { ...c, models: c.models.map(m => ({ ...m, weapons: m.weapons.filter(w => !w.eq) })) };
+      if (richness(entry) >= richness(LIB.cards[norm(c.title)])) LIB.cards[norm(c.title)] = entry;
+    } else if (richness(c) >= richness(LIB.cards[norm(c.title)])) LIB.cards[norm(c.title)] = c;
   }
   Object.assign(LIB.glossary, parsed.glossary);
   saveLib();
@@ -57,7 +62,10 @@ const newModel = def => ({ id: uid(), def, dmg: 0, ki: 0, states: {}, used: {} }
 const equipToDef = (def, eqs) => {
   const d = JSON.parse(JSON.stringify(def));
   d.equip = [];
-  eqs.forEach(e => { if (e.weapon) d.weapons.unshift({ ...e.weapon, eq: true }); else d.equip.push({ n: e.n, d: e.d || "" }); });
+  eqs.forEach(e => {
+    if (e.weapon) d.weapons.unshift({ ...e.weapon, eq: true }); else d.equip.push({ n: e.n, d: e.d || "" });
+    if (e.feat && !d.feats.some(f => f.n === e.feat.n)) d.feats.push({ ...e.feat, from: e.n });
+  });
   return d;
 };
 function gameFromPdf(p) {
@@ -65,12 +73,23 @@ function gameFromPdf(p) {
   for (const c of p.cards) {
     if (c.kind === "profile") {
       const modelNames = c.models.map(m => norm(m.name));
+      const lib = LIB.cards[norm(c.title)];
       c.models.forEach(m => {
+        const eqs = c.equip.filter(e => !modelNames.includes(norm(e.n)));
+        const fuller = lib && lib.kind === "profile" && lib.models.find(x => norm(x.name) === norm(m.name));
+        if (fuller && richness({ kind: "profile", models: [fuller] }) > richness({ kind: "profile", models: [m] })) {
+          /* This PDF has no rules for the model, but the library does (e.g. from card images) */
+          return models.push(newModel(equipToDef(fuller, eqs.map(e => LIB.equip[norm(e.n)] || e))));
+        }
         const d = JSON.parse(JSON.stringify(m));
-        d.equip = c.equip.filter(e => !modelNames.includes(norm(e.n)));
+        d.equip = eqs;
         models.push(newModel(d));
       });
-    } else cards.push({ name: c.title, type: BP.typeOf(c.role), text: c.text, done: false });
+    } else {
+      const lib = LIB.cards[norm(c.title)];
+      const text = lib && lib.kind === "card" && richness(lib) > richness(c) ? lib.text : c.text;
+      cards.push({ name: c.title, type: BP.typeOf(c.role), text, done: false });
+    }
   }
   return { listName: p.name, sub: p.subtitle, models, cards };
 }
@@ -147,6 +166,30 @@ if (!WB) {
   SEED.lists.forEach(p => { const g = gameFromPdf(p); if (!Object.values(WB).some(x => x.name === g.listName)) addWarband(wbFromGame(g)); });
   saveAll();
 }
+/* Card data shipped with an app update (e.g. cards transcribed from images) is applied once per device:
+   the library gets the fuller cards, matching warbands are replaced, and games keep their play state */
+(function applySeedUpdate() {
+  const REVKEY = "bushido-seed-rev";
+  if ((+load(REVKEY, 0)) >= (SEED.rev || 0)) return;
+  for (const [k, c] of Object.entries(SEED.lib.cards)) if (richness(c) >= richness(LIB.cards[k])) LIB.cards[k] = c;
+  for (const [k, e] of Object.entries(SEED.lib.equip)) LIB.equip[k] = e;
+  for (const [k, g] of Object.entries(SEED.lib.glossary)) if (!LIB.glossary[k]) LIB.glossary[k] = g;
+  saveLib();
+  const now = Date.now();
+  for (const t of SEED.warbands || []) {
+    const mine = Object.values(WB).filter(x => x.name === t.name && (x.sub || "") === (t.sub || ""));
+    const id = mine.length ? mine[0].id : t.id;
+    WB[id] = { ...clone(t), id, added: mine.length ? mine[0].added : now, updated: now };
+    for (const g of Object.values(GAMES)) {
+      if (g.wbId !== id && !(g.state.listName === t.name && (g.state.sub || "") === (t.sub || ""))) continue;
+      g.state.models.forEach(m => { const d = t.models.find(x => norm(x.name) === norm(m.def.name)); if (d) m.def = clone(d); });
+      g.state.cards.forEach(c => { const d = t.cards.find(x => norm(x.name) === norm(c.name)); if (d) { c.text = d.text; c.type = d.type; } });
+      g.updated = now;
+    }
+  }
+  store(REVKEY, SEED.rev);
+  saveAll();
+})();
 if (!CUR || !GAMES[CUR]) {
   const recent = Object.values(GAMES).sort((a, b) => b.updated - a.updated)[0];
   if (recent) CUR = recent.id;
