@@ -1,0 +1,1067 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e1320">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+</style>
+<title>Bushido Table Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: one-column phone-first play surface; sticky turn bar on top, model cards below, cards & setup at the foot */
+:root{
+  --bg:#e8ebf1; --surface:#f8f9fc; --raised:#ffffff; --ink:#1a2132; --muted:#5a6377; --line:#cfd5e0;
+  --accent:#9a6a14; --accent-soft:#f1e3c4; --on-accent:#ffffff;
+  --harm:#b3261e; --fire:#c2540c; --poison:#2c7a2f; --ki:#3550a3; --ki-soft:#dfe5f7; --wound:#9b2c2c;
+  --display:"Shippori Mincho B1", "Hiragino Mincho ProN", Georgia, serif;
+  --body:"Zen Kaku Gothic New", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1320; --surface:#171f30; --raised:#1e283c; --ink:#e8eaf0; --muted:#97a1b7; --line:#2b3550;
+  --accent:#dba746; --accent-soft:#3a2f17; --on-accent:#1a1406;
+  --harm:#f07164; --fire:#f39048; --poison:#71c374; --ki:#93a9ff; --ki-soft:#232f52; --wound:#f07164; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1320; --surface:#171f30; --raised:#1e283c; --ink:#e8eaf0; --muted:#97a1b7; --line:#2b3550;
+  --accent:#dba746; --accent-soft:#3a2f17; --on-accent:#1a1406;
+  --harm:#f07164; --fire:#f39048; --poison:#71c374; --ki:#93a9ff; --ki-soft:#232f52; --wound:#f07164; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;padding-inline:12px;padding-block:0 96px;max-width:640px;margin:0 auto}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* Turn bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);padding-block:10px 8px;margin-inline:-12px;padding-inline:12px;border-bottom:1px solid var(--line)}
+.bar-top{display:flex;align-items:center;gap:10px}
+.turn{font-family:var(--display);font-weight:800;font-size:26px;line-height:1;white-space:nowrap}
+.turn small{font-family:var(--body);font-weight:500;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:3px}
+.phases{display:flex;gap:2px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px}
+.phases span{font-size:12px;padding:4px 9px;border-radius:999px;color:var(--muted);font-weight:500}
+.phases span.on{background:var(--ink);color:var(--bg)}
+.bar-row{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.score{display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:2px}
+.score b{font-size:11px;letter-spacing:.08em;color:var(--muted);padding-inline:6px 2px}
+.score .v{min-width:22px;text-align:center;font-weight:700;font-size:17px}
+.step{width:34px;height:34px;border-radius:8px;font-size:20px;line-height:1;display:grid;place-items:center}
+.step:active{background:var(--line)}
+.bar-foot{display:flex;align-items:center;gap:8px;margin-top:10px}
+.next{margin-left:auto;flex:none;white-space:nowrap;background:var(--accent);color:var(--on-accent);font-weight:700;border-radius:10px;padding:9px 14px;font-size:14px}
+.icon-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center}
+.icon-btn:disabled{opacity:.35}
+.icon-btn.armed{width:auto;padding:0 10px;color:var(--harm);border-color:var(--harm);font-weight:700;font-size:13px}
+.icon-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Reminders */
+.reminders{display:grid;gap:6px;margin-top:12px}
+.rem{display:flex;gap:10px;align-items:flex-start;background:var(--accent-soft);border-radius:10px;padding:10px 12px;font-size:14px}
+.rem p{margin:0;flex:1;min-width:0}
+.rem strong{font-weight:700}
+.rem .act{font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap;padding:2px 4px}
+.ready-line{font-size:13px;color:var(--muted);margin:14px 2px 6px;display:flex;justify-content:space-between}
+
+/* Model cards */
+.models{display:grid;gap:10px}
+.m{min-width:0;overflow-wrap:anywhere;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 12px 10px}
+.m.dead{opacity:.5}
+.m-head{display:flex;align-items:center;gap:8px}
+.m-name{font-family:var(--display);font-weight:800;font-size:21px;line-height:1.1;flex:1;min-width:0}
+.m-eq{display:flex;flex-wrap:wrap;gap:4px 12px;font-family:var(--body);margin-top:4px}
+.eq-tag{font-weight:500;font-size:13px;line-height:1.3;color:var(--accent);padding:3px 0}
+.eq-tag.off{color:var(--muted);text-decoration:line-through}
+.eq-off{color:var(--muted)}
+.m-name small{font-family:var(--body);font-weight:500;font-size:12px;color:var(--muted);margin-left:6px}
+.pill{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:3px 7px;border:1px solid currentColor;white-space:nowrap}
+.pill.slow{color:var(--fire)}
+.pill.terr{color:var(--muted)}
+.pill.dead{color:var(--harm)}
+.pill.ls{color:var(--harm);background:none;font:inherit;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.m.on-ls{border-color:var(--harm)}
+
+.track{display:grid;grid-template-columns:62px 1fr auto;align-items:center;gap:8px;margin-top:10px}
+.track-label{white-space:nowrap;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.pips{display:flex;flex-wrap:wrap;gap:5px}
+.pips.rows{flex-direction:column;flex-wrap:nowrap}
+.pip-row{display:flex;gap:5px}
+.pip{width:24px;height:24px;border-radius:5px;border:1.5px solid var(--line);background:var(--raised);padding:0;position:relative}
+.pip::after{content:"";position:absolute;inset:-5px -2px}
+.w .pip.on{background:var(--wound);border-color:var(--wound)}
+.k .pip{border-radius:50%}
+.k .pip.on{background:var(--ki);border-color:var(--ki)}
+.track-val{font-size:13px;color:var(--muted);text-align:right;min-width:48px}
+.track-val b{color:var(--ink);font-size:15px}
+
+.states{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 10px 5px 8px;font-size:13px;font-weight:500;background:var(--raised);border:1px solid var(--line)}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.chip .c{font-weight:700;font-size:12px;background:var(--ink);color:var(--bg);border-radius:999px;min-width:18px;height:18px;display:inline-grid;place-items:center;padding-inline:4px}
+.chip.open{padding:2px 4px 2px 8px;gap:2px}
+.chip.open .step{width:30px;height:30px}
+.add-state{font-size:13px;font-weight:700;color:var(--accent);padding:6px 8px}
+.cat-harm i{background:var(--harm)} .cat-fire i{background:var(--fire)} .cat-poison i{background:var(--poison)} .cat-good i{background:var(--ki)}
+
+.feats{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.feat{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ki);color:var(--ki);border-radius:8px;padding:6px 9px;font-size:13px;font-weight:500;background:var(--ki-soft)}
+.feat .cost{font-weight:700}
+.feat:disabled{opacity:.4;cursor:default}
+.feat.used{text-decoration:line-through}
+.more{font-size:12px;color:var(--muted);margin-top:8px;padding:4px 0;font-weight:500}
+.detail{min-width:0;overflow-wrap:anywhere;margin-top:6px;border-top:1px solid var(--line);padding-top:10px;font-size:13.5px;display:grid;gap:10px}
+.statline{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;text-align:center}
+.statline div{background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:5px 2px}
+.statline small{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.statline b{font-size:15px}
+.detail h4{margin:0 0 3px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.detail p{margin:0}
+.wpn{display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline}
+.wpn b{white-space:normal}
+.wpn em{min-width:0}
+.wpn em{font-style:normal;color:var(--muted)}
+.eq{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 4px;margin-left:4px}
+
+/* Opponent strip */
+.opp{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.opp-head{display:flex;align-items:center;gap:8px;width:100%;padding:9px 12px;text-align:left}
+.opp-head b{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);flex:none}
+.opp-sum{flex:1;min-width:0;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.opp-sum em{font-style:normal;color:var(--muted)}
+.opp-vp{font-weight:700;font-size:13px;flex:none}
+.opp-body{border-top:1px solid var(--line);padding:8px 12px 10px;display:grid;gap:8px}
+.opp-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.opp-row .nm{font-weight:700;font-size:14px;margin-right:2px}
+.opp-row .x{margin-left:auto;font-size:12px;color:var(--muted);padding:4px 6px}
+.opp-row .x.confirm{color:var(--harm);font-weight:700}
+.opp-add{display:flex;gap:6px}
+.opp-add input{flex:1;min-width:0;font:inherit;font-size:14px;background:var(--raised);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+.opp-add button{font-weight:700;color:var(--accent);padding:0 8px}
+.opp-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pick-list{display:grid;gap:6px}
+.pick-list button{text-align:left;padding:12px;border-radius:10px;background:var(--raised);border:1px solid var(--line);font-weight:500}
+
+.rem-acts{display:flex;gap:2px;flex:none}
+.act.quiet{color:var(--muted);font-weight:500}
+.rule{font:inherit;color:inherit;text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:1.5px;text-underline-offset:3px;padding:0}
+.tap-hint{font-size:12px;color:var(--muted)}
+.file-btn{display:inline-block;cursor:pointer}
+.paste{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.paste summary{cursor:pointer;font-weight:700;font-size:14px}
+.gloss{white-space:pre-line;margin:0;font-size:14.5px;line-height:1.55}
+/* Games & warbands sheet */
+.list-btn{display:block;padding:0;text-align:left;cursor:pointer}
+.sheet-h{margin:16px 0 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.slots{display:grid;gap:6px}
+.slot{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--raised)}
+.slot.cur{border-color:var(--accent)}
+.slot-main{flex:1;min-width:0}
+.slot-main b{display:block;font-size:15px}
+.slot-main span{display:block;font-size:12.5px;color:var(--muted)}
+.slot-tag{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.btn.small{padding:7px 10px;font-size:13px;white-space:nowrap}
+.btn.quiet{background:none;border-color:transparent;color:var(--muted)}
+.opp-add select{flex:1;min-width:0;font:inherit;font-size:14px;background:var(--raised);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 8px}
+
+.sync-status{font-size:12px;font-weight:500;color:var(--muted);margin-left:4px}
+.sync-status::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted);margin-right:5px;vertical-align:1px}
+.sync-status[data-kind="ok"]::before{background:var(--poison)}
+.sync-status[data-kind="wait"]::before{background:var(--fire)}
+.code-box{font:600 18px/1.4 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.04em;background:var(--raised);border:1px solid var(--line);border-radius:10px;padding:12px;user-select:all;overflow-wrap:anywhere}
+.foot{flex-wrap:wrap}
+
+/* Card section */
+h2{font-family:var(--display);font-size:18px;margin:26px 2px 8px}
+.cards{display:grid;gap:8px}
+.card{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.card-type{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.card b{display:block;font-size:15px}
+.card p{margin:2px 0 0;font-size:13.5px;color:var(--muted)}
+.card > div{flex:1;min-width:0}
+.check{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--line);flex:none;display:grid;place-items:center;font-weight:700}
+.check.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.card.done b{text-decoration:line-through;color:var(--muted)}
+
+/* Sheet */
+.scrim{position:fixed;inset:0;background:rgba(5,8,15,.45);z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:640px;border-radius:18px 18px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px));max-height:85%;overflow:auto}
+.sheet h3{font-family:var(--display);font-size:20px;margin:0 0 4px}
+.sheet .sub{color:var(--muted);font-size:13px;margin:0 0 12px}
+.grid-states{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px}
+.grid-states button{display:flex;align-items:center;gap:8px;text-align:left;padding:10px;border-radius:10px;background:var(--raised);border:1px solid var(--line);font-size:14px}
+.grid-states button i{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.grid-states button:disabled{opacity:.4}
+.grid-states button small{margin-left:auto;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+textarea{width:100%;min-height:220px;font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;background:var(--raised);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{border-radius:10px;padding:10px 14px;font-weight:700;border:1px solid var(--line);background:var(--raised)}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn.danger{color:var(--harm);border-color:var(--harm)}
+.note{font-size:13px;color:var(--muted);margin-top:10px}
+.foot{display:flex;gap:8px;margin-top:22px}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);border-radius:12px;padding:10px 12px 10px 14px;display:flex;gap:12px;align-items:center;font-size:14px;z-index:50;width:max-content;max-width:calc(100% - 32px)}
+.toast button{color:var(--accent);font-weight:700}
+@media (prefers-reduced-motion:no-preference){.m,.chip,.pip{transition:background-color .15s,border-color .15s}}
+@media (max-width:400px){.phases span{padding:4px 6px;font-size:11.5px}.pip{width:22px;height:22px}}
+
+/* Tablet landscape and wider: wider page, profiles in two columns, turn bar on one line */
+@media (min-width:860px){
+  body{max-width:1280px;padding-inline:20px}
+  .bar{margin-inline:-20px;padding-inline:20px;display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap}
+  .bar-row,.bar-foot{margin-top:0}
+  .bar-foot{margin-left:auto}
+  .reminders{grid-template-columns:repeat(auto-fit,minmax(380px,1fr))}
+  .models{grid-template-columns:1fr 1fr;align-items:start}
+  .cards{grid-template-columns:1fr 1fr;align-items:start}
+}
+</style>
+</head>
+<body>
+
+
+<div class="bar">
+  <div class="bar-top">
+    <div class="turn"><button class="list-btn" id="listBtn" aria-label="Games and warbands"><small id="listName">Risen Sun</small></button><span id="turnLabel">Deployment</span></div>
+  </div>
+  <div class="bar-row">
+    <div class="score"><b>VP</b><button class="step" data-score="vp" data-d="-1" aria-label="Remove VP">−</button><span class="v num" id="vp">0</span><button class="step" data-score="vp" data-d="1" aria-label="Add VP">+</button></div>
+    <div class="score"><b>SP</b><button class="step" data-score="sp" data-d="-1" aria-label="Remove SP">−</button><span class="v num" id="sp">0</span><button class="step" data-score="sp" data-d="1" aria-label="Add SP">+</button></div>
+    <button class="icon-btn" id="restart" aria-label="Restart at Deployment"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg></button>
+    <button class="icon-btn" id="undo" aria-label="Undo"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+  </div>
+  <div class="bar-foot">
+    <div class="phases" id="phases"></div>
+    <button class="next" id="next">Start turn 1</button>
+  </div>
+</div>
+
+<div class="reminders" id="reminders"></div>
+<div id="opp"></div>
+<div class="ready-line"><span id="readyCount"></span><span id="woundTotal"></span></div>
+<div class="models" id="models"></div>
+
+<h2>Cards in play</h2>
+<div class="cards" id="cards"></div>
+
+<div class="foot">
+  <button class="btn" id="openSetup">Games &amp; warbands</button>
+  <button class="btn" id="syncBtn" hidden>Sync <span class="sync-status" id="syncStatus" data-kind="off">Off</span></button>
+  <button class="btn" id="themeBtn">Light / dark</button>
+</div>
+
+<div id="sheetHost"></div>
+<div id="toastHost"></div>
+
+
+<script>window.APP_BUILD = true;</script>
+<script>
+/* Bushido newrecruit PDF parser. Input: pages = [{items:[{s,x,y,w,h}]}] with y measured from page top. */
+const BP = (() => {
+  const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
+
+  // Merge fragments split by ligatures ("Pro"+"fi"+"le") into cells
+  function cells(items) {
+    const its = items.filter(i => i.s && i.s.trim()).map(i => ({ s: i.s, x0: i.x, x1: i.x + i.w, y: i.y, h: i.h }))
+      .sort((a, b) => Math.abs(a.y - b.y) < 0.8 ? a.x0 - b.x0 : a.y - b.y);
+    const out = [];
+    for (const it of its) {
+      const last = out[out.length - 1];
+      if (last && Math.abs(last.y - it.y) < 0.8 && it.x0 - last.x1 < 1.5 && it.x0 >= last.x0) { last.s += it.s; last.x1 = it.x1; }
+      else out.push({ ...it });
+    }
+    out.forEach(c => c.s = c.s.replace(/\s+/g, " ").trim());
+    return out;
+  }
+
+  const HEAD_WORDS = { "character profile": "Melee Pool", "models": "Options", "melee weapon": "Melee Weapon Strength",
+    "ranged weapon": "Ranged Weapon Strength", "ki feat": "Cost", "character traits": "Traits", "unique effects": "Description",
+    "special card": null };
+  function headerKind(c, line) {
+    if (c.x0 > 14) return null;
+    const n = norm(c.s);
+    let kind = Object.keys(HEAD_WORDS).find(k => n === k || (k === "special card" && n.startsWith("special card")));
+    if (!kind) return null;
+    const others = line.filter(o => o !== c);
+    if (!others.length) return null;
+    if (kind === "special card") {
+      const first = norm(others[0].s);
+      if (!["description", "melee weapon strength", "ranged weapon strength", "base"].includes(first)) return null;
+      return n === "special card" ? "special" : n.includes("melee") ? "special-melee" : n.includes("ranged") ? "special-ranged" : n.includes("terrain") ? "special-terrain" : "special";
+    }
+    if (!others.some(o => norm(o.s) === norm(HEAD_WORDS[kind]))) return null;
+    return kind;
+  }
+
+  // Split a page into blocks: each a header line + the cells beneath it
+  function blocks(cs) {
+    const byLine = new Map();
+    cs.forEach(c => { const k = Math.round(c.y * 2) / 2; (byLine.get(k) || byLine.set(k, []).get(k)).push(c); });
+    const heads = [];
+    for (const [y, line] of byLine) for (const c of line) { const k = headerKind(c, line); if (k) heads.push({ kind: k, y: c.y, cols: line.slice().sort((a, b) => a.x0 - b.x0) }); }
+    heads.sort((a, b) => a.y - b.y);
+    // end markers: Rules / Categories footers
+    const stops = cs.filter(c => c.x0 > 9 && c.x0 < 14 && /^(Rules|Categories)\b/.test(c.s)).map(c => c.y);
+    return heads.map((h, i) => {
+      const next = Math.min(heads[i + 1] ? heads[i + 1].y : 1e9, ...stops.filter(y => y > h.y));
+      const stopY = stops.filter(y => y > h.y).length ? Math.min(...stops.filter(y => y > h.y)) - 5 : 1e9;
+      const body = cs.filter(c => c.y > h.y + 1 && c.y < Math.min(heads[i + 1] ? heads[i + 1].y - 1 : 1e9, stopY) && !h.cols.includes(c));
+      return { ...h, rows: rowsOf(h, body) };
+    });
+  }
+
+  function rowsOf(h, body) {
+    const cols = h.cols.map(c => ({ name: c.s, x0: c.x0 }));
+    const colOf = c => { let best = 0; cols.forEach((k, i) => { if (k.x0 <= c.x0 + 3) best = i; }); return best; };
+    const anchors = body.filter(c => colOf(c) === 0).sort((a, b) => a.y - b.y);
+    const groups = [];
+    for (const a of anchors) { const g = groups[groups.length - 1]; if (g && a.y - g[g.length - 1].y < 14) g.push(a); else groups.push([a]); }
+    let rows = groups.map(g => ({ y: g.reduce((s, c) => s + c.y, 0) / g.length, cells: [] }));
+    if (!rows.length) rows = [{ y: 0, cells: [] }];
+    body.forEach(c => { let r = rows[0]; rows.forEach(x => { if (Math.abs(x.y - c.y) < Math.abs(r.y - c.y)) r = x; }); r.cells.push(c); });
+    return rows.map(r => {
+      const o = {};
+      cols.forEach((k, i) => { o[k.name] = r.cells.filter(c => colOf(c) === i).sort((a, b) => a.y - b.y || a.x0 - b.x0).map(c => c.s).join(" ").replace(/\s+/g, " ").trim(); });
+      o._first = o[cols[0].name];
+      return o;
+    });
+  }
+
+  // Split on commas outside brackets/parentheses
+  function splitTop(s) {
+    const out = []; let depth = 0, cur = "";
+    for (const ch of s || "") { if ("[(".includes(ch)) depth++; if ("])".includes(ch)) depth--; if (ch === "," && depth <= 0) { out.push(cur.trim()); cur = ""; } else cur += ch; }
+    if (cur.trim()) out.push(cur.trim());
+    return out;
+  }
+
+  const IMMUNE_MAP = { fire: "On Fire", "on fire": "On Fire", poison: "Poisoned", poisoned: "Poisoned", bleed: "Bleed", control: "Controlled", controlled: "Controlled" };
+  const STATE_NAMES = ["Aggressive", "Bleed", "Blind", "Controlled", "Cowardly", "Death Sentence", "Diseased", "Disguised", "Frightened", "Held", "Immobilised", "Impetuous", "On Fire", "Poisoned", "Prone", "Reloading", "Run", "Spirit Block", "Stunned", "Virtue"];
+  function immunities(traits) {
+    const set = new Set();
+    const m = traits.match(/Immune\s*\[([^\]]+)\]/i);
+    if (m) m[1].split(",").forEach(x => { const k = x.trim().toLowerCase(); const st = IMMUNE_MAP[k] || STATE_NAMES.find(s => s.toLowerCase() === k); if (st) set.add(st); });
+    if (/\bFearless\b/.test(traits)) set.add("Frightened");
+    if (/\bSoulless\b/.test(traits)) ["Bleed", "Frightened", "Poisoned"].forEach(x => set.add(x));
+    if (/\bImmovable\b/.test(traits)) set.add("Prone");
+    return [...set];
+  }
+  const num = s => { const m = String(s || "").match(/-?\d+/); return m ? +m[0] : null; };
+
+  function parseCardPage(title, rice, bl, roleHint) {
+    const profiles = [], weapons = [], feats = [], notes = [], equip = [], traitsArr = [];
+    let cardText = [];
+    for (const b of bl) {
+      for (const r of b.rows) {
+        const g = k => r[k] || "";
+        if (b.kind === "character profile" && r._first) {
+          profiles.push({ name: r._first, mp: g("Melee Pool"), mb: g("Melee Boost"), rp: g("Ranged Pool"), rb: g("Ranged Boost"), mv: g("Move"), mvb: g("Move Boost"),
+            ki: num(g("Ki")) ?? 0, kib: g("Ki Boost"), kic: num(g("Ki Cap")) ?? 0, w: num(g("Wounds")) ?? 1, size: g("Size & Base") });
+        } else if (b.kind === "character traits" && g("Traits")) traitsArr.push(g("Traits"));
+        else if ((b.kind === "melee weapon" || b.kind === "special-melee") && r._first)
+          weapons.push({ n: r._first, s: g("Melee Weapon Strength"), t: [g("Traits"), g("Specials"), g("Unique Effects")].filter(Boolean).join(", "), eq: b.kind === "special-melee" });
+        else if ((b.kind === "ranged weapon" || b.kind === "special-ranged") && r._first)
+          weapons.push({ n: r._first, s: g("Ranged Weapon Strength"), range: g("Range Bands"), t: [g("Traits"), g("Specials"), g("Unique Effects")].filter(Boolean).join(", "), eq: b.kind === "special-ranged" });
+        else if (b.kind === "ki feat" && r._first) {
+          const lim = g("Limitation");
+          feats.push({ n: r._first, c: num(g("Cost")) ?? 0, tm: g("Timing"), sub: g("Subject"), lim: /\bOpG\b|On(c)?e Per Game/i.test(lim) ? "OpG" : /\bOpT\b|On(c)?e Per Turn/i.test(lim) ? "OpT" : "", limText: lim, d: g("Description") });
+        } else if (b.kind === "unique effects" && g("Description")) notes.push({ n: r._first, d: g("Description") });
+        else if (b.kind === "special" && g("Description")) { equip.push({ n: r._first, d: g("Description") }); cardText.push(g("Description")); }
+        else if (b.kind === "special-terrain") { const { _first, ...rest } = r; cardText.push(Object.entries(rest).filter(([k, v]) => v && k !== Object.keys(rest)[0]).map(([k, v]) => k === "Description" ? v : `${k}: ${v}`).join(". ")); }
+      }
+    }
+    if (profiles.length) {
+      const traits = traitsArr.join(", ");
+      const allText = notes.map(n => n.d).join(" ");
+      const models = profiles.map(p => {
+        let name = p.name;
+        if (profiles.length === 1 && norm(p.name).startsWith(norm(title))) name = title;
+        return { name, card: title, rice, stats: p, w: p.w, kiGen: p.ki, kiCap: Math.max(p.kic, 0), traits, weapons, feats, notes,
+          immune: immunities(traits), zeroKiSlow: /zero Ki Tokens?,? it has Slow/i.test(allText), intimidate: /\bIntimidate\b/.test(traits),
+          group: /\bGroup\b/.test(traits) };
+      });
+      return { kind: "profile", title, rice, models, equip };
+    }
+    return { kind: "card", title, rice, text: cardText.join(" ") };
+  }
+
+  function parseGlossary(pages) {
+    const g = {};
+    for (const cs of pages) {
+      let term = null;
+      for (const c of cs) {
+        if (c.x0 < 7 && /:$/.test(c.s) && c.s.length < 40 && c.h > 10.5) { term = c.s.replace(/\s*:$/, "").trim(); g[term] = ""; }
+        else if (term && c.h < 10.5) g[term] = (g[term] + " " + c.s).trim();
+      }
+    }
+    return g;
+  }
+
+  function parse(pages) {
+    const pc = pages.map(p => cells(p.items));
+    // Roster page
+    const first = pc[0];
+    const titleCell = first.find(c => c.y < 15);
+    const listName = titleCell ? titleCell.s.replace(/\[\s*\d+\s*Rice\]/i, "").trim() : "Imported list";
+    const sub = first.find(c => c.y > 15 && c.y < 35);
+    const hdr = first.find(c => c.s === "NAME");
+    const roleX = (first.find(c => c.s === "ROLE") || {}).x0 || 100, optX = (first.find(c => c.s === "OPTIONS") || {}).x0 || 200;
+    const roster = [];
+    if (hdr) {
+      const rows = new Map();
+      first.filter(c => c.y > hdr.y + 2).forEach(c => { const k = Math.round(c.y); (rows.get(k) || rows.set(k, []).get(k)).push(c); });
+      for (const [, line] of [...rows].sort((a, b) => a[0] - b[0])) {
+        let name = "", role = "", opts = "";
+        line.forEach(c => { if (c.x0 >= optX - 6) opts += " " + c.s; else if (c.x0 >= roleX - 6) role += " " + c.s; else name += " " + c.s; });
+        name = name.trim(); role = role.trim();
+        if (!role) { const m = name.match(/^(.*?)\s+((?:Faction|Ronin)\s+\w+\s+Cards)$/); if (m) { name = m[1]; role = m[2]; } }
+        if (name) roster.push({ name, role, options: splitTop(opts.trim()) });
+      }
+    }
+    // Card pages
+    const cards = []; const glossPages = [];
+    let inRules = false;
+    pc.slice(1).forEach(cs => {
+      if (cs.some(c => c.s === "Rules" && c.y < 20 && c.h > 14)) inRules = true;
+      if (inRules) { glossPages.push(cs); return; }
+      const banner = cs.filter(c => c.y < 13);
+      if (!banner.length) return;
+      const riceC = banner.find(c => /^-?\d+\s*RICE$/i.test(c.s));
+      const titleC = banner.find(c => c !== riceC);
+      if (!titleC) return;
+      const rosterEntry = roster.find(r => norm(r.name).toUpperCase() === norm(titleC.s).toUpperCase() || norm(r.name) === norm(titleC.s));
+      const title = rosterEntry ? rosterEntry.name : titleC.s;
+      cards.push({ ...parseCardPage(title, riceC ? num(riceC.s) : 0, blocks(cs)), role: rosterEntry ? rosterEntry.role : "", options: rosterEntry ? rosterEntry.options : [] });
+    });
+    return { name: listName, subtitle: sub ? sub.s : "", roster, cards, glossary: parseGlossary(glossPages) };
+  }
+
+  const typeOf = role => /event/i.test(role) ? "Event" : /theme/i.test(role) ? "Theme" : /terrain/i.test(role) ? "Terrain" : /enhancement/i.test(role) ? "Enhancement" : /curse/i.test(role) ? "Curse" : "Card";
+
+  return { parse, norm, splitTop, typeOf };
+})();
+
+
+const SEED = {"lib":{"cards":{"meng yi":{"kind":"profile","title":"Meng Yi","rice":26,"models":[{"name":"Meng Yi","card":"Meng Yi","rice":26,"stats":{"name":"Meng Yi","mp":"4","mb":"2","rp":"0","rb":"","mv":"4","mvb":"","ki":2,"kib":"","kic":6,"w":12,"size":"Small 30mm"},"w":12,"kiGen":2,"kiCap":6,"traits":"Armour (3), Construct, Fearless, Immune [Bleed, Blind, Controlled, Death Sentence, Diseased, Impetuous, Fire, Poisoned], Immovable","weapons":[{"n":"Dadao","s":"+2","t":"Combo Attack (1)","eq":false}],"feats":[{"n":"Implacable Service","c":3,"tm":"Instant","sub":"Personal","lim":"","limText":"","d":"This model gains Durable and Endurance until the end of the current activation."},{"n":"Duty in Stone","c":1,"tm":"Instant","sub":"Personal","lim":"OpT","limText":"OpT","d":"This model gains an Activation Counter."}],"notes":[{"n":"Unique Effects","d":"While this model has zero Ki Tokens, it has Slow. Only Vermillion Fangshi models can Channel to this model."},{"n":"Shield","d":"This model has Parry (+1), Ranged Defence (+1), and Armour (+1) unless Surprised."}],"immune":["Bleed","Blind","Controlled","Death Sentence","Diseased","Impetuous","On Fire","Poisoned","Frightened","Prone"],"zeroKiSlow":true,"intimidate":false,"group":false}],"equip":[],"role":"Faction Profile Cards","options":[]},"shibing":{"kind":"profile","title":"Shìbīng","rice":8,"models":[{"name":"Shìbīng","card":"Shìbīng","rice":8,"stats":{"name":"Shìbīng A","mp":"3","mb":"3","rp":"0","rb":"","mv":"4","mvb":"","ki":0,"kib":"","kic":3,"w":8,"size":"Small 30mm"},"w":8,"kiGen":0,"kiCap":3,"traits":"Armour (3), Construct, Group, Soulless","weapons":[{"n":"Stone Yari","s":"+2","t":"Reach, Forceback Attack (0), Push Defence (0)","eq":false}],"feats":[{"n":"Stone Soldier","c":1,"tm":"Active","sub":"Special","lim":"OpG","limText":"OpG","d":"Friendly Shìbīng models gain an Activation Counter. This Ki Feat may be used while this model is represented by a Terrain Card."}],"notes":[{"n":"Bǎi Qiān","d":"While this model has zero Ki Tokens, it has Slow. When this model gains Activation Counters it gains only one rather than two. During the Main Phase, while Exhausted, this model is no longer a model and becomes Inert Warrior Terrain Element. All Wound Boxes, game Effects, Tokens, Counters, State Markers, and Enhancements remain on the Profile Card."}],"immune":["Bleed","Frightened","Poisoned"],"zeroKiSlow":true,"intimidate":false,"group":true}],"equip":[],"role":"Faction Profile Cards","options":[]},"xi":{"kind":"profile","title":"Xi","rice":12,"models":[{"name":"Xi","card":"Xi","rice":12,"stats":{"name":"Xi","mp":"3","mb":"3","rp":"3","rb":"","mv":"4","mvb":"3","ki":2,"kib":"","kic":8,"w":5,"size":"Small 30mm"},"w":5,"kiGen":2,"kiCap":8,"traits":"Bodyguard [Princess]:(3\"), Bravery, Command [Princess]:(2/6\"), Co-ordinated Attack [Princess], Prowess [Melee]:(1), Vengeance [Blood Brother]","weapons":[{"n":"Naginata","s":"+1","t":"Reach, Powerful Attack (1), Push Attack (0), Sweep Defence (1)","eq":false}],"feats":[{"n":"Sworn Sisters","c":3,"tm":"Active","sub":"Target 3\"","lim":"OpT","limText":"OpT","d":"Target other Friendly Princess model gains an Activation Marker."},{"n":"Perfect Defence","c":3,"tm":"Instant","sub":"Personal","lim":"","limText":"","d":"This model gains Impenetrable Defence until the end of the current activation."}],"notes":[{"n":"Sisterhood","d":"The Rice Cost for Yizhi, Xi and Yanjing is 36 for all three models."}],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[],"role":"Ronin Profile Cards","options":[]},"yanjing":{"kind":"profile","title":"Yanjing","rice":13,"models":[{"name":"Yanjing","card":"Yanjing","rice":13,"stats":{"name":"Yanjing","mp":"3","mb":"3","rp":"3","rb":"3","mv":"4","mvb":"3","ki":2,"kib":"","kic":8,"w":5,"size":"Small 30mm"},"w":5,"kiGen":2,"kiCap":8,"traits":"Bodyguard [Princess]:(3\"), Bravery, Command [Princess]:(2/6\"), Co-ordinated Attack [Princess], Prowess [Melee]:(1), Vengeance [Blood Brother]","weapons":[{"n":"Tantō","s":"+0","t":"Sidestep Defence (0)","eq":false},{"n":"Dai Kyu","s":"+1","range":"5/10/15","t":"Brutal (1), Reload (1)","eq":false}],"feats":[{"n":"Sworn Sisters","c":3,"tm":"Active","sub":"Target 3\"","lim":"OpT","limText":"OpT","d":"Target other Friendly Princess model gains an Activation Marker."},{"n":"Sisterly Bond","c":2,"tm":"Complex","sub":"Pulse 3\"","lim":"","limText":"","d":"Immediately Heal all Friendly Princesses in the Pulse to have the same number of marked Wound boxes as the least Wounded Friendly Princess model."}],"notes":[{"n":"Yanjing","d":"When making a Ranged Attack, Friendly Princess models are never considered to be in BtB with the Target."},{"n":"Sisterhood","d":"The Rice Cost for Yizhi, Xi and Yanjing is 36 for all three models."}],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[{"n":"Hotai's Coin","d":"Attached model can re-roll 1s rolled for a test, once per test. If any of the re-rolled dice is a 1, discard this card."}],"role":"Ronin Profile Cards","options":[]},"yizhi":{"kind":"profile","title":"Yizhi","rice":12,"models":[{"name":"Yizhi","card":"Yizhi","rice":12,"stats":{"name":"Yizhi","mp":"3","mb":"3","rp":"3","rb":"","mv":"4","mvb":"3","ki":2,"kib":"","kic":8,"w":5,"size":"Small 30mm"},"w":5,"kiGen":2,"kiCap":8,"traits":"Bodyguard [Princess]:(3\"), Bravery, Cloudwalk, Command [Princess]:(2/6\"), Co-ordinated Attack [Princess], Indomitable (1), Prowess [Melee]:(1), Vengeance [Blood Brother]","weapons":[{"n":"Paired Swords","s":"+1","t":"Combo Attack (0), Sidestep Defence (0)","eq":false}],"feats":[{"n":"Sworn Sisters","c":3,"tm":"Active","sub":"Target 3\"","lim":"OpT","limText":"OpT","d":"Target other Friendly Princess model gains an Activation Marker."},{"n":"Sister's Succour","c":2,"tm":"Instant","sub":"Pulse 4\"","lim":"","limText":"noBtB","d":"During an Enemy model’s activation, when that model moves into BtB with another Friendly Princess model in the Pulse, move this model into BtB with that Enemy model by the shortest route. If it is not possible to put this model in BtB with the Enemy model this feat cannot be used."}],"notes":[{"n":"Sisterhood","d":"The Rice Cost for Yizhi, Xi and Yanjing is 36 for all three models."}],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[],"role":"Ronin Profile Cards","options":[]},"yukan'na":{"kind":"profile","title":"Yūkan'na","rice":17,"models":[{"name":"Yūkan'na","card":"Yūkan'na","rice":17,"stats":{"name":"Yūkan'na","mp":"3","mb":"3","rp":"2","rb":"","mv":"4","mvb":"","ki":2,"kib":"","kic":6,"w":6,"size":"Small 40mm"},"w":6,"kiGen":2,"kiCap":6,"traits":"Armour (1), Fearless, Intimidate, Prowess Melee","weapons":[{"n":"Katana","s":"+1","t":"Parry (1), Push Defence (0), Counterstrike Defence (1)","eq":false},{"n":"Sword","s":"+1","t":"Feint (1), Powerful Attack (1), Combo Attack (1)","eq":false}],"feats":[{"n":"Imperial Favour","c":3,"tm":"Simple","sub":"Aura 6\"","lim":"","limText":"noBtB","d":"Other Friendly non-Kami, non-Soulless models in the Aura when this Ki Feat is used gain 1 Ki Token. Friendly Imperial models in the Aura gain Bodyguard Imperial ."}],"notes":[{"n":"Unique Effects","d":"This model wins all tie breaks regardless of the usual rules for Conflict Resolution. If both models have this ability, resolve the tie break normally."}],"immune":["Frightened"],"zeroKiSlow":false,"intimidate":true,"group":false}],"equip":[],"role":"Ronin Profile Cards","options":[]},"year of the risen sun":{"kind":"card","title":"Year of the Risen Sun","rice":1,"text":"Play during the Starting Phase of Turn 1. All models gain a Ki Token.","role":"Ronin Event Cards","options":[]},"rice bale barricades":{"kind":"card","title":"Rice Bale Barricades","rice":1,"text":"Base: 50mm. Passage: Impassable. Visibility: Blocking. Size: Large. Traits: Destructible. This terrain piece may be placed within 2\" of, or in contact with, other terrain elements (including Impassable) or Scenario Objectives. It may be placed in Scenario Zones and within 2\" of the edge of the table.","role":"Ronin Terrain Cards","options":[]},"the imperial march":{"kind":"card","title":"The Imperial March","rice":0,"text":"After Deployment choose 1 Enemy model to gain a Death Sentence Marker Enemy models cannot spend Ki Tokens to remove Death Sentence Markers Permitted [Imperial Models]","role":"Ronin Theme Cards","options":[]},"the unfurled wing":{"kind":"card","title":"The Unfurled Wing","rice":1,"text":"Play during Deployment. For the rest of the game, in the Starting Phase before the Tactical Test, if a Friendly model will Deploy using the Flank Trait that turn choose a Friendly model to gain Tactician (1).","role":"Faction Event Cards","options":[]},"eagles of jwar":{"kind":"profile","title":"Eagles of Jwar","rice":2,"models":[{"name":"Fuwa Eagle","card":"Eagles of Jwar","rice":2,"stats":{"name":"Fuwa Eagle","mp":"1","mb":"","rp":"0","rb":"","mv":"7","mvb":"","ki":1,"kib":"","kic":0,"w":1,"size":"Tiny 30mm"},"w":1,"kiGen":1,"kiCap":0,"traits":"Cloudwalk, Flank, Group, Insignificant, Immune [Prone], Tiny","weapons":[{"n":"Talons","s":"-1","t":"Sharp (1), Sidestep Attack (0)","eq":false}],"feats":[],"notes":[{"n":"Fuwa Eagle","d":"When this model arives from Elsewhere, if it declares a Charge Action, it does not need LoS to its Target. The Charge Target is Surprised, regardless of the usual Surprised requirements."},{"n":"Unique Effects","d":"This card represents three different models, each with their own abilities. A Warband may not recruit multiples of the same Eagle."},{"n":"Fly High","d":"During the Starting Phase, this model's Controller may place this model Elsewhere. This model gains Flank and returns to play using those rules."}],"immune":["Prone"],"zeroKiSlow":false,"intimidate":false,"group":true}],"equip":[],"role":"Ronin Profile Cards","options":["Fuwa Eagle"]},"golden sentinel":{"kind":"profile","title":"Golden Sentinel","rice":16,"models":[{"name":"Golden Sentinel","card":"Golden Sentinel","rice":16,"stats":{"name":"Golden Sentinel A","mp":"3","mb":"3","rp":"3","rb":"","mv":"4","mvb":"","ki":2,"kib":"","kic":6,"w":6,"size":"Small 30mm"},"w":6,"kiGen":2,"kiCap":6,"traits":"Armour (3), Bodyguard [Imperial]:(3\"), Fearless, Immune [Control], Prowess [Melee]:(1)","weapons":[{"n":"Katana","s":"+1","t":"Forceback Attack (0), Push Defence (0)","eq":false}],"feats":[{"n":"Tenacious","c":2,"tm":"Active","sub":"Personal","lim":"","limText":"","d":"This model gains Tough (+1) until the End Phase."}],"notes":[{"n":"Imperial","d":"This model cannot declare Melee or Charge actions Targeting Imperial models."},{"n":"Golden Sentinel","d":"While within 3\" of another Friendly Imperial model, this model gains Aware and its Melee Weapons gain Reach."}],"immune":["Controlled","Frightened"],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[],"role":"Ronin Profile Cards","options":[]},"taiyo":{"kind":"profile","title":"Taiyo","rice":11,"models":[{"name":"Taiyo","card":"Taiyo","rice":11,"stats":{"name":"Taiyo","mp":"2","mb":"3","rp":"2","rb":"","mv":"3","mvb":"","ki":1,"kib":"","kic":6,"w":4,"size":"Small 30mm"},"w":4,"kiGen":1,"kiCap":6,"traits":"Cowardly","weapons":[{"n":"Knife","s":"-1","t":"Push Defence (1)","eq":false}],"feats":[{"n":"Supplies","c":1,"tm":"Simple","sub":"Pulse BtB","lim":"","limText":"noBtB","d":"Remove a Reload Marker from, or and an Ammo Token to, a model in the Pulse."}],"notes":[{"n":"Batman","d":"This model may be Recruited into the following Faction Themes (Guerilla Warfare, Open Rebellion)."}],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[],"role":"Ronin Profile Cards","options":[]},"yu":{"kind":"profile","title":"Yu","rice":14,"models":[{"name":"Yu","card":"Yu","rice":14,"stats":{"name":"Yu","mp":"2","mb":"3","rp":"2","rb":"","mv":"4","mvb":"","ki":2,"kib":"","kic":8,"w":5,"size":"Small 30mm"},"w":5,"kiGen":2,"kiCap":8,"traits":"Bravery, Willpower (1), Strategy [+1 Ki Token]","weapons":[{"n":"Daishō","s":"+0","t":"Push Defence (0)","eq":false}],"feats":[{"n":"Fumidashi","c":2,"tm":"Simple","sub":"Aura 6\"","lim":"OpG","limText":"noBtB, OpG","d":"Choose a model completely within a Scenario Zone. That model does not count as being in the zone when calculating Zone Control this turn."},{"n":"Page from the Book","c":4,"tm":"Instant","sub":"Target 8\" Opposed Ki","lim":"OpG","limText":"OpG","d":"When a model declares a Scenario Action, remove an additional Activation Counter for a Simple Action or one fewer Activation Counters if Complex. If the model cannot remove all Activation Counters required, the activation ends without taking effect and the model removes an Activation Counter. This Ki Feat is Opposed Ki when targeting an Enemy model. This is a Trap effect."},{"n":"To My Side!","c":1,"tm":"Instant","sub":"Pulse 4\"","lim":"OpT","limText":"OpT","d":"When an Enemy model declares an action that would bring it into BtB with this model, move a Friendly Golden Sentinel model within the Pulse into BtB with the Enemy model by the shortest route."}],"notes":[{"n":"Unique Effects","d":"When another Friendly Imperial model starts its activation BtB with this model, if the Imperial model declares a Scenario Action, it may Walk before or after the Scenario Action."}],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[{"n":"Arashi's Fan","d":"Attached model gains Ranged Defence (+2)."}],"role":"Ronin Profile Cards","options":[]},"imperial censure":{"kind":"card","title":"Imperial Censure","rice":2,"text":"Play in the Starting Phase. Choose a non-Animal, non-lnsignificant, non-Soulless Enemy model and remove an Activation Counter from that model. Requirement [Warband containing an Imperial & Teishin model]","role":"Ronin Event Cards","options":[]},"the hozumi family":{"kind":"card","title":"The Hozumi Family","rice":0,"text":"Friendly models begin the game with 1 Ki Token. Hozumi, Taiyo and Ryokeen models may always be recruited into this theme. In the Starting Phase you may choose 1 Enemy model to gain the Aloof Trait until the End Phase. In the Starting Phase, choose 1 Friendly, non-Hozumi model. That model gains Coordinated Attack [Hozumi] until the End Phase. Permitted [Hozumi, Taiyo, Ryokeen, Ronin models]","role":"Ronin Theme Cards","options":[]},"inoue kikuko":{"kind":"profile","title":"Inoue Kikuko","rice":20,"models":[{"name":"Inoue Kikuko","card":"Inoue Kikuko","rice":20,"stats":{"name":"Inoue Kikuko","mp":"3","mb":"3","rp":"3","rb":"3","mv":"4","mvb":"3","ki":2,"kib":"","kic":6,"w":6,"size":"Large 50mm"},"w":6,"kiGen":2,"kiCap":6,"traits":"","weapons":[],"feats":[],"notes":[],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[{"n":"Ataka Archery Cap","d":"Attached model gains Courage (1), and its Dai Kyu Ranged Weapon gains Lightweight. Rekuirement [Inoue Kikuko]"}],"role":"Faction Profile Cards","options":[]},"oiwa yoshitaka":{"kind":"profile","title":"Ōiwa Yoshitaka","rice":24,"models":[{"name":"Ōiwa Yoshitaka","card":"Ōiwa Yoshitaka","rice":24,"stats":{"name":"Ōiwa Yoshitaka","mp":"4","mb":"3","rp":"3","rb":"3","mv":"4","mvb":"","ki":2,"kib":"","kic":6,"w":6,"size":"Large 50mm"},"w":6,"kiGen":2,"kiCap":6,"traits":"","weapons":[],"feats":[],"notes":[],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[{"n":"Western Riding Hat","d":"Attached model gains Charging Bonus [Fear (5)], Courage (1), and Ranged Defence (2). Requirement [Ōiwa Yoshitaka]"}],"role":"Faction Profile Cards","options":[]},"taka toshiyuki":{"kind":"profile","title":"Taka Toshiyuki","rice":21,"models":[{"name":"Taka Toshiyuki","card":"Taka Toshiyuki","rice":21,"stats":{"name":"Taka Toshiyuki","mp":"3","mb":"3","rp":"2","rb":"","mv":"4","mvb":"","ki":2,"kib":"","kic":6,"w":6,"size":"Large 50mm"},"w":6,"kiGen":2,"kiCap":6,"traits":"","weapons":[],"feats":[],"notes":[],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[{"n":"Horse Leather Helmet","d":"Attached model gains Charging Bonus [Fear (5)], Ranged Defence (2), and Resistance (1). Requirement [Taka Toshifluki]"}],"role":"Faction Profile Cards","options":[]},"takeda reiko":{"kind":"profile","title":"Takeda Reiko","rice":24,"models":[{"name":"Takeda Reiko","card":"Takeda Reiko","rice":24,"stats":{"name":"Takeda Reiko","mp":"3","mb":"3","rp":"3","rb":"3","mv":"5","mvb":"3","ki":2,"kib":"3","kic":8,"w":6,"size":"Large 50mm"},"w":6,"kiGen":2,"kiCap":8,"traits":"","weapons":[],"feats":[],"notes":[],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[{"n":"Equestrian Leg Yield","d":"During an Enemy model's activation in which it entered into BtB with, or Targets, the Attached Friendly Samurai model with a Ranged Attack or Ki Feat, but before any Melee Exchange begins; make an Opposed Move Test. If successful, place the Attached model within 2\" of its current location, the Enemy model's action is then considered resolved. Discard this Card. This is a Trap Effect."},{"n":"Sangi Crown","d":"Requirement [Samurai] Attached model gains Charging Bonus [Fear(6)], and Ranged Defence (2). Requirement [Takeda Reiko]"}],"role":"Faction Profile Cards","options":[]},"watanabe yuka":{"kind":"profile","title":"Watanabe Yuka","rice":17,"models":[{"name":"Watanabe Yuka","card":"Watanabe Yuka","rice":17,"stats":{"name":"Watanabe Yuka","mp":"3","mb":"","rp":"2","rb":"","mv":"5","mvb":"3","ki":2,"kib":"","kic":6,"w":6,"size":"Large 50mm"},"w":6,"kiGen":2,"kiCap":6,"traits":"","weapons":[],"feats":[{"n":"Agility","c":1,"tm":"Instant","sub":"Personal","lim":"OpT","limText":"One Per Turn","d":"After making a Scenario Action, this model gains an Activation Counter."}],"notes":[],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[{"n":"Flying Changes","d":"Attached model gains the following Ki Feat:"}],"role":"Faction Profile Cards","options":[]},"cleansed by balefire":{"kind":"card","title":"Cleansed by Balefire","rice":1,"text":"When a Friendly Faction model declares a Charge Action, the Target gains a Fire (1) Marker when this model enters BtB. Remove any Bleed, Death Sentence, Disease, Fire, Poison, Stunned or Spirit Block Markers from the Charging model.","role":"Faction Event Cards","options":[]},"to ride through jigoku":{"kind":"card","title":"To Ride Through Jigoku","rice":2,"text":"Choose a Friendly Faction Samurai model to gain Ranged Defence (4) and Intangible until the end of the current activation.","role":"Faction Event Cards","options":[]},"beyond the plains":{"kind":"card","title":"Beyond the Plains","rice":-10,"text":"Opponent deploys the first 6 pieces of Pool Terrain and then deploys any recruited Warband Terrain Elements (these are deployed before your Warband Terrain). You place no Terrain except Terrain Elements Recruited into this Warband. A Warband may only recruit one Curse Event Card.","role":"Faction Curse Cards","options":[]},"open plains":{"kind":"card","title":"Open Plains","rice":1,"text":"Base: card. Passage: Normal. Visibility: Clear. Size: Zero. This Terrain may be placed on the Battlefield, ignoring all restrictions in the terrain rules. No Terrain may be deployed within 1\" of this Terrain. If using 'Players deploying Terrain', deploy this Terrain before any other Terrain.","role":"Faction Terrain Cards","options":[]},"cavalry charge":{"kind":"card","title":"Cavalry Charge","rice":0,"text":"The first Charging Friendly Samurai that causes a rolled Fear test each turn gains Terror and Dread (1). Once per game use this ability in the Starting Phase, until the End Phase Friendly models treat Cavalry trait as Move instead of Walk. When a Friendly model declares a Run Action, it gains 1 Ki Token. You must recruit a Curse card into the Warband. Permitted [Samurai]","role":"Faction Theme Cards","options":[]}},"equip":{"triangle knife":{"n":"Triangle Knife","weapon":{"n":"Triangle Knife","s":"+0","t":"Bleed (1), Pierce (1), Combo Attack (1)","eq":true}},"hotai's coin":{"n":"Hotai's Coin","d":"Attached model can re-roll 1s rolled for a test, once per test. If any of the re-rolled dice is a 1, discard this card."},"arashi's fan":{"n":"Arashi's Fan","d":"Attached model gains Ranged Defence (+2)."},"the kiyozumi katana":{"n":"The Kiyozumi Katana","weapon":{"n":"The Kiyozumi Katana","s":"+1","t":"Vengeance [Non-Samurai], Counterstrike Defence (1)","eq":true}},"ataka archery cap":{"n":"Ataka Archery Cap","d":"Attached model gains Courage (1), and its Dai Kyu Ranged Weapon gains Lightweight. Rekuirement [Inoue Kikuko]"},"western riding hat":{"n":"Western Riding Hat","d":"Attached model gains Charging Bonus [Fear (5)], Courage (1), and Ranged Defence (2). Requirement [Ōiwa Yoshitaka]"},"horse leather helmet":{"n":"Horse Leather Helmet","d":"Attached model gains Charging Bonus [Fear (5)], Ranged Defence (2), and Resistance (1). Requirement [Taka Toshifluki]"},"equestrian leg yield":{"n":"Equestrian Leg Yield","d":"During an Enemy model's activation in which it entered into BtB with, or Targets, the Attached Friendly Samurai model with a Ranged Attack or Ki Feat, but before any Melee Exchange begins; make an Opposed Move Test. If successful, place the Attached model within 2\" of its current location, the Enemy model's action is then considered resolved. Discard this Card. This is a Trap Effect."},"sangi crown":{"n":"Sangi Crown","d":"Requirement [Samurai] Attached model gains Charging Bonus [Fear(6)], and Ranged Defence (2). Requirement [Takeda Reiko]"},"flying changes":{"n":"Flying Changes","d":"Attached model gains the following Ki Feat:"}},"glossary":{"Armour":"Reduce the result of Damage Rolls made against this model by X.","Bleed":"Each time this model inflicts wounds through a Melee Exchange or Ranged Attack to a Non-Soulless Enemy model, that model gains X number of Bleed markers with value Y. If a model has multiple sources of bleed traits, it may only use one at any given time.","Bodyguard":"If an Enemy model declares an action that would move it into BtB with a [Descriptor] Friendly model, or Targets the [Descriptor] Friendly model with a Ranged Attack, this model may switch positions with the Friendly model before the action begins if the following conditions are met: The Friendly model is within X” and in LoS. The Friendly model was not in BtB with an Enemy model at the start of the activation. This model is not in BtB with an Enemy model. This model is not Exhausted or Prone. If the Enemy model has Fear, the bodyguard must pass a fear test. Both models switching positions can fit within the space the other model occupied on the table without moving any other models. If bodyguarding a larger based model, your opponent places the bodyguard anywhere within the area covered by the larger base then you choose facing. The Enemy model’s action is then resolved with this model being declared as the Target. If this model has the Fear trait, the enemy model must make a Fear Test as if this model were its original target. Once the use of the Bodyguard trait by this model is declared, if this model has a Disguised Marker, remove the Disguised Marker immediately.","Bravery":"This model may re-roll a failed Fear Test. It may only re-roll the same Fear Test once due to this trait. If a model with Bravery gains the Cowardly trait, it is considered to have neither trait. If a model with the Bravery trait makes a Fear test against a model with the Terror trait, the effects of both are cancelled.","Brutal":"In a Melee Exchange this model adds X to the result when calculating its final Attack result. This model adds X to the result when calculating its final Ranged Attack result.","Cloudwalk":"When this model moves it ignores Terrain elements, other models, and Zones of Control. It may end its move in an enemy ZoC. This does not allow a model to move out of Melee unless it also has the Agile trait. This model may not end its move occupying the same area as an Impassable Terrain element or another model.","Co-ordinated Attack":"If this model is in a Melee Exchange and one or more Friendly [Descriptor] models is also in BtB with the Enemy model, this model gains +1 Melee Pool bonus.","Combo Attack":"If the Attack is successful then after resolving a Damage Roll, deduct 2 from the Success Level of the Attack. If the new Success Level is 0 or greater make another Damage Roll against the Defender. Repeat this process until the Success Level is less than 0. If the Success Level of the original attack was 0 or 1, after resolving a Damage Roll, make one additional Damage Roll against the Defender at Success Level 0.","Command":"This model may declare a Simple action, Command: The model nominates and activates up to X other non-Exhausted, Friendly [Descriptor] models within Y inches. These models each perform a Standard, Simple action. The order the models activate in is chosen by this model’s Controller after each action is resolved remove an activation counter from the activating model. If a model with the Group trait is chosen you must choose all models on that profile card; if you cannot, then you cannot command any of those models. These are Nested Activations.","Construct":"This model provides cover as if it were terrain.","Counterstrike Defence":"If this Defence is successful, and the Attacker allocated any dice to Attack, then deduct 2 from the Success Level of the Defence. If the Success Level is 0 or greater, then make a Damage Roll against the Attacker using the modified Success Level of the Defence.","Durable":"When this model would suffer more than one wound, it only suffers one wound. This trait is resolved after the Tough trait.","Endurance":"This model suffers no Melee penalty for being Exhausted.","Fearless":"This model automatically succeeds when taking Fear tests and has Immune [Frightened].","Feint":"During Melee Exchanges this model may pick up to X Defence dice rolled by its Opponent to be re- rolled. The same dice may only be re- rolled once due to this model’s trait.","Forceback Attack":"If the Attack is successful, move the Defender 1” directly away from the Attacker, then move the Attacker 1” directly towards the Defender. The Defender suffers half the wounds from the Damage Roll caused by this Attack.","Group":"All models represented by this profile card activate in the same single activation. Each model on this profile card resolves any movement before any Melee Exchanges are resolved. Melee Exchanges are then resolved in the order the Controlling player chooses. These are Nested Activations.","Immovable":"This model may not be Moved or Placed except when making a Disengage, Melee, Run, Walk, or Charge or by using a rule on a Friendly card. This model cannot gain Prone Markers. This model does not rotate at the start of a Melee Exchange, or when performing a Scenario Action.","Immune":"This model may not gain markers of [Descriptor]. If a model gains the Immune trait, immediately remove all markers of [Descriptor].","Impenetrable Defence":"During this model’s Melee Exchanges the Enemy model must remove its highest Attack die rolled before the final Attack result is calculated.","Indomitable":"This model ignores X assisting Enemy models in BtB for penalties during Melee Exchanges.","Intimidate":"During the Starting Phase, this model can Target an enemy model within 8”, Perform an Opposed Ki test with the Targeted model, if this model is successful the Target gains Cowardly, loses Aggressive and cannot Choose or Target this model with a Melee, Charge or Ranged Attack until the End Phase.","Parry":"This model adds X to the Defence result when calculating its final Defence result in Melee Exchanges.","Pierce":"When this model succeeds with an Attack using this weapon, reduce the Enemy model’s Armour trait by X to a minimum of 0.","Powerful Attack":"If the Attack is successful, then the Attacker gains +3 to the Damage Roll caused by this Attack.","Prowess":"During a [Descriptor] Test this model may re- roll up to X of its own dice. It may only re-roll dice once due to this trait. The Descriptors [Attack] and [Defence] refer to Melee Exchanges but are further limited.","Push Attack":"If the Attack is successful, move the Defender directly away from this model until it leaves this model’s ZoC. The Defender does not suffer a Damage Roll from this Attack.","Push Defence":"If the Defence is successful, move the Attacker directly away from the Defender until it leaves the defender’s ZoC.","Ranged Defence":"A model making a Ranged Attack against this model modifies the Challenge Number of the test by X.","Reach":"While using this weapon, it grants this model the Initiative at Step 3 of a Melee Exchange, provided it was not in BtB with its opponent or another Enemy model at the start of the current Activation. If both models in a Melee Exchange would benefit from this Trait, then neither benefits from it.","Reload":"When this model makes a Ranged Attack with this weapon it gains X Reload Markers.","Sidestep Defence":"If the Defence is successful, the Defender leaves BtB and then moves away from the Attacker until the Defender leaves The Attacker's ZoC, at which point its movement ends.","Slow":"This model may not declare Run or Charge actions. During a melee exchange, this model will lose the initiative if it is the active model. If this model has Lightning Reflexes, a weapon with the Reach trait or both then it ignores those traits and Slow for the duration of the melee exchange.","Soulless":"This model automatically succeeds at Fear tests and has Immune [Bleed, Frightened, Poison]. This model also automatically succeeds at Opposed Ki Tests when it is not the Active model.","Sweep Defence":"If the Defence is successful, then the Attacker becomes Prone.","Vengeance":"This model’s melee weapons gain Brutal (+1) and +1 Melee Strength when resolving a melee exchange against a [Descriptor] Model.","Aloof":"This model may not perform Scenario Actions.","Aware":"This model’s LoS extends 360 degrees around its base.","Cowardly":"This model must re-roll successful Fear tests. It must only re- roll the same Fear test once due to this trait. If a model with Cowardly gains the Bravery trait it is considered to have neither trait.","Flank":"When this model would be Deployed, this model’s Controller must choose whether this model will use Flank or not. If the player chooses not to use Flank, this model is Deployed as normal. If the player decides the model is using Flank, then the model is left Elsewhere and instead before the game the owning player makes a note of which turn the Flanking models will arrive and notes a neutral table edge. This is Hidden Information. This must be turn 2, 3, or 4. In the Starting Phase of that turn reveal the number and deploy the models anywhere along the chosen edge but not in the Opponent’s Deployment Zone. If a model gains Flank mid game or is removed and returns to play using the Flank rules, you immediately note any turn after the current turn (not just 2, 3, or 4) and a neutral edge for that model when it is removed from play. This is Hidden Information. Flanking models generate two Activation Counters when they are Deployed.","Insignificant":"This model: Has a ZoC that may be ignored at all times. Cannot apply Melee assist Modifiers. May not perform Simple Scenario or Complex Scenario actions.","Sharp":"This model reduces the enemy model’s Tough trait by X, to a minimum of 0, when it succeeds with an Attack with this weapon.","Sidestep Attack":"If the Attack is successful, the Attacker leaves BtB and then moves away from the Defender until the Attacker leaves The Defender's ZoC, at which point its movement ends. The Attacker makes no damage roll.","Strategy":"Whenever you win the Tactical Roll, this model gains the bracketed bonus.","Tactician":"This model adds X dice when it performs Tactical Tests.","Tiny":"This model is Tiny sized. Models Targeting this model with a Ranged Attack add a +1 modifier to the Challenge Number of the test. This model rolls one die for Size Tests.","Tough":"When this model would suffer Wounds from any source reduce the final number of Wounds by X (If X is negative, instead you will increase the number of wounds taken).","Willpower":"This model modifies the result by X when calculating its final result in Opposed Ki tests when it is the Activating model.","Charging Bonus":"When this model makes a Charge action it gains the bracketed Bonus until the end of its current activation. If the bonus is a Weapon Trait, then it applies to all valid weapons. This trait may also be a weapon trait if so the bonus only applies when choosing this weapon.","Courage":"When making a Fear Test, modify the result by X.","Dread":"Models making a fear test against this model reduce their Ki statistic by X. This cannot reduce the number of dice rolled below 1 die. Enemy models with Fear values equal to or higher than this model’s fear value do not automatically pass their fear tests against this model.","Fear":"When a model makes a Fear test against this model X is the Challenge Number for the test. Models automatically pass Fear tests with a Challenge Number equal to or lower than their Fear (X) trait, but must still take a Fear test if the Challenge Number is higher than their Fear (X) trait.","Intangible":"This model ignores Zones of Control, other models and Terrain elements during movement and being in BtB when declaring actions; it may move out of BtB freely. It may not end its move occupying the same area as an Impassable Terrain element or another model. This model also has Immune [Held, Immobilised].","Lightweight":"This model does not suffer the modifier for moving during a Ranged Attack when using this weapon.","Resistance":"This model modifies the result by X when it participates in an Opposed Ki test and is not the Activating model.","Terror":"If a model makes a Fear test caused by this model it must re-roll the test if it succeeds. Models must only re-roll the same test once due to this trait. If a model with the Bravery trait makes a Fear test caused by this model the effects of both traits are cancelled."}},"lists":[{"name":"Campaign 3","subtitle":"Risen Sun [90 Rice] (The Imperial Court)","roster":[{"name":"Meng Yi","role":"Faction Profile Cards","options":[]},{"name":"Shìbīng","role":"Faction Profile Cards","options":[]},{"name":"Xi","role":"Ronin Profile Cards","options":[]},{"name":"Yanjing","role":"Ronin Profile Cards","options":[]},{"name":"Yizhi","role":"Ronin Profile Cards","options":[]},{"name":"Yūkan'na","role":"Ronin Profile Cards","options":[]},{"name":"Year of the Risen Sun","role":"Ronin Event Cards","options":[]},{"name":"Rice Bale Barricades","role":"Ronin Terrain Cards","options":[]},{"name":"The Imperial March","role":"Ronin Theme Cards","options":[]}],"cards":[{"kind":"profile","title":"Meng Yi","rice":26,"models":[{"name":"Meng Yi","card":"Meng Yi","rice":26,"stats":{"name":"Meng Yi","mp":"4","mb":"2","rp":"0","rb":"","mv":"4","mvb":"","ki":2,"kib":"","kic":6,"w":12,"size":"Small 30mm"},"w":12,"kiGen":2,"kiCap":6,"traits":"Armour (3), Construct, Fearless, Immune [Bleed, Blind, Controlled, Death Sentence, Diseased, Impetuous, Fire, Poisoned], Immovable","weapons":[{"n":"Dadao","s":"+2","t":"Combo Attack (1)","eq":false}],"feats":[{"n":"Implacable Service","c":3,"tm":"Instant","sub":"Personal","lim":"","limText":"","d":"This model gains Durable and Endurance until the end of the current activation."},{"n":"Duty in Stone","c":1,"tm":"Instant","sub":"Personal","lim":"OpT","limText":"OpT","d":"This model gains an Activation Counter."}],"notes":[{"n":"Unique Effects","d":"While this model has zero Ki Tokens, it has Slow. Only Vermillion Fangshi models can Channel to this model."},{"n":"Shield","d":"This model has Parry (+1), Ranged Defence (+1), and Armour (+1) unless Surprised."}],"immune":["Bleed","Blind","Controlled","Death Sentence","Diseased","Impetuous","On Fire","Poisoned","Frightened","Prone"],"zeroKiSlow":true,"intimidate":false,"group":false}],"equip":[],"role":"Faction Profile Cards","options":[]},{"kind":"profile","title":"Shìbīng","rice":8,"models":[{"name":"Shìbīng","card":"Shìbīng","rice":8,"stats":{"name":"Shìbīng A","mp":"3","mb":"3","rp":"0","rb":"","mv":"4","mvb":"","ki":0,"kib":"","kic":3,"w":8,"size":"Small 30mm"},"w":8,"kiGen":0,"kiCap":3,"traits":"Armour (3), Construct, Group, Soulless","weapons":[{"n":"Stone Yari","s":"+2","t":"Reach, Forceback Attack (0), Push Defence (0)","eq":false}],"feats":[{"n":"Stone Soldier","c":1,"tm":"Active","sub":"Special","lim":"OpG","limText":"OpG","d":"Friendly Shìbīng models gain an Activation Counter. This Ki Feat may be used while this model is represented by a Terrain Card."}],"notes":[{"n":"Bǎi Qiān","d":"While this model has zero Ki Tokens, it has Slow. When this model gains Activation Counters it gains only one rather than two. During the Main Phase, while Exhausted, this model is no longer a model and becomes Inert Warrior Terrain Element. All Wound Boxes, game Effects, Tokens, Counters, State Markers, and Enhancements remain on the Profile Card."}],"immune":["Bleed","Frightened","Poisoned"],"zeroKiSlow":true,"intimidate":false,"group":true}],"equip":[],"role":"Faction Profile Cards","options":[]},{"kind":"profile","title":"Xi","rice":14,"models":[{"name":"Xi","card":"Xi","rice":14,"stats":{"name":"Xi","mp":"3","mb":"3","rp":"3","rb":"","mv":"4","mvb":"3","ki":2,"kib":"","kic":8,"w":5,"size":"Small 30mm"},"w":5,"kiGen":2,"kiCap":8,"traits":"Bodyguard [Princess]:(3\"), Bravery, Command [Princess]:(2/6\"), Co-ordinated Attack [Princess], Prowess [Melee]:(1), Vengeance [Blood Brother]","weapons":[{"n":"Triangle Knife","s":"+0","t":"Bleed (1), Pierce (1), Combo Attack (1)","eq":true},{"n":"Naginata","s":"+1","t":"Reach, Powerful Attack (1), Push Attack (0), Sweep Defence (1)","eq":false}],"feats":[{"n":"Sworn Sisters","c":3,"tm":"Active","sub":"Target 3\"","lim":"OpT","limText":"OpT","d":"Target other Friendly Princess model gains an Activation Marker."},{"n":"Perfect Defence","c":3,"tm":"Instant","sub":"Personal","lim":"","limText":"","d":"This model gains Impenetrable Defence until the end of the current activation."}],"notes":[{"n":"Sisterhood","d":"The Rice Cost for Yizhi, Xi and Yanjing is 36 for all three models."}],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[],"role":"Ronin Profile Cards","options":[]},{"kind":"profile","title":"Yanjing","rice":12,"models":[{"name":"Yanjing","card":"Yanjing","rice":12,"stats":{"name":"Yanjing","mp":"3","mb":"3","rp":"3","rb":"3","mv":"4","mvb":"3","ki":2,"kib":"","kic":8,"w":5,"size":"Small 30mm"},"w":5,"kiGen":2,"kiCap":8,"traits":"Bodyguard [Princess]:(3\"), Bravery, Command [Princess]:(2/6\"), Co-ordinated Attack [Princess], Prowess [Melee]:(1), Vengeance [Blood Brother]","weapons":[{"n":"Tantō","s":"+0","t":"Sidestep Defence (0)","eq":false},{"n":"Dai Kyu","s":"+1","range":"5/10/15","t":"Brutal (1), Reload (1)","eq":false}],"feats":[{"n":"Sworn Sisters","c":3,"tm":"Active","sub":"Target 3\"","lim":"OpT","limText":"OpT","d":"Target other Friendly Princess model gains an Activation Marker."},{"n":"Sisterly Bond","c":2,"tm":"Complex","sub":"Pulse 3\"","lim":"","limText":"","d":"Immediately Heal all Friendly Princesses in the Pulse to have the same number of marked Wound boxes as the least Wounded Friendly Princess model."}],"notes":[{"n":"Yanjing","d":"When making a Ranged Attack, Friendly Princess models are never considered to be in BtB with the Target."},{"n":"Sisterhood","d":"The Rice Cost for Yizhi, Xi and Yanjing is 36 for all three models."}],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[],"role":"Ronin Profile Cards","options":[]},{"kind":"profile","title":"Yizhi","rice":12,"models":[{"name":"Yizhi","card":"Yizhi","rice":12,"stats":{"name":"Yizhi","mp":"3","mb":"3","rp":"3","rb":"","mv":"4","mvb":"3","ki":2,"kib":"","kic":8,"w":5,"size":"Small 30mm"},"w":5,"kiGen":2,"kiCap":8,"traits":"Bodyguard [Princess]:(3\"), Bravery, Cloudwalk, Command [Princess]:(2/6\"), Co-ordinated Attack [Princess], Indomitable (1), Prowess [Melee]:(1), Vengeance [Blood Brother]","weapons":[{"n":"Paired Swords","s":"+1","t":"Combo Attack (0), Sidestep Defence (0)","eq":false}],"feats":[{"n":"Sworn Sisters","c":3,"tm":"Active","sub":"Target 3\"","lim":"OpT","limText":"OpT","d":"Target other Friendly Princess model gains an Activation Marker."},{"n":"Sister's Succour","c":2,"tm":"Instant","sub":"Pulse 4\"","lim":"","limText":"noBtB","d":"During an Enemy model’s activation, when that model moves into BtB with another Friendly Princess model in the Pulse, move this model into BtB with that Enemy model by the shortest route. If it is not possible to put this model in BtB with the Enemy model this feat cannot be used."}],"notes":[{"n":"Sisterhood","d":"The Rice Cost for Yizhi, Xi and Yanjing is 36 for all three models."}],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[],"role":"Ronin Profile Cards","options":[]},{"kind":"profile","title":"Yūkan'na","rice":16,"models":[{"name":"Yūkan'na","card":"Yūkan'na","rice":16,"stats":{"name":"Yūkan'na","mp":"3","mb":"3","rp":"2","rb":"","mv":"4","mvb":"","ki":2,"kib":"","kic":6,"w":6,"size":"Small 40mm"},"w":6,"kiGen":2,"kiCap":6,"traits":"Armour (1), Fearless, Intimidate, Prowess Melee","weapons":[{"n":"Katana","s":"+1","t":"Parry (1), Push Defence (0), Counterstrike Defence (1)","eq":false},{"n":"Sword","s":"+1","t":"Feint (1), Powerful Attack (1), Combo Attack (1)","eq":false}],"feats":[{"n":"Imperial Favour","c":3,"tm":"Simple","sub":"Aura 6\"","lim":"","limText":"noBtB","d":"Other Friendly non-Kami, non-Soulless models in the Aura when this Ki Feat is used gain 1 Ki Token. Friendly Imperial models in the Aura gain Bodyguard Imperial ."}],"notes":[{"n":"Unique Effects","d":"This model wins all tie breaks regardless of the usual rules for Conflict Resolution. If both models have this ability, resolve the tie break normally."}],"immune":["Frightened"],"zeroKiSlow":false,"intimidate":true,"group":false}],"equip":[],"role":"Ronin Profile Cards","options":[]},{"kind":"card","title":"Year of the Risen Sun","rice":1,"text":"Play during the Starting Phase of Turn 1. All models gain a Ki Token.","role":"Ronin Event Cards","options":[]},{"kind":"card","title":"Rice Bale Barricades","rice":1,"text":"Base: 50mm. Passage: Impassable. Visibility: Blocking. Size: Large. Traits: Destructible. This terrain piece may be placed within 2\" of, or in contact with, other terrain elements (including Impassable) or Scenario Objectives. It may be placed in Scenario Zones and within 2\" of the edge of the table.","role":"Ronin Terrain Cards","options":[]},{"kind":"card","title":"The Imperial March","rice":0,"text":"After Deployment choose 1 Enemy model to gain a Death Sentence Marker Enemy models cannot spend Ki Tokens to remove Death Sentence Markers Permitted [Imperial Models]","role":"Ronin Theme Cards","options":[]}]},{"name":"Imperial Eagle","subtitle":"Risen Sun [100 Rice] (Shiho Clan)","roster":[{"name":"The Unfurled Wing","role":"Faction Event Cards","options":[]},{"name":"Eagles of Jwar","role":"Ronin Profile Cards","options":["Fuwa Eagle"]},{"name":"Golden Sentinel","role":"Ronin Profile Cards","options":[]},{"name":"Taiyo","role":"Ronin Profile Cards","options":[]},{"name":"Xi","role":"Ronin Profile Cards","options":[]},{"name":"Yanjing","role":"Ronin Profile Cards","options":[]},{"name":"Yizhi","role":"Ronin Profile Cards","options":[]},{"name":"Yu","role":"Ronin Profile Cards","options":[]},{"name":"Yūkan'na","role":"Ronin Profile Cards","options":[]},{"name":"Imperial Censure","role":"Ronin Event Cards","options":[]},{"name":"The Hozumi Family","role":"Ronin Theme Cards","options":[]}],"cards":[{"kind":"card","title":"The Unfurled Wing","rice":1,"text":"Play during Deployment. For the rest of the game, in the Starting Phase before the Tactical Test, if a Friendly model will Deploy using the Flank Trait that turn choose a Friendly model to gain Tactician (1).","role":"Faction Event Cards","options":[]},{"kind":"profile","title":"Eagles of Jwar","rice":2,"models":[{"name":"Fuwa Eagle","card":"Eagles of Jwar","rice":2,"stats":{"name":"Fuwa Eagle","mp":"1","mb":"","rp":"0","rb":"","mv":"7","mvb":"","ki":1,"kib":"","kic":0,"w":1,"size":"Tiny 30mm"},"w":1,"kiGen":1,"kiCap":0,"traits":"Cloudwalk, Flank, Group, Insignificant, Immune [Prone], Tiny","weapons":[{"n":"Talons","s":"-1","t":"Sharp (1), Sidestep Attack (0)","eq":false}],"feats":[],"notes":[{"n":"Fuwa Eagle","d":"When this model arives from Elsewhere, if it declares a Charge Action, it does not need LoS to its Target. The Charge Target is Surprised, regardless of the usual Surprised requirements."},{"n":"Unique Effects","d":"This card represents three different models, each with their own abilities. A Warband may not recruit multiples of the same Eagle."},{"n":"Fly High","d":"During the Starting Phase, this model's Controller may place this model Elsewhere. This model gains Flank and returns to play using those rules."}],"immune":["Prone"],"zeroKiSlow":false,"intimidate":false,"group":true}],"equip":[],"role":"Ronin Profile Cards","options":["Fuwa Eagle"]},{"kind":"profile","title":"Golden Sentinel","rice":16,"models":[{"name":"Golden Sentinel","card":"Golden Sentinel","rice":16,"stats":{"name":"Golden Sentinel A","mp":"3","mb":"3","rp":"3","rb":"","mv":"4","mvb":"","ki":2,"kib":"","kic":6,"w":6,"size":"Small 30mm"},"w":6,"kiGen":2,"kiCap":6,"traits":"Armour (3), Bodyguard [Imperial]:(3\"), Fearless, Immune [Control], Prowess [Melee]:(1)","weapons":[{"n":"Katana","s":"+1","t":"Forceback Attack (0), Push Defence (0)","eq":false}],"feats":[{"n":"Tenacious","c":2,"tm":"Active","sub":"Personal","lim":"","limText":"","d":"This model gains Tough (+1) until the End Phase."}],"notes":[{"n":"Imperial","d":"This model cannot declare Melee or Charge actions Targeting Imperial models."},{"n":"Golden Sentinel","d":"While within 3\" of another Friendly Imperial model, this model gains Aware and its Melee Weapons gain Reach."}],"immune":["Controlled","Frightened"],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[],"role":"Ronin Profile Cards","options":[]},{"kind":"profile","title":"Taiyo","rice":11,"models":[{"name":"Taiyo","card":"Taiyo","rice":11,"stats":{"name":"Taiyo","mp":"2","mb":"3","rp":"2","rb":"","mv":"3","mvb":"","ki":1,"kib":"","kic":6,"w":4,"size":"Small 30mm"},"w":4,"kiGen":1,"kiCap":6,"traits":"Cowardly","weapons":[{"n":"Knife","s":"-1","t":"Push Defence (1)","eq":false}],"feats":[{"n":"Supplies","c":1,"tm":"Simple","sub":"Pulse BtB","lim":"","limText":"noBtB","d":"Remove a Reload Marker from, or and an Ammo Token to, a model in the Pulse."}],"notes":[{"n":"Batman","d":"This model may be Recruited into the following Faction Themes (Guerilla Warfare, Open Rebellion)."}],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[],"role":"Ronin Profile Cards","options":[]},{"kind":"profile","title":"Xi","rice":12,"models":[{"name":"Xi","card":"Xi","rice":12,"stats":{"name":"Xi","mp":"3","mb":"3","rp":"3","rb":"","mv":"4","mvb":"3","ki":2,"kib":"","kic":8,"w":5,"size":"Small 30mm"},"w":5,"kiGen":2,"kiCap":8,"traits":"Bodyguard [Princess]:(3\"), Bravery, Command [Princess]:(2/6\"), Co-ordinated Attack [Princess], Prowess [Melee]:(1), Vengeance [Blood Brother]","weapons":[{"n":"Naginata","s":"+1","t":"Reach, Powerful Attack (1), Push Attack (0), Sweep Defence (1)","eq":false}],"feats":[{"n":"Sworn Sisters","c":3,"tm":"Active","sub":"Target 3\"","lim":"OpT","limText":"OpT","d":"Target other Friendly Princess model gains an Activation Marker."},{"n":"Perfect Defence","c":3,"tm":"Instant","sub":"Personal","lim":"","limText":"","d":"This model gains Impenetrable Defence until the end of the current activation."}],"notes":[{"n":"Sisterhood","d":"The Rice Cost for Yizhi, Xi and Yanjing is 36 for all three models."}],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[],"role":"Ronin Profile Cards","options":[]},{"kind":"profile","title":"Yanjing","rice":13,"models":[{"name":"Yanjing","card":"Yanjing","rice":13,"stats":{"name":"Yanjing","mp":"3","mb":"3","rp":"3","rb":"3","mv":"4","mvb":"3","ki":2,"kib":"","kic":8,"w":5,"size":"Small 30mm"},"w":5,"kiGen":2,"kiCap":8,"traits":"Bodyguard [Princess]:(3\"), Bravery, Command [Princess]:(2/6\"), Co-ordinated Attack [Princess], Prowess [Melee]:(1), Vengeance [Blood Brother]","weapons":[{"n":"Tantō","s":"+0","t":"Sidestep Defence (0)","eq":false},{"n":"Dai Kyu","s":"+1","range":"5/10/15","t":"Brutal (1), Reload (1)","eq":false}],"feats":[{"n":"Sworn Sisters","c":3,"tm":"Active","sub":"Target 3\"","lim":"OpT","limText":"OpT","d":"Target other Friendly Princess model gains an Activation Marker."},{"n":"Sisterly Bond","c":2,"tm":"Complex","sub":"Pulse 3\"","lim":"","limText":"","d":"Immediately Heal all Friendly Princesses in the Pulse to have the same number of marked Wound boxes as the least Wounded Friendly Princess model."}],"notes":[{"n":"Yanjing","d":"When making a Ranged Attack, Friendly Princess models are never considered to be in BtB with the Target."},{"n":"Sisterhood","d":"The Rice Cost for Yizhi, Xi and Yanjing is 36 for all three models."}],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[{"n":"Hotai's Coin","d":"Attached model can re-roll 1s rolled for a test, once per test. If any of the re-rolled dice is a 1, discard this card."}],"role":"Ronin Profile Cards","options":[]},{"kind":"profile","title":"Yizhi","rice":12,"models":[{"name":"Yizhi","card":"Yizhi","rice":12,"stats":{"name":"Yizhi","mp":"3","mb":"3","rp":"3","rb":"","mv":"4","mvb":"3","ki":2,"kib":"","kic":8,"w":5,"size":"Small 30mm"},"w":5,"kiGen":2,"kiCap":8,"traits":"Bodyguard [Princess]:(3\"), Bravery, Cloudwalk, Command [Princess]:(2/6\"), Co-ordinated Attack [Princess], Indomitable (1), Prowess [Melee]:(1), Vengeance [Blood Brother]","weapons":[{"n":"Paired Swords","s":"+1","t":"Combo Attack (0), Sidestep Defence (0)","eq":false}],"feats":[{"n":"Sworn Sisters","c":3,"tm":"Active","sub":"Target 3\"","lim":"OpT","limText":"OpT","d":"Target other Friendly Princess model gains an Activation Marker."},{"n":"Sister's Succour","c":2,"tm":"Instant","sub":"Pulse 4\"","lim":"","limText":"noBtB","d":"During an Enemy model’s activation, when that model moves into BtB with another Friendly Princess model in the Pulse, move this model into BtB with that Enemy model by the shortest route. If it is not possible to put this model in BtB with the Enemy model this feat cannot be used."}],"notes":[{"n":"Sisterhood","d":"The Rice Cost for Yizhi, Xi and Yanjing is 36 for all three models."}],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[],"role":"Ronin Profile Cards","options":[]},{"kind":"profile","title":"Yu","rice":14,"models":[{"name":"Yu","card":"Yu","rice":14,"stats":{"name":"Yu","mp":"2","mb":"3","rp":"2","rb":"","mv":"4","mvb":"","ki":2,"kib":"","kic":8,"w":5,"size":"Small 30mm"},"w":5,"kiGen":2,"kiCap":8,"traits":"Bravery, Willpower (1), Strategy [+1 Ki Token]","weapons":[{"n":"Daishō","s":"+0","t":"Push Defence (0)","eq":false}],"feats":[{"n":"Fumidashi","c":2,"tm":"Simple","sub":"Aura 6\"","lim":"OpG","limText":"noBtB, OpG","d":"Choose a model completely within a Scenario Zone. That model does not count as being in the zone when calculating Zone Control this turn."},{"n":"Page from the Book","c":4,"tm":"Instant","sub":"Target 8\" Opposed Ki","lim":"OpG","limText":"OpG","d":"When a model declares a Scenario Action, remove an additional Activation Counter for a Simple Action or one fewer Activation Counters if Complex. If the model cannot remove all Activation Counters required, the activation ends without taking effect and the model removes an Activation Counter. This Ki Feat is Opposed Ki when targeting an Enemy model. This is a Trap effect."},{"n":"To My Side!","c":1,"tm":"Instant","sub":"Pulse 4\"","lim":"OpT","limText":"OpT","d":"When an Enemy model declares an action that would bring it into BtB with this model, move a Friendly Golden Sentinel model within the Pulse into BtB with the Enemy model by the shortest route."}],"notes":[{"n":"Unique Effects","d":"When another Friendly Imperial model starts its activation BtB with this model, if the Imperial model declares a Scenario Action, it may Walk before or after the Scenario Action."}],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[{"n":"Arashi's Fan","d":"Attached model gains Ranged Defence (+2)."}],"role":"Ronin Profile Cards","options":[]},{"kind":"profile","title":"Yūkan'na","rice":17,"models":[{"name":"Yūkan'na","card":"Yūkan'na","rice":17,"stats":{"name":"Yūkan'na","mp":"3","mb":"3","rp":"2","rb":"","mv":"4","mvb":"","ki":2,"kib":"","kic":6,"w":6,"size":"Small 40mm"},"w":6,"kiGen":2,"kiCap":6,"traits":"Armour (1), Fearless, Intimidate, Prowess Melee","weapons":[{"n":"The Kiyozumi Katana","s":"+1","t":"Vengeance [Non-Samurai], Counterstrike Defence (1)","eq":true},{"n":"Katana","s":"+1","t":"Parry (1), Push Defence (0), Counterstrike Defence (1)","eq":false},{"n":"Sword","s":"+1","t":"Feint (1), Powerful Attack (1), Combo Attack (1)","eq":false}],"feats":[{"n":"Imperial Favour","c":3,"tm":"Simple","sub":"Aura 6\"","lim":"","limText":"noBtB","d":"Other Friendly non-Kami, non-Soulless models in the Aura when this Ki Feat is used gain 1 Ki Token. Friendly Imperial models in the Aura gain Bodyguard Imperial ."}],"notes":[{"n":"Unique Effects","d":"This model wins all tie breaks regardless of the usual rules for Conflict Resolution. If both models have this ability, resolve the tie break normally."}],"immune":["Frightened"],"zeroKiSlow":false,"intimidate":true,"group":false}],"equip":[],"role":"Ronin Profile Cards","options":[]},{"kind":"card","title":"Imperial Censure","rice":2,"text":"Play in the Starting Phase. Choose a non-Animal, non-lnsignificant, non-Soulless Enemy model and remove an Activation Counter from that model. Requirement [Warband containing an Imperial & Teishin model]","role":"Ronin Event Cards","options":[]},{"kind":"card","title":"The Hozumi Family","rice":0,"text":"Friendly models begin the game with 1 Ki Token. Hozumi, Taiyo and Ryokeen models may always be recruited into this theme. In the Starting Phase you may choose 1 Enemy model to gain the Aloof Trait until the End Phase. In the Starting Phase, choose 1 Friendly, non-Hozumi model. That model gains Coordinated Attack [Hozumi] until the End Phase. Permitted [Hozumi, Taiyo, Ryokeen, Ronin models]","role":"Ronin Theme Cards","options":[]}]},{"name":"Horse Lords 1","subtitle":"Risen Sun [100 Rice] (Horse Lords of Ataka)","roster":[{"name":"Inoue Kikuko","role":"Faction Profile Cards","options":[]},{"name":"Ōiwa Yoshitaka","role":"Faction Profile Cards","options":[]},{"name":"Taka Toshiyuki","role":"Faction Profile Cards","options":[]},{"name":"Takeda Reiko","role":"Faction Profile Cards","options":[]},{"name":"Watanabe Yuka","role":"Faction Profile Cards","options":[]},{"name":"Cleansed by Balefire","role":"Faction Event Cards","options":[]},{"name":"To Ride Through Jigoku","role":"Faction Event Cards","options":[]},{"name":"Beyond the Plains","role":"Faction Curse Cards","options":[]},{"name":"Open Plains","role":"Faction Terrain Cards","options":[]},{"name":"Cavalry Charge","role":"Faction Theme Cards","options":[]}],"cards":[{"kind":"profile","title":"Inoue Kikuko","rice":20,"models":[{"name":"Inoue Kikuko","card":"Inoue Kikuko","rice":20,"stats":{"name":"Inoue Kikuko","mp":"3","mb":"3","rp":"3","rb":"3","mv":"4","mvb":"3","ki":2,"kib":"","kic":6,"w":6,"size":"Large 50mm"},"w":6,"kiGen":2,"kiCap":6,"traits":"","weapons":[],"feats":[],"notes":[],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[{"n":"Ataka Archery Cap","d":"Attached model gains Courage (1), and its Dai Kyu Ranged Weapon gains Lightweight. Rekuirement [Inoue Kikuko]"}],"role":"Faction Profile Cards","options":[]},{"kind":"profile","title":"Ōiwa Yoshitaka","rice":24,"models":[{"name":"Ōiwa Yoshitaka","card":"Ōiwa Yoshitaka","rice":24,"stats":{"name":"Ōiwa Yoshitaka","mp":"4","mb":"3","rp":"3","rb":"3","mv":"4","mvb":"","ki":2,"kib":"","kic":6,"w":6,"size":"Large 50mm"},"w":6,"kiGen":2,"kiCap":6,"traits":"","weapons":[],"feats":[],"notes":[],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[{"n":"Western Riding Hat","d":"Attached model gains Charging Bonus [Fear (5)], Courage (1), and Ranged Defence (2). Requirement [Ōiwa Yoshitaka]"}],"role":"Faction Profile Cards","options":[]},{"kind":"profile","title":"Taka Toshiyuki","rice":21,"models":[{"name":"Taka Toshiyuki","card":"Taka Toshiyuki","rice":21,"stats":{"name":"Taka Toshiyuki","mp":"3","mb":"3","rp":"2","rb":"","mv":"4","mvb":"","ki":2,"kib":"","kic":6,"w":6,"size":"Large 50mm"},"w":6,"kiGen":2,"kiCap":6,"traits":"","weapons":[],"feats":[],"notes":[],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[{"n":"Horse Leather Helmet","d":"Attached model gains Charging Bonus [Fear (5)], Ranged Defence (2), and Resistance (1). Requirement [Taka Toshifluki]"}],"role":"Faction Profile Cards","options":[]},{"kind":"profile","title":"Takeda Reiko","rice":24,"models":[{"name":"Takeda Reiko","card":"Takeda Reiko","rice":24,"stats":{"name":"Takeda Reiko","mp":"3","mb":"3","rp":"3","rb":"3","mv":"5","mvb":"3","ki":2,"kib":"3","kic":8,"w":6,"size":"Large 50mm"},"w":6,"kiGen":2,"kiCap":8,"traits":"","weapons":[],"feats":[],"notes":[],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[{"n":"Equestrian Leg Yield","d":"During an Enemy model's activation in which it entered into BtB with, or Targets, the Attached Friendly Samurai model with a Ranged Attack or Ki Feat, but before any Melee Exchange begins; make an Opposed Move Test. If successful, place the Attached model within 2\" of its current location, the Enemy model's action is then considered resolved. Discard this Card. This is a Trap Effect."},{"n":"Sangi Crown","d":"Requirement [Samurai] Attached model gains Charging Bonus [Fear(6)], and Ranged Defence (2). Requirement [Takeda Reiko]"}],"role":"Faction Profile Cards","options":[]},{"kind":"profile","title":"Watanabe Yuka","rice":17,"models":[{"name":"Watanabe Yuka","card":"Watanabe Yuka","rice":17,"stats":{"name":"Watanabe Yuka","mp":"3","mb":"","rp":"2","rb":"","mv":"5","mvb":"3","ki":2,"kib":"","kic":6,"w":6,"size":"Large 50mm"},"w":6,"kiGen":2,"kiCap":6,"traits":"","weapons":[],"feats":[{"n":"Agility","c":1,"tm":"Instant","sub":"Personal","lim":"OpT","limText":"One Per Turn","d":"After making a Scenario Action, this model gains an Activation Counter."}],"notes":[],"immune":[],"zeroKiSlow":false,"intimidate":false,"group":false}],"equip":[{"n":"Flying Changes","d":"Attached model gains the following Ki Feat:"}],"role":"Faction Profile Cards","options":[]},{"kind":"card","title":"Cleansed by Balefire","rice":1,"text":"When a Friendly Faction model declares a Charge Action, the Target gains a Fire (1) Marker when this model enters BtB. Remove any Bleed, Death Sentence, Disease, Fire, Poison, Stunned or Spirit Block Markers from the Charging model.","role":"Faction Event Cards","options":[]},{"kind":"card","title":"To Ride Through Jigoku","rice":2,"text":"Choose a Friendly Faction Samurai model to gain Ranged Defence (4) and Intangible until the end of the current activation.","role":"Faction Event Cards","options":[]},{"kind":"card","title":"Beyond the Plains","rice":-10,"text":"Opponent deploys the first 6 pieces of Pool Terrain and then deploys any recruited Warband Terrain Elements (these are deployed before your Warband Terrain). You place no Terrain except Terrain Elements Recruited into this Warband. A Warband may only recruit one Curse Event Card.","role":"Faction Curse Cards","options":[]},{"kind":"card","title":"Open Plains","rice":1,"text":"Base: card. Passage: Normal. Visibility: Clear. Size: Zero. This Terrain may be placed on the Battlefield, ignoring all restrictions in the terrain rules. No Terrain may be deployed within 1\" of this Terrain. If using 'Players deploying Terrain', deploy this Terrain before any other Terrain.","role":"Faction Terrain Cards","options":[]},{"kind":"card","title":"Cavalry Charge","rice":0,"text":"The first Charging Friendly Samurai that causes a rolled Fear test each turn gains Terror and Dread (1). Once per game use this ability in the Starting Phase, until the End Phase Friendly models treat Cavalry trait as Move instead of Walk. When a Friendly model declares a Run Action, it gains 1 Ki Token. You must recruit a Curse card into the Warband. Permitted [Samurai]","role":"Faction Theme Cards","options":[]}]}]};
+/* ---------- Library ---------- */
+const norm = BP.norm;
+const LIBKEY = "bushido-library-v1";
+let LIB = JSON.parse(JSON.stringify(SEED.lib));
+try { const saved = JSON.parse(localStorage.getItem(LIBKEY)); if (saved) { Object.assign(LIB.cards, saved.cards); Object.assign(LIB.equip, saved.equip); Object.assign(LIB.glossary, saved.glossary); } } catch (e) {}
+function saveLib() { try { localStorage.setItem(LIBKEY, JSON.stringify(LIB)); } catch (e) {} }
+function addToLibrary(parsed) {
+  for (const c of parsed.cards) {
+    if (c.kind === "profile") {
+      c.models.forEach(m => m.weapons.filter(w => w.eq).forEach(w => LIB.equip[norm(w.n)] = { n: w.n, weapon: w }));
+      c.equip.forEach(e => LIB.equip[norm(e.n)] = { n: e.n, d: e.d });
+      LIB.cards[norm(c.title)] = { ...c, models: c.models.map(m => ({ ...m, weapons: m.weapons.filter(w => !w.eq) })) };
+    } else LIB.cards[norm(c.title)] = c;
+  }
+  Object.assign(LIB.glossary, parsed.glossary);
+  saveLib();
+  window.Sync?.pushLibrary();
+}
+
+const STATES = [
+  ["Aggressive","good"],["Berserk","neutral"],["Bleed 1","harm"],["Bleed 2","harm"],["Bleed 3","harm"],["Blind","harm"],["Controlled","harm"],
+  ["Cowardly","harm"],["Death Sentence","harm"],["Diseased","harm"],["Disguised","good"],["Frightened","harm"],["Held","harm"],
+  ["Immobilised","harm"],["Impetuous","harm"],["Last Stand","good"],["Oni Rage","neutral"],["On Fire 1","fire"],["On Fire 2","fire"],["On Fire 3","fire"],
+  ["Poisoned 1","poison"],["Poisoned 2","poison"],["Poisoned 3","poison"],["Prone","harm"],["Reloading","neutral"],
+  ["Run","neutral"],["Spirit Block","harm"],["Stunned","harm"],["Virtue","good"],["Special","neutral"]
+];
+const CAT = Object.fromEntries(STATES);
+const baseState = k => k.replace(/ \d$/, "");
+const TICKING = ["Bleed", "On Fire", "Poisoned"];
+
+const SAMPLE = `The Imperial Court - Campaign 3 - [90 Rice]
+
+# ++ Risen Sun ++ [90 Rice]
+## Faction Profile Cards [34 Rice]
+Meng Yi [26 Rice]
+Shìbīng [8 Rice]:
+• 1x Shìbīng A [8 Rice]
+
+## Ronin Profile Cards [54 Rice]
+Xi [14 Rice]: Triangle Knife [2 Rice]
+Yanjing [12 Rice]
+Yizhi [12 Rice]
+Yūkan'na [16 Rice]
+
+## Ronin Event Cards [1 Rice]
+Year of the Risen Sun [1 Rice]
+
+## Ronin Terrain Cards [1 Rice]
+Rice Bale Barricades [1 Rice]
+
+## Ronin Theme Cards
+The Imperial March`;
+
+/* ---------- Building a game from a parsed PDF or a text list ---------- */
+const uid = () => Math.random().toString(36).slice(2, 8);
+const newModel = def => ({ id: uid(), def, dmg: 0, ki: 0, states: {}, used: {} });
+const equipToDef = (def, eqs) => {
+  const d = JSON.parse(JSON.stringify(def));
+  d.equip = [];
+  eqs.forEach(e => { if (e.weapon) d.weapons.unshift({ ...e.weapon, eq: true }); else d.equip.push({ n: e.n, d: e.d || "" }); });
+  return d;
+};
+function gameFromPdf(p) {
+  const models = [], cards = [];
+  for (const c of p.cards) {
+    if (c.kind === "profile") {
+      const modelNames = c.models.map(m => norm(m.name));
+      c.models.forEach(m => {
+        const d = JSON.parse(JSON.stringify(m));
+        d.equip = c.equip.filter(e => !modelNames.includes(norm(e.n)));
+        models.push(newModel(d));
+      });
+    } else cards.push({ name: c.title, type: BP.typeOf(c.role), text: c.text, done: false });
+  }
+  return { listName: p.name, sub: p.subtitle, models, cards };
+}
+function gameFromText(text) {
+  const out = { listName: "My list", sub: "", models: [], cards: [], unknown: [] };
+  let section = "";
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || /^created with/i.test(line)) continue;
+    if (line.startsWith("# ")) { const m = line.match(/\+\+\s*(.+?)\s*\+\+/); if (m) out.listName = m[1]; continue; }
+    if (line.startsWith("##")) { section = line.toLowerCase(); continue; }
+    if (!section || line.startsWith("•") || /^\d+x\s/.test(line)) continue;
+    const m = line.match(/^(.+?)\s*(?:\[\d+\s*Rice\])?\s*(?::\s*(.*))?$/);
+    if (!m) continue;
+    const name = m[1].trim();
+    const opts = BP.splitTop(m[2] || "").map(s => s.replace(/\[\d+\s*Rice\]/i, "").trim()).filter(Boolean);
+    const lib = LIB.cards[norm(name)];
+    if (/profile/.test(section)) {
+      if (!lib || lib.kind !== "profile") { out.unknown.push(name); continue; }
+      const eqs = opts.map(o => LIB.equip[norm(o)]).filter(Boolean);
+      opts.filter(o => !LIB.equip[norm(o)] && !lib.models.some(x => norm(x.name) === norm(o))).forEach(o => out.unknown.push(o));
+      const picked = lib.models.filter(x => !opts.length || lib.models.length === 1 || opts.some(o => norm(o) === norm(x.name)));
+      (picked.length ? picked : lib.models).forEach(x => out.models.push(newModel(equipToDef(x, eqs))));
+    } else {
+      if (!lib) out.unknown.push(name);
+      out.cards.push({ name: lib ? lib.title : name, type: BP.typeOf(section), text: lib ? lib.text : "Card text not in your library yet. Load this list's PDF once to add it.", done: false });
+    }
+  }
+  return out;
+}
+
+/* ---------- Storage: warbands, games, current game ---------- */
+const KEY = "bushido-tracker-v2";               /* old single-game save, migrated once */
+const WBKEY = "bushido-warbands-v1", GKEY = "bushido-games-v1", CURKEY = "bushido-current-v1";
+const load = (k, f) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? f; } catch (e) { return f; } };
+const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const clone = o => JSON.parse(JSON.stringify(o));
+let WB = load(WBKEY, null), GAMES = load(GKEY, {}), CUR = load(CURKEY, null);
+let S, undoStack = [], openChip = null, openDetail = new Set(), oppOpen = false, oppConfirm = null, sheetConfirm = null;
+const blankGame = g => ({ listName: g.listName, sub: g.sub || "", turn: 0, phase: "deploy", vp: 0, sp: 0, models: g.models, cards: g.cards, opp: { vp: 0, models: [] }, dismissed: {}, temp: [] });
+
+/* A warband is a reusable template; a game is a warband plus play state */
+const wbFromGame = (g, extra = {}) => ({ id: "w" + uid() + uid(), name: g.listName, sub: g.sub || "", models: g.models.map(m => clone(m.def)), cards: g.cards.map(c => ({ name: c.name, type: c.type, text: c.text })), added: Date.now(), ...extra });
+const gameFromWb = wb => blankGame({ listName: wb.name, sub: wb.sub, models: wb.models.map(d => newModel(clone(d))), cards: wb.cards.map(c => ({ ...c, done: false })) });
+const dayLabel = t => new Date(t).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+function saveAll() { store(WBKEY, WB); store(GKEY, GAMES); store(CURKEY, CUR); }
+function addWarband(wb) {
+  const same = Object.values(WB).find(x => x.name === wb.name && x.sub === wb.sub);
+  if (same) wb.id = same.id;                    /* re-importing a list updates it in place */
+  wb.updated = Date.now();
+  WB[wb.id] = wb; saveAll(); window.Sync?.pushWarband(wb); return wb;
+}
+function startGame(wbId) {
+  const wb = WB[wbId], id = "g" + uid() + uid();
+  GAMES[id] = { id, wbId, name: wb.name, created: Date.now(), updated: Date.now(), state: gameFromWb(wb) };
+  window.Sync?.pushGame(GAMES[id]);
+  switchGame(id);
+}
+function switchGame(id) {
+  CUR = id; S = GAMES[id].state; undoStack = []; openDetail.clear(); openChip = null; oppOpen = false;
+  saveAll(); render();
+}
+
+/* First run: keep the game already in progress, and add the lists we already know */
+if (!WB) {
+  WB = {};
+  const old = load(KEY, null);
+  if (old && old.models && old.models.length) {
+    const wb = addWarband(wbFromGame(old));
+    const id = "g" + uid() + uid();
+    GAMES[id] = { id, wbId: wb.id, name: wb.name, created: Date.now(), updated: Date.now(), state: old };
+    CUR = id;
+  }
+  SEED.lists.forEach(p => { const g = gameFromPdf(p); if (!Object.values(WB).some(x => x.name === g.listName)) addWarband(wbFromGame(g)); });
+  saveAll();
+}
+if (!CUR || !GAMES[CUR]) {
+  const recent = Object.values(GAMES).sort((a, b) => b.updated - a.updated)[0];
+  if (recent) CUR = recent.id;
+  else { const first = Object.values(WB)[0]; const id = "g" + uid() + uid(); GAMES[id] = { id, wbId: first.id, name: first.name, created: Date.now(), updated: Date.now(), state: gameFromWb(first) }; CUR = id; }
+  saveAll();
+}
+S = GAMES[CUR].state;
+function save() { GAMES[CUR].state = S; GAMES[CUR].updated = Date.now(); store(GKEY, GAMES); store(CURKEY, CUR); window.Sync?.pushGame(GAMES[CUR]); }
+function mutate(fn) { undoStack.push(JSON.stringify(S)); if (undoStack.length > 60) undoStack.shift(); fn(); save(); render(); }
+function undo() { if (!undoStack.length) return; S = JSON.parse(undoStack.pop()); save(); render(); toast("Undone"); }
+const hasLS = m => /\bLast Stand\b/i.test(m.def.traits || "") || !!m.states["Last Stand"];
+const onLastStand = m => m.dmg >= m.def.w && hasLS(m) && !m.removed;
+const alive = m => m.dmg < m.def.w || onLastStand(m);
+if (!LIB.glossary["Last Stand"]) LIB.glossary["Last Stand"] = "If this model is reduced to 0 wounds, it may still be activated until the end of the Turn and is not removed from play. This model cannot recover wounds through any game effects or traits once its wounds have been reduced to 0. During the End Phase, the model is removed from play.";
+const findAny = id => S.models.find(x => x.id === id) || S.opp.models.find(x => x.id === id);
+
+/* ---------- Phase flow ---------- */
+const PH = [["deploy", "Deploy"], ["start", "Start"], ["main", "Main"], ["end", "End"]];
+function nextPhase() {
+  mutate(() => {
+    if (S.phase === "deploy" || S.phase === "end") {
+      S.turn++; S.phase = "start";
+      let gained = 0;
+      S.models.forEach(m => {
+        for (const k in m.used) if (m.used[k] === "OpT") delete m.used[k];
+        if (alive(m)) { const b = m.ki; m.ki = Math.min(m.def.kiCap, m.ki + m.def.kiGen); gained += m.ki - b; }
+        delete m.states["Run"];
+      });
+      setTimeout(() => toast(`Turn ${S.turn}: +${gained} Ki generated`, true), 0);
+    } else if (S.phase === "start") S.phase = "main";
+    else if (S.phase === "main") {
+      S.phase = "end";
+      const gone = S.models.filter(onLastStand);
+      gone.forEach(m => m.removed = true);
+      if (gone.length) setTimeout(() => toast(`Removed at End Phase (Last Stand): ${gone.map(m => m.def.name).join(", ")}`, true), 0);
+      (S.temp || []).forEach(t => { const m = findAny(t.id); if (m) delete m.states[t.state]; });
+      S.temp = [];
+    }
+  });
+}
+
+/* Reminders come from card and model text: sentences are placed by the phase they mention */
+function phaseOf(sentence) {
+  if (/Starting Phase/i.test(sentence)) return "start";
+  if (/\bEnd Phase\b/i.test(sentence) && !/until the End Phase/i.test(sentence)) return "end";
+  if (/deploy|begin the game|before the game/i.test(sentence)) return "deploy";
+  return null;
+}
+const sentences = t => (t || "").replace(/\s*\b(Permitted|Requirement)\s*\[[^\]]*\]\.?/g, "").replace(/\s+/g, " ").split(/(?<=\.)\s+(?=[A-Z])/).map(s => s.trim()).filter(Boolean);
+function actionFor(s) {
+  if (/\b(all|friendly) models (gain|begin the game with) (a|1) Ki Token/i.test(s)) return { kind: "ki" };
+  const m = s.match(/Enemy model to gain (?:a |an |the )?([A-Z][\w' -]*?) (Marker|Trait|State)/);
+  if (m) return { kind: "enemy", state: m[1].trim(), temp: /until the End Phase/i.test(s) };
+  return null;
+}
+/* "Play during X." carries its phase to the sentences that follow it */
+function cardGroups(text) {
+  const out = []; let open = null;
+  for (const s of sentences(text)) {
+    if (/^(Requirement|Permitted)\b/i.test(s)) { open = null; continue; }
+    const ph = phaseOf(s), turn = (s.match(/Turn (\d+)/i) || [])[1];
+    if (ph) { const g = { phase: ph, turn: turn ? +turn : null, text: s }; out.push(g); open = g; }
+    else if (open && (/^Play\b/i.test(open.text) || /^(That|This|It|Then)\b/.test(s))) open.text += " " + s;
+  }
+  return out;
+}
+function reminders() {
+  const r = [];
+  const keyBase = `${S.turn}:${S.phase}`;
+  const push = (key, html, extra = {}) => { const k = `${keyBase}:${key}`; if (!S.dismissed[k]) r.push({ key: k, html, ...extra }); };
+  S.cards.forEach((c, ci) => {
+    cardGroups(c.text).forEach((g, gi) => {
+      if (g.phase !== S.phase || (g.turn && g.turn !== S.turn)) return;
+      const lasting = /rest of the game/i.test(g.text);
+      if (c.done && !lasting) return;
+      push(`c${ci}g${gi}`, `<strong>${esc(c.name)}</strong>: ${esc(g.text)}`, { action: actionFor(g.text), card: c.type === "Event" && !lasting ? ci : null });
+    });
+  });
+  S.models.forEach(m => {
+    if (!alive(m)) return;
+    m.def.notes.forEach((n, ni) => sentences(n.d).forEach((s, si) => {
+      if (phaseOf(s) === S.phase && !/^Play/.test(s)) push(`${m.id}n${ni}s${si}`, `<strong>${esc(m.def.name)}</strong> · ${esc(n.n)}: ${esc(s)}`);
+    }));
+    if (S.phase === "start" && m.def.intimidate) push(`${m.id}int`, `<strong>${esc(m.def.name)}</strong> may Intimidate an enemy within 8".`);
+    if (S.phase === "end") {
+      const tick = Object.keys(m.states).filter(k => TICKING.includes(baseState(k)));
+      if (tick.length) push(`${m.id}tick`, `<strong>${esc(m.def.name)}</strong>: resolve ${tick.map(k => esc(k) + (m.states[k] > 1 ? " ×" + m.states[k] : "")).join(", ")}.`);
+    }
+  });
+  return r;
+}
+
+/* ---------- Render ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function glossKey(token) {
+  const keys = Object.keys(LIB.glossary);
+  let t = token.replace(/\[.*?\]|\(.*?\)|:.*$/g, "").trim();
+  while (t) {
+    const k = keys.find(k => norm(k) === norm(t));
+    if (k) return k;
+    t = t.split(" ").slice(0, -1).join(" ");
+  }
+  return null;
+}
+const ruleList = s => BP.splitTop(s).map(tok => { const k = glossKey(tok); return k ? `<button class="rule" data-rule="${esc(k)}">${esc(tok)}</button>` : esc(tok); }).join(", ");
+function pips(n, filled, cls, mid) {
+  const box = (i, label) => `<button class="pip ${i < filled ? "on" : ""}" data-pip="${cls}" data-m="${mid}" data-i="${i}" aria-label="${cls === "w" ? "Wound box" : "Ki"} ${label}"></button>`;
+  if (cls !== "w") {
+    let h = `<div class="pips">`;
+    for (let i = 0; i < n; i++) h += box(i, i + 1);
+    return h + `</div>`;
+  }
+  /* Wounds: fixed rows of at most 8, balanced. The top row depletes first, each row right to left. */
+  const per = n <= 8 ? n : Math.ceil(n / Math.ceil(n / 8));
+  let h = `<div class="pips rows">`, start = 0, label = 1;
+  while (start < n) {
+    const len = Math.min(per, n - start);
+    h += `<div class="pip-row">`;
+    for (let p = 0; p < len; p++) h += box(start + len - 1 - p, label++);
+    h += `</div>`;
+    start += len;
+  }
+  return h + `</div>`;
+}
+function chipsFor(m) {
+  return Object.entries(m.states).map(([k, c]) => {
+    const key = `${m.id}:${k}`, cat = CAT[k] || "neutral";
+    return openChip === key
+      ? `<span class="chip open cat-${cat}"><i></i>${esc(k)}<button class="step" data-st="${esc(k)}" data-m="${m.id}" data-d="-1" aria-label="Remove one">−</button><span class="c num">${c}</span><button class="step" data-st="${esc(k)}" data-m="${m.id}" data-d="1" aria-label="Add one">+</button></span>`
+      : `<button class="chip cat-${cat}" data-chip="${esc(key)}"><i></i>${esc(k)}${c > 1 ? `<span class="c num">${c}</span>` : ""}</button>`;
+  }).join("");
+}
+const stat = (a, b) => a === "" || a == null ? "–" : b ? `${a}/${b}` : a;
+
+function render() {
+  $("listName").textContent = S.listName + " ▾";
+  $("turnLabel").textContent = S.turn ? `Turn ${S.turn}` : "Deployment";
+  $("phases").innerHTML = PH.filter(p => S.turn ? p[0] !== "deploy" : true).map(p => `<span class="${p[0] === S.phase ? "on" : ""}">${p[1]}</span>`).join("");
+  $("next").textContent = S.phase === "deploy" ? "Start turn 1" : S.phase === "start" ? "Main phase ▸" : S.phase === "main" ? "End phase ▸" : `Turn ${S.turn + 1} ▸`;
+  $("vp").textContent = S.vp; $("sp").textContent = S.sp;
+  $("undo").disabled = !undoStack.length;
+
+  $("reminders").innerHTML = reminders().map(r => {
+    const btn = r.action && r.action.kind === "ki" ? `<button class="act" data-rem="${r.key}" data-do="ki" data-card="${r.card ?? ""}">+1 Ki all</button>`
+      : r.action && r.action.kind === "enemy" ? `<button class="act" data-rem="${r.key}" data-do="enemy" data-state="${esc(r.action.state)}" data-temp="${r.action.temp ? 1 : ""}" data-card="${r.card ?? ""}">Choose</button>`
+      : "";
+    return `<div class="rem"><p>${r.html}</p><div class="rem-acts">${btn}<button class="act quiet" data-rem="${r.key}" data-do="done" data-card="${r.card ?? ""}">Done</button></div></div>`;
+  }).join("");
+
+  renderOpp();
+  const live = S.models.filter(alive);
+  $("readyCount").textContent = `${live.length} of ${S.models.length} models standing`;
+  $("woundTotal").textContent = `${S.models.reduce((a, m) => a + m.dmg, 0)} wounds taken`;
+
+  $("models").innerHTML = S.models.map(m => {
+    const d = m.def, dead = !alive(m);
+    const ls = onLastStand(m);
+    const pills = dead ? `<span class="pill dead">Dead</span>` : ls ? `<button class="pill ls" data-rule="Last Stand">Last Stand</button>` : d.zeroKiSlow && m.ki === 0 ? `<span class="pill slow">Slow</span>` : "";
+    const feats = d.feats.map(f => {
+      const used = f.lim && m.used[f.n];
+      const can = !dead && !used && m.ki >= f.c;
+      return `<button class="feat ${used ? "used" : ""}" data-feat="${esc(f.n)}" data-m="${m.id}" ${can ? "" : "disabled"} title="${esc(f.d)}"><span class="cost">${f.c}</span>${esc(f.n)}${f.lim ? ` · ${f.lim}` : ""}</button>`;
+    }).join("");
+    const st = d.stats;
+    d.weapons = d.weapons.filter(w => !(!w.s && /,/.test(w.n)));
+    const eqNames = [...d.weapons.filter(w => w.eq).map(w => w.n), ...(d.equip || []).map(e => e.n)];
+    const detail = openDetail.has(m.id) ? `<div class="detail">
+      <div class="statline">
+        <div><small>Mel</small><b class="num">${stat(st.mp, st.mb)}</b></div><div><small>Rng</small><b class="num">${stat(st.rp, st.rb)}</b></div>
+        <div><small>Mov</small><b class="num">${stat(st.mv, st.mvb)}</b></div><div><small>Ki</small><b class="num">${d.kiGen}/${d.kiCap}</b></div>
+        <div><small>Base</small><b class="num">${esc((st.size || "").replace(/^\w+\s*/, "") || "–")}</b></div></div>
+      ${d.weapons.length ? `<div><h4>Weapons</h4>${d.weapons.map(w => `<div class="wpn"><b>${esc(w.n)} ${esc(w.s)}${w.range ? ` · ${esc(w.range)}"` : ""}${w.eq ? '<span class="eq">Equip</span>' : ""}</b><em>${ruleList(w.t)}</em></div>`).join("")}</div>` : ""}
+      ${(d.equip || []).length ? `<div><h4>Equipment</h4>${d.equip.map(e => `<p class="${(m.discarded || {})[e.n] ? "eq-off" : ""}"><b>${esc(e.n)}</b>${(m.discarded || {})[e.n] ? " (discarded)" : ""}: ${esc(e.d)}</p>`).join("")}</div>` : ""}
+      ${d.traits ? `<div><h4>Traits</h4><p>${ruleList(d.traits)}</p></div>` : ""}
+      ${d.feats.length ? `<div><h4>Ki feats</h4>${d.feats.map(f => `<p><b>${esc(f.n)}</b> (${f.c} Ki, ${esc(f.tm)}${f.sub ? ", " + esc(f.sub) : ""}${f.limText ? ", " + esc(f.limText) : ""}): ${esc(f.d)}</p>`).join("")}</div>` : ""}
+      ${d.notes.length ? `<div><h4>Unique effects</h4>${d.notes.map(n => `<p><b>${esc(n.n)}</b>: ${esc(n.d)}</p>`).join("")}</div>` : ""}
+      ${d.immune.length ? `<div><h4>Immune to</h4><p>${d.immune.join(", ")}</p></div>` : ""}
+      <p class="tap-hint">Underlined rules open their definition.</p>
+    </div>` : "";
+    return `<article class="m ${dead ? "dead" : ""} ${ls ? "on-ls" : ""}">
+      <div class="m-head"><div class="m-name">${esc(d.name)}${d.group ? "<small>Group</small>" : ""}${eqNames.length ? `<span class="m-eq">${eqNames.map(n => { const off = (m.discarded || {})[n]; return `<button class="eq-tag ${off ? "off" : ""}" data-eqtoggle="${esc(n)}" data-m="${m.id}" aria-pressed="${off ? "true" : "false"}" title="${off ? "Discarded. Tap to restore" : "Tap when discarded"}">${esc(n)}</button>`; }).join("")}</span>` : ""}</div>${pills}</div>
+      <div class="track w"><span class="track-label">Wounds</span>${pips(d.w, m.dmg, "w", m.id)}<span class="track-val num"><b>${d.w - m.dmg}</b>/${d.w}</span></div>
+      ${d.kiCap > 0 ? `<div class="track k"><span class="track-label">Ki</span>${pips(d.kiCap, m.ki, "k", m.id)}<span class="track-val num"><b>${m.ki}</b> +${d.kiGen}</span></div>` : ""}
+      <div class="states">${chipsFor(m)}${dead ? "" : `<button class="add-state" data-addstate="${m.id}">+ State</button>`}</div>
+      ${feats ? `<div class="feats">${feats}</div>` : ""}
+      <button class="more" data-detail="${m.id}">${openDetail.has(m.id) ? "Hide card ▴" : "Card details ▾"}</button>
+      ${detail}
+    </article>`;
+  }).join("") || `<p class="note">No models loaded. Open “Games &amp; warbands” below.</p>`;
+
+  $("cards").innerHTML = S.cards.map((c, i) => `<div class="card ${c.done ? "done" : ""}"><button class="check ${c.done ? "on" : ""}" data-cardcheck="${i}" aria-label="Mark ${esc(c.name)} as resolved">${c.done ? "✓" : ""}</button><div><span class="card-type">${esc(c.type)}</span><b>${esc(c.name)}</b><p>${esc(c.text)}</p></div></div>`).join("") || `<p class="note">No event, terrain or theme cards in this list.</p>`;
+}
+
+function renderOpp() {
+  const o = S.opp;
+  const marked = o.models.filter(m => Object.keys(m.states).length);
+  const sum = !o.models.length ? `<em>Add their models to track markers</em>`
+    : marked.length ? marked.map(m => `${esc(m.name)} <em>${Object.keys(m.states).map(esc).join(", ")}</em>`).join(" · ")
+    : `<em>${o.models.length} models, no markers</em>`;
+  $("opp").innerHTML = `<div class="opp">
+    <button class="opp-head" data-opptoggle="1" aria-expanded="${oppOpen}"><b>Opponent</b><span class="opp-sum">${sum}</span><span class="opp-vp num">VP ${o.vp}</span><span aria-hidden="true">${oppOpen ? "▴" : "▾"}</span></button>
+    ${oppOpen ? `<div class="opp-body">
+      <div class="opp-tools"><div class="score"><b>Their VP</b><button class="step" data-oppvp="-1" aria-label="Remove opponent VP">−</button><span class="v num">${o.vp}</span><button class="step" data-oppvp="1" aria-label="Add opponent VP">+</button></div></div>
+      ${o.models.map(m => `<div class="opp-row"><span class="nm">${esc(m.name)}</span>${chipsFor(m)}<button class="add-state" data-addstate="${m.id}">+ State</button><button class="x ${oppConfirm === m.id ? "confirm" : ""}" data-oppdel="${m.id}">${oppConfirm === m.id ? "Remove?" : "✕"}</button></div>`).join("")}
+      <form class="opp-add" id="oppAdd"><input id="oppName" placeholder="Enemy model name" autocomplete="off" aria-label="Enemy model name"><button type="submit">Add</button></form>
+      ${Object.keys(WB).length ? `<div class="opp-add"><select id="oppWb" aria-label="Saved warband">${Object.values(WB).sort((a, b) => a.name.localeCompare(b.name)).map(w => `<option value="${w.id}">${esc(w.name)}</option>`).join("")}</select><button data-oppfill="">Add all from warband</button></div>` : ""}
+    </div>` : ""}
+  </div>`;
+}
+
+/* ---------- Sheets & toast ---------- */
+const sheet = html => $("sheetHost").innerHTML = `<div class="scrim" data-close="1"><div class="sheet" role="dialog">${html}</div></div>`;
+function closeSheet() { $("sheetHost").innerHTML = ""; }
+function stateSheet(mid) {
+  const m = findAny(mid), imm = m.def ? m.def.immune : [];
+  const isImm = k => imm.includes(baseState(k)) || imm.includes(k);
+  const name = m.def ? m.def.name : m.name;
+  sheet(`<h3>${esc(name)}</h3><p class="sub">Tap a state to add it. Tap it on the card to change the count.</p>
+    <div class="grid-states">${STATES.map(([k, c]) => `<button data-pick="${esc(k)}" data-m="${mid}" ${isImm(k) ? "disabled" : ""}><i style="background:var(--${c === "harm" ? "harm" : c === "fire" ? "fire" : c === "poison" ? "poison" : c === "good" ? "ki" : "muted"})"></i>${esc(k)}${isImm(k) ? "<small>Immune</small>" : m.states[k] ? `<small>×${m.states[k]}</small>` : ""}</button>`).join("")}</div>`);
+}
+function enemySheet(state, remKey, temp, card) {
+  sheet(`<h3>${esc(state)}</h3><p class="sub">Which enemy model gains it?</p>
+    <div class="pick-list">${S.opp.models.map(m => `<button data-enemy="${m.id}" data-state="${esc(state)}" data-rem="${remKey}" data-temp="${temp}" data-card="${card}">${esc(m.name)}</button>`).join("")}</div>
+    <form class="opp-add" id="oppAddPick" style="margin-top:10px"><input id="oppPickName" placeholder="Or type an enemy model name" autocomplete="off" aria-label="Enemy model name"><button type="submit">Add</button></form>`);
+  $("sheetHost").dataset.ctx = JSON.stringify({ state, remKey, temp, card });
+}
+const phaseName = { deploy: "Deployment", start: "Start Phase", main: "Main Phase", end: "End Phase" };
+function gamesSheet(msg) {
+  const games = Object.values(GAMES).sort((a, b) => b.updated - a.updated);
+  const wbs = Object.values(WB).sort((a, b) => a.name.localeCompare(b.name));
+  const libCount = Object.values(LIB.cards).filter(c => c.kind === "profile").length;
+  const confirmBtn = (key, label) => sheetConfirm === key ? `<button class="btn small danger" data-sdel="${key}">Delete?</button>` : `<button class="btn small quiet" data-sdel="${key}" aria-label="Delete ${esc(label)}">✕</button>`;
+  sheet(`<h3>Games &amp; warbands</h3>
+    <h4 class="sheet-h">Games</h4>
+    <div class="slots">${games.map(g => { const st = g.state; return `<div class="slot ${g.id === CUR ? "cur" : ""}">
+      <div class="slot-main"><b>${esc(g.name)}</b><span>${st.turn ? `Turn ${st.turn} · ${phaseName[st.phase]}` : "Deployment"} · VP ${st.vp} · ${esc(dayLabel(g.updated))}</span></div>
+      ${g.id === CUR ? `<span class="slot-tag">Playing</span>` : `<button class="btn small" data-resume="${g.id}">Resume</button>`}
+      ${g.id === CUR ? "" : confirmBtn("g:" + g.id, g.name)}</div>`; }).join("") || `<p class="note">No saved games.</p>`}</div>
+    <h4 class="sheet-h">Warbands</h4>
+    <div class="slots">${wbs.map(w => `<div class="slot">
+      <div class="slot-main"><b>${esc(w.name)}</b><span>${esc(w.sub ? w.sub + " · " : "")}${w.models.length} models · ${w.cards.length} cards</span></div>
+      <button class="btn small primary" data-newgame="${w.id}">New game</button>${confirmBtn("w:" + w.id, w.name)}</div>`).join("") || `<p class="note">No warbands yet. Import a list PDF below.</p>`}</div>
+    <div class="row"><label class="btn primary file-btn" for="pdfFile">Import list PDF</label><input type="file" id="pdfFile" accept="application/pdf,.pdf" hidden></div>
+    <p class="note" id="importNote" role="status">${msg || "Use the PDF export from newrecruit.eu. It's saved as a warband and a new game starts with it."}</p>
+    <details class="paste"><summary>Paste list text instead</summary>
+      <p class="note">Works for cards already in your library (${libCount} profile cards from PDFs you've loaded).</p>
+      <textarea id="listText" spellcheck="false">${esc(SAMPLE)}</textarea>
+      <div class="row"><button class="btn" id="doImport">Save warband and start game</button></div>
+    </details>
+    <details class="paste"><summary>Backup and restore</summary>
+      <p class="note">Copies all your warbands, games and card library as text, so you can move them to another copy of the tracker.</p>
+      <div class="row"><button class="btn" id="copyBackup">Copy backup</button></div>
+      <textarea id="backupText" spellcheck="false" placeholder="To restore, paste a backup here" aria-label="Backup text"></textarea>
+      <div class="row"><button class="btn" id="doRestore">Restore from pasted backup</button></div>
+      <p class="note" id="backupNote" role="status"></p>
+    </details>`);
+}
+function glossSheet(term) {
+  sheet(`<h3>${esc(term)}</h3><p class="gloss">${esc(LIB.glossary[term])}</p>`);
+}
+let toastTimer;
+function toast(msg, withUndo) {
+  clearTimeout(toastTimer);
+  $("toastHost").innerHTML = `<div class="toast" role="status"><span>${esc(msg)}</span>${withUndo ? `<button data-undo="1">Undo</button>` : ""}</div>`;
+  toastTimer = setTimeout(() => $("toastHost").innerHTML = "", 4000);
+}
+
+/* ---------- PDF reading (pdf.js loaded on first use) ---------- */
+const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+const loadScript = src => new Promise((ok, fail) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => fail(new Error("Could not load the PDF reader")); document.head.appendChild(s); });
+let pdfReady = null;
+function getPdfjs() {
+  if (!pdfReady && window.APP_BUILD) pdfReady = (async () => {
+    const lib = await import("./pdf.min.mjs");
+    lib.GlobalWorkerOptions.workerSrc = "./pdf.worker.min.mjs";
+    return lib;
+  })().catch(e => { pdfReady = null; throw e; });
+  if (!pdfReady) pdfReady = (async () => {
+    await loadScript(PDFJS + "pdf.min.js");
+    await loadScript(PDFJS + "pdf.worker.min.js");
+    const lib = window.pdfjsLib || window["pdfjs-dist/build/pdf"];
+    lib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js";
+    return lib;
+  })().catch(e => { pdfReady = null; throw e; });
+  return pdfReady;
+}
+async function readPdf(file) {
+  const lib = await getPdfjs();
+  const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const pages = [];
+  for (let p = 1; p <= doc.numPages; p++) {
+    const pg = await doc.getPage(p), vp = pg.getViewport({ scale: 1 }), tc = await pg.getTextContent();
+    pages.push({ items: tc.items.filter(i => typeof i.str === "string").map(i => ({ s: i.str, x: i.transform[4], y: vp.height - i.transform[5], w: i.width, h: i.height })) });
+  }
+  return BP.parse(pages);
+}
+document.addEventListener("change", async e => {
+  if (e.target.id !== "pdfFile" || !e.target.files[0]) return;
+  const note = $("importNote");
+  note.textContent = "Reading PDF…";
+  try {
+    const p = await readPdf(e.target.files[0]);
+    const g = gameFromPdf(p);
+    if (!g.models.length) { note.textContent = "No profile cards found. Is this a newrecruit.eu list PDF?"; return; }
+    addToLibrary(p);
+    const wb = addWarband(wbFromGame(g));
+    closeSheet();
+    startGame(wb.id);
+    toast(`Saved ${wb.name} and started a game: ${g.models.length} models, ${g.cards.length} cards`);
+  } catch (err) { note.textContent = `Couldn't read that PDF (${err.message}). Try again, or paste the list text.`; }
+});
+
+/* ---------- Events ---------- */
+document.addEventListener("click", e => {
+  const t = e.target.closest("button,[data-close]"); if (!t) return;
+  const ds = t.dataset, find = findAny;
+  if (!ds.oppdel) oppConfirm = null;
+  if (ds.close && e.target === t) return closeSheet();
+  if (t.id === "next") return nextPhase();
+  if (t.id === "undo" || ds.undo) return undo();
+  if (!ds.sdel) sheetConfirm = null;
+  if (t.id === "openSetup" || t.id === "listBtn") return gamesSheet();
+  if (ds.resume) { closeSheet(); switchGame(ds.resume); return toast(`Resumed ${GAMES[CUR].name}`); }
+  if (ds.newgame) { closeSheet(); startGame(ds.newgame); return toast(`New game: ${GAMES[CUR].name}`); }
+  if (ds.sdel) {
+    if (sheetConfirm !== ds.sdel) { sheetConfirm = ds.sdel; return gamesSheet(); }
+    const [kind, id] = ds.sdel.split(":"); sheetConfirm = null;
+    if (kind === "g") delete GAMES[id]; else delete WB[id];
+    saveAll(); window.Sync?.remove(kind === "g" ? "games" : "warbands", id); return gamesSheet(kind === "g" ? "Game deleted." : "Warband deleted. Its saved games are kept.");
+  }
+  if (t.id === "copyBackup") {
+    const text = JSON.stringify({ bushidoBackup: 1, WB, GAMES, LIB });
+    const box = $("backupText"), note = $("backupNote");
+    const shown = () => { box.value = text; box.focus(); box.select(); note.textContent = "Couldn't copy automatically. The backup is selected in the box above: copy it from there."; };
+    try { navigator.clipboard.writeText(text).then(() => { note.textContent = `Backup copied (${Math.round(text.length / 1024)} KB). Paste it into the other copy's restore box.`; }, shown); } catch (err) { shown(); }
+    return;
+  }
+  if (t.id === "doRestore") {
+    let b; try { b = JSON.parse($("backupText").value); } catch (err) { b = null; }
+    if (!b || !b.bushidoBackup) { $("backupNote").textContent = "That doesn't look like a tracker backup. Copy it again and paste the whole text."; return; }
+    let w = 0, g = 0;
+    for (const x of Object.values(b.WB || {})) if (!WB[x.id] || (WB[x.id].updated || 0) < (x.updated || 0)) { WB[x.id] = x; w++; window.Sync?.pushWarband(x); }
+    for (const x of Object.values(b.GAMES || {})) if (!GAMES[x.id] || GAMES[x.id].updated < x.updated) { GAMES[x.id] = x; g++; window.Sync?.pushGame(x); }
+    if (b.LIB) { Object.assign(LIB.cards, b.LIB.cards); Object.assign(LIB.equip, b.LIB.equip); Object.assign(LIB.glossary, b.LIB.glossary); saveLib(); window.Sync?.pushLibrary(); }
+    if (GAMES[CUR]) S = GAMES[CUR].state;
+    saveAll(); render();
+    return gamesSheet(`Restored ${w} warbands and ${g} games.`);
+  }
+  if (ds.oppfill !== undefined) {
+    const wb = WB[$("oppWb").value]; if (!wb) return;
+    mutate(() => { wb.models.forEach(d => S.opp.models.push({ id: "o" + uid(), name: d.name, states: {} })); });
+    return toast(`Added ${wb.models.length} models from ${wb.name}`, true);
+  }
+  if (t.id === "themeBtn") { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; r.dataset.theme = dark ? "light" : "dark"; try { localStorage.setItem(KEY + "-theme", r.dataset.theme) } catch (e) {} return; }
+  if (t.id === "doReset") { closeSheet(); return restartGame(); }
+  if (t.id === "restart") {
+    if (!restartArmed) { restartArmed = true; t.classList.add("armed"); t.textContent = "Restart?"; clearTimeout(restartTimer); restartTimer = setTimeout(disarmRestart, 3000); return; }
+    disarmRestart(); return restartGame();
+  }
+  if (t.id === "doImport") {
+    const g = gameFromText($("listText").value);
+    if (!g.models.length) { $("importNote").textContent = g.unknown.length ? `None of these are in your library yet: ${g.unknown.join(", ")}. Load the PDF instead.` : "No models found. Check the list has ## section headings."; return; }
+    const wb = addWarband(wbFromGame(g)); closeSheet(); startGame(wb.id);
+    return toast(g.unknown.length ? `Saved. Not in library: ${g.unknown.join(", ")}` : `Saved ${wb.name} and started a game`);
+  }
+  if (ds.score) return mutate(() => { S[ds.score] = Math.max(0, S[ds.score] + +ds.d); });
+  if (ds.pip) {
+    const m = find(ds.m), i = +ds.i, f = ds.pip === "w" ? "dmg" : "ki";
+    const next = (m[f] === i + 1) ? i : i + 1;
+    if (f === "dmg" && hasLS(m) && m.dmg >= m.def.w && next < m.dmg) return toast("Last Stand: wounds can't be recovered. Use Undo to fix a mistake.");
+    mutate(() => { m[f] = next; if (f === "dmg" && next >= m.def.w && hasLS(m) && S.phase === "end") m.removed = true; });
+    if (f === "dmg" && next >= m.def.w && hasLS(m)) toast(S.phase === "end" ? `${m.def.name} is removed from play (Last Stand)` : `${m.def.name} is on Last Stand until the End Phase`, true);
+    return;
+  }
+  if (ds.addstate) return stateSheet(ds.addstate);
+  if (ds.pick) { const m = find(ds.m); closeSheet(); openChip = `${m.id}:${ds.pick}`; return mutate(() => { m.states[ds.pick] = (m.states[ds.pick] || 0) + 1; }); }
+  if (ds.chip) { openChip = openChip === ds.chip ? null : ds.chip; return render(); }
+  if (ds.st) { const m = find(ds.m); return mutate(() => { const n = (m.states[ds.st] || 0) + +ds.d; if (n <= 0) { delete m.states[ds.st]; openChip = null; } else m.states[ds.st] = n; }); }
+  if (ds.feat) { const m = find(ds.m), f = m.def.feats.find(x => x.n === ds.feat); mutate(() => { m.ki -= f.c; if (f.lim) m.used[f.n] = f.lim; }); return toast(`${m.def.name}: ${f.n} (−${f.c} Ki)`, true); }
+  if (ds.detail) { openDetail.has(ds.detail) ? openDetail.delete(ds.detail) : openDetail.add(ds.detail); return render(); }
+  if (ds.rule) return glossSheet(ds.rule);
+  if (ds.eqtoggle) { const m = find(ds.m), n = ds.eqtoggle; let off; mutate(() => { m.discarded = m.discarded || {}; off = !m.discarded[n]; if (off) m.discarded[n] = 1; else delete m.discarded[n]; }); return toast(off ? `${n} discarded` : `${n} restored`, true); }
+  if (ds.cardcheck !== undefined) return mutate(() => { S.cards[+ds.cardcheck].done = !S.cards[+ds.cardcheck].done; });
+  if (ds.do === "done") return mutate(() => { S.dismissed[ds.rem] = 1; if (ds.card !== "") S.cards[+ds.card].done = true; });
+  if (ds.do === "ki") { mutate(() => { S.models.forEach(m => { if (alive(m)) m.ki = Math.min(m.def.kiCap, m.ki + 1); }); S.dismissed[ds.rem] = 1; if (ds.card !== "") S.cards[+ds.card].done = true; }); return toast("All models gained 1 Ki", true); }
+  if (ds.do === "enemy") return enemySheet(ds.state, ds.rem, ds.temp, ds.card);
+  if (ds.enemy) { const m = find(ds.enemy); closeSheet(); applyEnemy(m, ds.state, ds.rem, ds.temp, ds.card); return; }
+  if (ds.opptoggle) { oppOpen = !oppOpen; render(); if (oppOpen && !S.opp.models.length) $("oppName").focus(); return; }
+  if (ds.oppvp) return mutate(() => { S.opp.vp = Math.max(0, S.opp.vp + +ds.oppvp); });
+  if (ds.oppdel) { if (oppConfirm !== ds.oppdel) { oppConfirm = ds.oppdel; return render(); } oppConfirm = null; return mutate(() => { S.opp.models = S.opp.models.filter(x => x.id !== ds.oppdel); }); }
+});
+let restartArmed = false, restartTimer;
+const RESTART_ICON = `<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg>`;
+function disarmRestart() { restartArmed = false; const b = $("restart"); if (b) { b.classList.remove("armed"); b.innerHTML = RESTART_ICON; } }
+function restartGame() {
+  mutate(() => {
+    const keep = S;
+    S = blankGame({ listName: keep.listName, sub: keep.sub, cards: keep.cards.map(c => ({ ...c, done: false })), models: keep.models.map(m => ({ ...m, dmg: 0, ki: 0, states: {}, used: {}, discarded: {}, removed: false })) });
+    S.opp.models = keep.opp.models.map(m => ({ ...m, states: {} }));
+  });
+  toast("Restarted at Deployment", true);
+}
+function applyEnemy(m, state, rem, temp, card) {
+  mutate(() => {
+    m.states[state] = (m.states[state] || 0) + 1;
+    if (temp) (S.temp = S.temp || []).push({ id: m.id, state });
+    S.dismissed[rem] = 1;
+    if (card !== "" && card != null) S.cards[+card].done = true;
+  });
+  toast(`${m.name} gains ${state}${temp ? " until the End Phase" : ""}`, true);
+}
+document.addEventListener("click", e => { if (openChip && !e.target.closest(".chip")) { openChip = null; render(); } }, true);
+document.addEventListener("submit", e => {
+  e.preventDefault();
+  if (e.target.id === "oppAdd") {
+    const name = $("oppName").value.trim(); if (!name) return;
+    mutate(() => { S.opp.models.push({ id: "o" + uid(), name, states: {} }); });
+    $("oppName").focus();
+  }
+  if (e.target.id === "oppAddPick") {
+    const name = $("oppPickName").value.trim(); if (!name) return;
+    const ctx = JSON.parse($("sheetHost").dataset.ctx || "{}");
+    const m = { id: "o" + uid(), name, states: {} };
+    S.opp.models.push(m);
+    closeSheet(); applyEnemy(m, ctx.state, ctx.remKey, ctx.temp, ctx.card);
+  }
+});
+/* ---------- Hooks used by sync (installed app only) ---------- */
+window.App = {
+  data: () => ({ WB, GAMES, LIB }),
+  sheetOpen: () => !!$("sheetHost").innerHTML,
+  applyGame(g) {
+    const mine = GAMES[g.id];
+    if (mine && mine.updated >= g.updated) return;
+    GAMES[g.id] = g;
+    if (g.id === CUR) { S = g.state; undoStack = []; }
+    store(GKEY, GAMES);
+    if (!App.sheetOpen()) render();
+  },
+  applyWarband(w) { const mine = WB[w.id]; if (mine && (mine.updated || 0) >= (w.updated || 0)) return; WB[w.id] = w; store(WBKEY, WB); },
+  applyRemove(kind, id) {
+    if (kind === "games" && id !== CUR && GAMES[id]) { delete GAMES[id]; store(GKEY, GAMES); }
+    if (kind === "warbands" && WB[id]) { delete WB[id]; store(WBKEY, WB); }
+  },
+  mergeLibrary(lib) {
+    Object.assign(LIB.cards, lib.cards || {}); Object.assign(LIB.equip, lib.equip || {}); Object.assign(LIB.glossary, lib.glossary || {});
+    saveLib();
+  },
+  status(text, kind) { const el = $("syncStatus"); if (el) { el.textContent = text; el.dataset.kind = kind || ""; } },
+  toast, sheet, closeSheet, esc
+};
+try { const th = localStorage.getItem(KEY + "-theme"); if (th) document.documentElement.dataset.theme = th; } catch (e) {}
+render();
+
+</script>
+<script type="module" src="sync.js"></script>
+<script>
+if ("serviceWorker" in navigator) {
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (hadController) App.toast("App updated. Close and reopen it to use the new version.");
+  });
+}
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+</script>
+</body>
+</html>
