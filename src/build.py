@@ -7,9 +7,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 S = lambda f: open(os.path.join(ROOT, 'src', f), encoding='utf-8').read()
 
 top = S('shell.html')                         # title, font link, style and page markup
+# The table area: its styles go into the page's <style>, its data and code run before app.js
+top = top.replace('</style>', S('table/table.css') + '\n</style>', 1)
 seed = S('seed.json').replace('</', '<\\/')
 code = (S('parser.js').replace('if (typeof module !== "undefined") module.exports = BP;', '')
-        + '\nconst SEED = ' + seed + ';\n' + S('app.js'))
+        + '\nconst SEED = ' + seed + ';\n'
+        + S('table/scenarios.js') + '\n' + S('table/terrain.js') + '\n' + S('table/table.js') + '\n'
+        + S('app.js'))
 
 if '--artifact' in sys.argv:
     out = sys.argv[sys.argv.index('--artifact') + 1]

@@ -16,6 +16,15 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
   - `cards/*.js`: card sets transcribed by hand (e.g. from card images) for lists whose PDF lacks rules.
     `node src/build_seed.js` merges them into `seed.json`; bump `SEED_REV` there when card data changes,
     and installed apps apply it once on next open (library, matching warband, and games in progress).
+- `src/table/`: the Table area (laptop-first), built into `index.html` before `app.js`.
+  - `scenarios.js`: the 12 Tournament Pack 2510.1 scenarios and 3 rulebook ones; positions in inches from the
+    bottom-left of the 24" table, your side (F) along the bottom. Deployment types and their neutral edges.
+  - `terrain.js`: 40 themed terrain pieces with [Passage, Visibility, Size] and footprints.
+  - `table.js`: setup, terrain generator (follows pack p.19 placement rules), tokens with facing
+    (size and base read from the card's "Size & Base"), Elsewhere/Flank, deployment checks, ruler. Saved in
+    `bushido-table-v1` (this device only for now).
+  - `table.css`: table styles, inlined into the page's `<style>`.
+- The home screen is a hub: My lists (`lists`), Table (`table`); Testing lists and Campaign are not built yet.
 - `sync.js` + `config.js`: Firebase Firestore sync (anonymous auth, `groups/{syncCode}/...`).
   The Firebase web config is public by design; access is limited by Firestore rules and the sync code.
 - `sw.js`: service worker for offline use.

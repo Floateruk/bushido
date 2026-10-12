@@ -194,7 +194,7 @@ if (!WB) {
 if (CUR && !GAMES[CUR]) CUR = null;
 S = CUR ? GAMES[CUR].state : null;
 
-/* Screens: "home", "play" (the current game) or "end:<gameId>" (a finished game's summary) */
+/* Screens: "home" (hub), "lists" (My lists), "play" (the current game), "end:<gameId>" (a finished game's summary), "table" */
 const VIEWKEY = "bushido-view-v1";
 const isOver = g => !!g && g.status === "finished";
 let VIEW = load(VIEWKEY, null);
@@ -338,11 +338,16 @@ const HOME_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12
 function render() {
   if (VIEW === "play" && (!CUR || !GAMES[CUR] || !S)) VIEW = "home";
   if (VIEW === "play" && isOver(GAMES[CUR])) VIEW = "end:" + CUR;
-  if (VIEW.startsWith("end:") && !GAMES[VIEW.slice(4)]) VIEW = "home";
-  $("homeView").hidden = VIEW !== "home";
+  if (VIEW.startsWith("end:") && !GAMES[VIEW.slice(4)]) VIEW = "lists";
+  $("homeView").hidden = VIEW !== "home" && VIEW !== "lists";
   $("endView").hidden = !VIEW.startsWith("end:");
   $("playView").hidden = VIEW !== "play";
-  if (VIEW === "home") return renderHome();
+  $("tableView").hidden = VIEW !== "table";
+  document.body.classList.toggle("table-mode", VIEW === "table");
+  document.querySelector(".foot").hidden = VIEW === "table";
+  if (VIEW === "home") return renderHub();
+  if (VIEW === "lists") return renderHome();
+  if (VIEW === "table") return renderTable();
   if (VIEW !== "play") return renderEnd(GAMES[VIEW.slice(4)]);
   renderPlay();
 }
@@ -444,13 +449,29 @@ const RESULT = { win: "Victory", loss: "Defeat", draw: "Draw" };
 const confirmBtn = (key, label, ask) => sheetConfirm === key
   ? `<button class="btn small danger" data-sdel="${key}">${ask}</button>`
   : `<button class="btn small quiet" data-sdel="${key}" aria-label="${esc(label)}">✕</button>`;
+function renderHub() {
+  const live = Object.values(GAMES).filter(g => !isOver(g)).length;
+  let tbl = null; try { tbl = TBL === undefined ? load(TBLKEY, null) : TBL; } catch (e) {}
+  $("homeView").innerHTML = `
+    <header class="home-head"><span class="mark" aria-hidden="true">武</span><div><h1>Bushido</h1><p>Table tracker</p></div></header>
+    <div class="hub">
+      <button class="hub-tile" data-area="lists"><span class="hub-meta">${live ? `${live} game${live === 1 ? "" : "s"} in progress` : `${Object.keys(WB).length} warbands`}</span>
+        <b>My lists</b><p>Track your own warband at the table: wounds, Ki, states, feats and card reminders.</p></button>
+      <button class="hub-tile" disabled><span class="hub-meta">Not built yet</span>
+        <b>Testing lists</b><p>Two warbands side by side, with every stat to compare.</p></button>
+      <button class="hub-tile" data-area="table"><span class="hub-meta">${tbl ? "Table in progress" : "Laptop"}</span>
+        <b>Table</b><p>Scenario, terrain and deployment on a 24" battlefield, with facing and measuring.</p></button>
+      <button class="hub-tile" disabled><span class="hub-meta">Not built yet</span>
+        <b>Campaign</b><p>Track games, results and changes across a campaign.</p></button>
+    </div>`;
+}
 function renderHome() {
   const all = Object.values(GAMES).sort((a, b) => b.updated - a.updated);
   const live = all.filter(g => !isOver(g)), done = all.filter(isOver);
   const wbs = Object.values(WB).sort((a, b) => a.name.localeCompare(b.name));
   const libCount = Object.values(LIB.cards).filter(c => c.kind === "profile").length;
   $("homeView").innerHTML = `
-    <header class="home-head"><span class="mark" aria-hidden="true">武</span><div><h1>Bushido</h1><p>Table tracker</p></div></header>
+    <div class="thead"><button class="btn small" data-area="home">‹ Home</button><h1>My lists</h1></div>
     ${homeMsg ? `<p class="note" role="status">${esc(homeMsg)}</p>` : ""}
 
     ${live.length ? `<div class="sec-h"><h2>Games in progress</h2></div>
@@ -581,7 +602,7 @@ document.addEventListener("change", async e => {
     addToLibrary(p);
     const wb = addWarband(wbFromGame(g));
     freshWb = wb.id; homeMsg = "";
-    go("home");
+    go("lists");
     toast(`Saved ${wb.name}: ${g.models.length} models, ${g.cards.length} cards. Tap Play to start.`);
   } catch (err) { note.textContent = `Couldn't read that PDF (${err.message}). Try again, or paste the list text.`; }
 });
@@ -597,7 +618,8 @@ document.addEventListener("click", e => {
   if (!ds.sdel) sheetConfirm = null;
   if (t.id !== "endGame") disarmEnd();
   if (t.id !== "abandonGame") disarmAbandon();
-  if (t.id === "listBtn" || t.id === "goHome" || t.id === "endHome") { homeMsg = ""; freshWb = null; return go("home"); }
+  if (ds.area) { homeMsg = ""; freshWb = null; return go(ds.area); }
+  if (t.id === "listBtn" || t.id === "goHome" || t.id === "endHome") { homeMsg = ""; freshWb = null; return go("lists"); }
   if (ds.resume) { switchGame(ds.resume); go("play"); return toast(`Continuing ${GAMES[CUR].name}`); }
   if (ds.newgame) { freshWb = null; startGame(ds.newgame); return toast(`New game: ${GAMES[CUR].name}`); }
   if (ds.viewgame) return go("end:" + ds.viewgame);
@@ -657,7 +679,7 @@ document.addEventListener("click", e => {
   if (t.id === "doImport") {
     const g = gameFromText($("listText").value);
     if (!g.models.length) { $("importNote").textContent = g.unknown.length ? `None of these are in your library yet: ${g.unknown.join(", ")}. Load the PDF instead.` : "No models found. Check the list has ## section headings."; return; }
-    const wb = addWarband(wbFromGame(g)); freshWb = wb.id; homeMsg = ""; go("home");
+    const wb = addWarband(wbFromGame(g)); freshWb = wb.id; homeMsg = ""; go("lists");
     return toast(g.unknown.length ? `Saved ${wb.name}. Not in library: ${g.unknown.join(", ")}` : `Saved ${wb.name}. Tap Play to start.`);
   }
   if (ds.score) return mutate(() => { S[ds.score] = Math.max(0, S[ds.score] + +ds.d); });
@@ -697,7 +719,7 @@ function abandonGame() {
   const g = GAMES[CUR]; abandoned = g;
   delete GAMES[CUR]; window.Sync?.remove("games", CUR);
   CUR = null; S = null; saveAll(); homeMsg = "";
-  go("home");
+  go("lists");
   toast(`Abandoned ${g.name}`, false, `<button data-unabandon="">Undo</button>`);
 }
 let restartArmed = false, restartTimer;
