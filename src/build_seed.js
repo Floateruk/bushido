@@ -2,7 +2,7 @@
    Run from the repo root:  node src/build_seed.js && python3 src/build.py
    Bump SEED_REV when card data changes, so installed apps apply it on next open. */
 const fs = require("fs"), path = require("path");
-const SEED_REV = 1;
+const SEED_REV = 2;
 const seedPath = path.join(__dirname, "seed.json");
 const seed = JSON.parse(fs.readFileSync(seedPath, "utf8"));
 const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
@@ -11,6 +11,8 @@ const clone = o => JSON.parse(JSON.stringify(o));
 seed.warbands = [];
 for (const file of fs.readdirSync(path.join(__dirname, "cards")).filter(f => f.endsWith(".js"))) {
   const set = require(path.join(__dirname, "cards", file));
+  if (set.glossary) Object.assign(seed.lib.glossary, set.glossary);
+  if (!set.models) continue;
   for (const [name, m] of Object.entries(set.models))
     seed.lib.cards[norm(name)] = { kind: "profile", title: name, rice: m.rice, role: "Faction Profile Cards", models: [m], equip: [] };
   for (const e of set.equip) {
