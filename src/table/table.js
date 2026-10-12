@@ -70,23 +70,27 @@ function deployedOK(m, side) {
 }
 
 /* ---------- Terrain rules (pack p.19) ---------- */
-function terrainProblems(t, others) {
-  const P = terrPoly(t), d = TBYID[t.typeId], out = [];
-  if (P.some(p => p.x < -0.01 || p.y < -0.01 || p.x > 24.01 || p.y > 24.01)) out.push("Goes past the table edge");
-  for (const o of others) if (o.id !== t.id && polyPoly(P, terrPoly(o)) < 3) { out.push(`Closer than 3" to ${TBYID[o.typeId].name}`); break; }
+const tRad = t => Math.hypot(TBYID[t.typeId].w, TBYID[t.typeId].h) / 2;
+/* first = stop at the first problem (the generator only needs yes/no) */
+function terrainProblems(t, others, first = false) {
+  const P = terrPoly(t), d = TBYID[t.typeId], R = tRad(t), out = [];
+  const add = m => { out.push(m); return first; };
+  if (P.some(p => p.x < -0.01 || p.y < -0.01 || p.x > 24.01 || p.y > 24.01) && add("Goes past the table edge")) return out;
   for (const side of ["F", "E"]) {
     const g = sideGeom(side);
-    if (g.edges.some(([a, b]) => polySeg(P, a, b) < 3)) { out.push("Closer than 3\" to a table edge inside a deployment zone"); break; }
+    if (g.edges.some(([a, b]) => segPoint(t, a, b) - R < 3 && polySeg(P, a, b) < 3)) { if (add("Closer than 3\" to a table edge inside a deployment zone")) return out; break; }
   }
   for (const o of TBL.objectives) {
+    if (dist(o, t) - R - objR() >= 3) continue;
     const gap = polyCircle(P, o, objR());
-    if (gap < 0.01) out.push("Overlaps a scenario objective");
-    else if (d.restricted && gap < 3) out.push("Restricted terrain within 3\" of a scenario objective");
+    if (gap < 0.01) { if (add("Overlaps a scenario objective")) return out; }
+    else if (d.restricted && gap < 3 && add("Restricted terrain within 3\" of a scenario objective")) return out;
   }
   if (d.restricted) {
-    if (TBL.zones.some(z => polyCircle(P, z, z.d / 2) < 0)) out.push("Restricted terrain inside a scenario zone");
-    if (["F", "E"].some(s => polyPoly(P, sideGeom(s).area) === 0)) out.push("Restricted terrain inside a deployment zone");
+    if (TBL.zones.some(z => polyCircle(P, z, z.d / 2) < 0) && add("Restricted terrain inside a scenario zone")) return out;
+    if (["F", "E"].some(s => polyPoly(P, sideGeom(s).area) === 0) && add("Restricted terrain inside a deployment zone")) return out;
   }
+  for (const o of others) if (o.id !== t.id && dist(o, t) - R - tRad(o) < 3 && polyPoly(P, terrPoly(o)) < 3) { out.push(`Closer than 3" to ${TBYID[o.typeId].name}`); break; }
   return [...new Set(out)];
 }
 const objR = () => OBJ_SIZE_MM[TBL.objSize || "small"] / 25.4 / 2;
@@ -122,7 +126,7 @@ function layoutTerrain() {
       const min = Math.min(...counts), q = pick([0, 1, 2, 3].filter(k => counts[k] === min || i > 120));
       const x = (q % 2 ? 12 : 0) + Math.random() * 12, y = (q >= 2 ? 12 : 0) + Math.random() * 12;
       const t = { id: "t" + uid(), typeId: def.id, x: Math.min(24 - R * 0.6, Math.max(R * 0.6, x)), y: Math.min(24 - R * 0.6, Math.max(R * 0.6, y)), rot: 15 * Math.floor(Math.random() * 12) };
-      if (!terrainProblems(t, placed).length) return t;
+      if (!terrainProblems(t, placed, true).length) return t;
     }
     return null;
   };
@@ -148,7 +152,7 @@ function modelsFromWb(wb) {
     const sizeCap = size[0].toUpperCase() + size.slice(1).toLowerCase();
     const base = +((sb.match(/(\d+)\s*mm/i) || [])[1] || SIZE_BASE[sizeCap] || 30);
     return { id: "m" + uid(), name: d.name, size: sizeCap, base, r: base / 25.4 / 2, x: 0, y: 0, facing: 0, where: "tray",
-      flank: /\bFlank\b/.test(d.traits || ""), scout: (d.traits || "").match(/Scout \(?[\d\/"”]+\)?/)?.[0] || "", vim: false };
+      flank: /\bFlank\b/.test(d.traits || ""), ghost: GHOST_RE.test(d.traits || ""), scout: (d.traits || "").match(/Scout \(?[\d\/"”]+\)?/)?.[0] || "", vim: false };
   });
 }
 function newTable(c) {
@@ -157,7 +161,7 @@ function newTable(c) {
   TBL = {
     id: "tb" + uid(), created: Date.now(), updated: Date.now(),
     scenarioId: s.id, deployment: s.deployment || c.deployment, objSize: s.objSize === "choice" ? c.objSize : "small",
-    vimType: s.vim ? c.vim : "", step: "setup", themes: Object.keys(TERRAIN_THEMES), count: 7,
+    vimType: s.vim ? c.vim : "", step: "setup", themes: Object.keys(TERRAIN_THEMES), count: 10,
     objectives: s.objectives.map((o, i) => ({ id: "o" + i, x: o.x, y: o.y, align: o.align })),
     zones: s.zones.map((z, i) => ({ id: "z" + i, ...z })),
     terrain: [], checks: { 3: true },
@@ -176,7 +180,7 @@ function swapZones() {
 }
 function autoDeploy(side) {
   const list = TBL.sides[side].models.filter(m => m.where === "tray" && !m.scout);
-  const placedOthers = () => TBL.sides[side].models.filter(m => m.where === "table");
+  const placedOthers = () => tableModels().map(([o]) => o);
   const free = (p, r) => placedOthers().every(o => dist(o, p) >= o.r + r + 0.15) && TBL.terrain.every(t => TBYID[t.typeId].passage !== "Impassable" || polyCircle(terrPoly(t), p, r) > 0.05);
   const face = TBL.deployment === "baseline" ? 0 : 45;
   for (const m of list) {
@@ -207,6 +211,71 @@ function relation(a, b) {
   const fx = Math.sin(rad(a.facing)), fy = Math.cos(rad(a.facing));
   const inArc = (b.x - a.x) * fx + (b.y - a.y) * fy >= -b.r;
   return { edge, inArc };
+}
+
+/* ---------- Movement (rulebook p.26) ----------
+   A moving base may not pass through another model's base or Impassable terrain. Cloudwalk and Intangible
+   ignore both while moving, but may not end the move overlapping either. Base to base (BtB) = bases touching. */
+const GHOST_RE = /\b(Cloud ?walk|Intangible)\b/i;
+const BTB_GAP = 0.03;
+function isGhost(m, side) {
+  if (m.ghost === undefined) {  /* tables saved before this existed: read the trait from the warband */
+    const wb = WB[TBL.sides[side].wbId], d = wb && wb.models.find(x => x.name === m.name);
+    m.ghost = !!(d && GHOST_RE.test(d.traits || ""));
+  }
+  return m.ghost;
+}
+const tableModels = () => ["F", "E"].flatMap(s => TBL.sides[s].models.filter(m => m.where === "table").map(m => [m, s]));
+/* What blocks m, leaving out anything it already overlaps (so a misplaced model can still be dragged clear) */
+function moveBlockers(m) {
+  const models = tableModels().map(([o]) => o).filter(o => o !== m);
+  const terr = TBL.terrain.filter(t => TBYID[t.typeId].passage === "Impassable").map(terrPoly);
+  const B = { models, terr };
+  return { models: models.filter(o => dist(o, m) >= o.r + m.r - 0.005), terr: terr.filter(P => polyCircle(P, m, m.r) >= -0.005), all: B };
+}
+function clearAt(m, p, B) {
+  for (const o of B.models) if (dist(o, p) < o.r + m.r - 0.005) return false;
+  for (const P of B.terr) if (polyCircle(P, p, m.r) < -0.005) return false;
+  return true;
+}
+const clampBoard = (m, p) => ({ x: Math.min(24 - m.r, Math.max(m.r, p.x)), y: Math.min(24 - m.r, Math.max(m.r, p.y)) });
+/* Walk the base towards the target in small steps, sliding round anything in the way */
+function stepTowards(m, target, B) {
+  let cur = { x: m.x, y: m.y };
+  for (let i = 0; i < 400; i++) {
+    const dx = target.x - cur.x, dy = target.y - cur.y, L = Math.hypot(dx, dy);
+    if (L < 1e-3) break;
+    const st = Math.min(0.04, L), a0 = Math.atan2(dy, dx);
+    let next = null;
+    for (const da of [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9, 1.2, -1.2]) {
+      const q = clampBoard(m, { x: cur.x + Math.cos(a0 + da) * st, y: cur.y + Math.sin(a0 + da) * st });
+      if (dist(q, target) < L - 1e-4 && clearAt(m, q, B)) { next = q; break; }
+    }
+    if (!next) break;
+    cur = next;
+  }
+  return cur;
+}
+/* Close a small gap so the bases touch exactly */
+function snapBtB(m, p, B) {
+  for (const o of B.all.models) {
+    const d = dist(o, p), gap = d - o.r - m.r;
+    if (gap > 0.005 && gap < 0.12 && d > 0) {
+      const q = { x: o.x + (p.x - o.x) / d * (o.r + m.r), y: o.y + (p.y - o.y) / d * (o.r + m.r) };
+      if (clearAt(m, q, B)) return q;
+    }
+  }
+  return p;
+}
+function btbWith(m) { return tableModels().filter(([o]) => o !== m && dist(o, m) - o.r - m.r <= BTB_GAP); }
+/* Nearest free spot to p (for placing a model from the tray) */
+function freeSpot(m, p) {
+  const B = { models: tableModels().map(([o]) => o).filter(o => o !== m), terr: TBL.terrain.filter(t => TBYID[t.typeId].passage === "Impassable").map(terrPoly) };
+  for (let r = 0; r <= 3; r += 0.1) for (let k = 0; k < Math.max(1, Math.round(r * 12)); k++) {
+    const a = k / Math.max(1, Math.round(r * 12)) * Math.PI * 2, q = clampBoard(m, { x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r });
+    if (clearAt(m, q, B)) return q;
+  }
+  return clampBoard(m, p);
 }
 
 /* ---------- Drawing ---------- */
@@ -264,6 +333,15 @@ function boardSVG() {
       const hx = Math.sin(rad(m.facing)) * (m.r + 0.45), hy = -Math.cos(rad(m.facing)) * (m.r + 0.45);
       out.push(`<g transform="translate(${m.x} ${SY(m.y)})"><line x1="0" y1="0" x2="${hx}" y2="${hy}" class="hline"/><circle cx="${hx}" cy="${hy}" r="0.22" class="handle" data-k="rotate" data-id="${m.id}"/></g>`);
     }
+  }
+  /* base-to-base contacts: a vermilion mark between enemies, a small ink dot between friends */
+  const tm = tableModels();
+  for (let i = 0; i < tm.length; i++) for (let j = i + 1; j < tm.length; j++) {
+    const [a, sa] = tm[i], [b, sb] = tm[j], d = dist(a, b);
+    if (d - a.r - b.r > BTB_GAP || !d) continue;
+    const cx = a.x + (b.x - a.x) / d * a.r, cy = a.y + (b.y - a.y) / d * a.r;
+    out.push(sa !== sb ? `<g class="btb foe" transform="translate(${f2(cx)} ${f2(SY(cy))}) rotate(45)"><rect x="-0.11" y="-0.11" width="0.22" height="0.22"/></g>`
+      : `<circle cx="${f2(cx)}" cy="${f2(SY(cy))}" r="0.06" class="btb"/>`);
   }
   /* selected terrain gets a rotate handle too */
   if (tSel && tSel.kind === "terrain") {
@@ -339,12 +417,14 @@ function selectedHTML() {
   if (!tSel) return `<p class="muted tsmall">Select a model, terrain piece or objective on the table to see its details.</p>`;
   if (tSel.kind === "model") {
     const [m, side] = findModel(tSel.id); if (!m) return "";
-    const probs = m.where === "table" ? modelProblems(m, side) : [];
+    const probs = m.where === "table" ? modelProblems(m, side) : [], btb = m.where === "table" ? btbWith(m) : [];
     let rel = "";
-    if (tHover && tHover !== m.id) { const [b] = findModel(tHover); if (b && b.where === "table" && m.where === "table") { const r = relation(m, b); rel = `<p>To <b>${esc(b.name)}</b>: ${r1(r.edge)}" edge to edge · ${r.inArc ? "in front arc" : "behind (outside front arc)"}</p>`; } }
+    if (tHover && tHover !== m.id) { const [b] = findModel(tHover); if (b && b.where === "table" && m.where === "table") { const r = relation(m, b); rel = `<p>To <b>${esc(b.name)}</b>: ${r.edge <= BTB_GAP ? "base to base" : r1(r.edge) + '" edge to edge'} · ${r.inArc ? "in front arc" : "behind (outside front arc)"}</p>`; } }
     return `<div class="tinfo"><b>${esc(m.name)}</b> <span class="muted">${side === "F" ? "Yours" : "Opponent"}</span>
       <p>${m.size} · ${m.base}mm base · facing ${Math.round(m.facing)}°${m.where === "table" ? ` · at (${r1(m.x)}, ${r1(m.y)})` : ""}</p>
-      ${probs.map(p => `<p class="warn">⚠ ${esc(p)}</p>`).join("")}${rel}
+      ${probs.map(p => `<p class="warn">⚠ ${esc(p)}</p>`).join("")}
+      ${btb.length ? `<p><b>Base to base</b> with ${btb.map(([o, s]) => `<span class="${s === side ? "" : "btb-foe"}">${esc(o.name)}</span>`).join(", ")}</p>` : ""}${rel}
+      <label class="inline tsmall"><input type="checkbox" data-tghost="${m.id}" ${isGhost(m, side) ? "checked" : ""}> Moves through models and terrain (Cloudwalk, Intangible)</label>
       <p class="muted tsmall">Hover another model to measure to it.</p></div>`;
   }
   if (tSel.kind === "terrain") {
@@ -411,14 +491,14 @@ function renderTable() {
       </aside>
       <div class="tboard">
         <svg id="tSvg" viewBox="-0.7 -0.7 25.4 25.4" class="${tTool === "ruler" || tArm ? "crosshair" : ""}" role="img" aria-label="Battlefield">${boardSVG()}</svg>
-        <p class="thint">${tMsg ? esc(tMsg) + " · " : ""}Drag to move · Mouse wheel or Q / E to turn (Shift for 5°) · Delete removes · M ruler · Esc deselects</p>
+        <p class="thint">${tMsg ? esc(tMsg) + " · " : ""}Drag to move (bases stop at models and Impassable terrain) · Mouse wheel or Q / E to turn (Shift for 5°) · Delete removes · M ruler · Esc deselects</p>
       </div>
       <aside class="tside right">
         <div class="tcard"><h4>Selected</h4>${selectedHTML()}</div>
         ${trayHTML("F")}${trayHTML("E")}
         <div class="tcard"><h4>Terrain</h4>
           <div class="tthemes">${Object.entries(TERRAIN_THEMES).map(([k, n]) => `<label><input type="checkbox" data-ttheme="${k}" ${TBL.themes.includes(k) ? "checked" : ""}> ${esc(n)}</label>`).join("")}</div>
-          <div class="row"><label class="inline">Pieces <select data-tcount>${[6, 7, 8, 9, 10].map(n => `<option ${TBL.count === n ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+          <div class="row"><label class="inline">Pieces <select data-tcount>${[6, 7, 8, 9, 10, 11, 12].map(n => `<option ${TBL.count === n ? "selected" : ""}>${n}</option>`).join("")}</select></label>
             <button class="btn small primary" data-tgen>Generate terrain</button><button class="btn small" data-tclear>Clear</button></div>
           <div class="row"><select id="tAddSel" aria-label="Terrain piece">${Object.entries(TERRAIN_THEMES).map(([k, n]) => `<optgroup label="${esc(n)}">${TERRAIN.filter(t => t.theme === k).map(t => `<option value="${t.id}">${esc(t.name)} [${t.passage}, ${t.visibility}, ${t.size}]</option>`).join("")}</optgroup>`).join("")}</select>
             <button class="btn small" data-tadd>Add</button></div>
@@ -466,7 +546,7 @@ function bindBoard() {
     if (tArm) {
       const [m, side] = findModel(tArm);
       Object.assign(m, { x: p.x, y: p.y, where: "table", facing: side === "F" ? (TBL.deployment === "baseline" ? 0 : 45) : (TBL.deployment === "baseline" ? 180 : 225) });
-      snapEdges(m); tSel = { kind: "model", id: m.id }; tArm = null; tSave(); return renderTable();
+      snapEdges(m); Object.assign(m, freeSpot(m, m)); tSel = { kind: "model", id: m.id }; tArm = null; tSave(); return renderTable();
     }
     if (!el) { tSel = null; return renderTable(); }
     const kind = el.dataset.k, id = el.dataset.id;
@@ -476,6 +556,12 @@ function bindBoard() {
     tSel = { kind, id };
     if (kind === "obj" || kind === "zone") { tDrag = { mode: "click", kind, id }; return renderTable(); }
     tDrag = { mode: "move", kind, id, off: { x: it.x - p.x, y: it.y - p.y }, start: { x: it.x, y: it.y }, moved: false };
+    if (kind === "model") {
+      const [, side] = findModel(id);
+      tMsg = "";
+      Object.assign(tDrag, { B: moveBlockers(it), ghost: isGhost(it, side), lastOK: { x: it.x, y: it.y },
+        btb0: btbWith(it).filter(([, s]) => s !== side).map(([o]) => o.id) });
+    }
     if (changed) redrawBoard();
   });
   svg.addEventListener("pointermove", e => {
@@ -494,8 +580,11 @@ function bindBoard() {
     }
     if (tDrag.mode === "move") {
       const it = itemOf(tDrag.kind, tDrag.id);
-      it.x = p.x + tDrag.off.x; it.y = p.y + tDrag.off.y; tDrag.moved = true;
-      if (tDrag.kind === "model") snapEdges(it);
+      const target = { x: p.x + tDrag.off.x, y: p.y + tDrag.off.y }; tDrag.moved = true;
+      if (tDrag.kind === "model") {
+        if (tDrag.ghost) { Object.assign(it, clampBoard(it, target)); if (clearAt(it, it, tDrag.B)) tDrag.lastOK = { x: it.x, y: it.y }; }
+        else Object.assign(it, snapBtB(it, stepTowards(it, clampBoard(it, target), tDrag.B), tDrag.B));
+      } else Object.assign(it, target);
       redrawBoard();
     }
   });
@@ -505,6 +594,12 @@ function bindBoard() {
       const o = itemOf(tDrag.kind, tDrag.id);
       o.align = { N: "F", F: "E", E: "N" }[o.align];
       followZones();
+    }
+    if (tDrag.mode === "move" && tDrag.kind === "model" && tDrag.moved) {
+      const [m, side] = findModel(tDrag.id);
+      if (tDrag.ghost && !clearAt(m, m, tDrag.B)) { Object.assign(m, tDrag.lastOK); tMsg = `${m.name} moves through models and terrain, but can't end its move on Impassable terrain or another model.`; }
+      const foes = btbWith(m).filter(([, s]) => s !== side), fresh = foes.filter(([o]) => !tDrag.btb0.includes(o.id));
+      if (!tDrag.btb0.length && fresh.length > 1) tMsg = `${m.name} is now in base contact with ${fresh.length} enemy models. A model not already in BtB can only enter BtB with 1 enemy model per activation.`;
     }
     const wasMove = tDrag.mode === "move" || tDrag.mode === "rotate" || tDrag.mode === "click";
     tDrag = null; if (wasMove) tSave(); renderTable();
@@ -559,6 +654,7 @@ document.addEventListener("change", e => {
   if (d.tcount !== undefined) { TBL.count = +e.target.value; return tSave(); }
   if (d.tfturn) { findModel(d.tfturn)[0].flankTurn = +e.target.value; return tSave(); }
   if (d.tfedge) { findModel(d.tfedge)[0].flankEdge = e.target.value; return tSave(); }
+  if (d.tghost) { findModel(d.tghost)[0].ghost = e.target.checked; return tSave(); }
 });
 document.addEventListener("keydown", e => {
   if (VIEW !== "table" || !TBL || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || "")) return;

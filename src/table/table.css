@@ -129,8 +129,12 @@ label.inline{display:inline-flex;gap:6px;align-items:center;font-size:13px}
 #tSvg .tok .ini{font-family:var(--display);font-weight:800;fill:var(--sumi);text-anchor:middle;pointer-events:none}
 #tSvg .tok.sel .ring{fill:var(--accent)}
 #tSvg .tok.bad .base{stroke:var(--fire);stroke-width:.08;stroke-dasharray:.18 .12}
+#tSvg .btb{fill:var(--sumi);pointer-events:none}
+#tSvg .btb.foe rect{fill:var(--shu);stroke:var(--paper);stroke-width:.03}
+.btb-foe{color:var(--side-e);font-weight:700}
 #tSvg .vimring{fill:none;stroke:var(--accent);stroke-width:.07;stroke-dasharray:.1 .08}
 #tSvg .handle{fill:var(--accent);stroke:var(--paper);stroke-width:.05;cursor:grab}
+#tSvg .hline,#tSvg .rel,#tSvg .trail,#tSvg .ruler,#tSvg .dlabel,#tSvg .vimring{pointer-events:none}
 #tSvg .hline{stroke:var(--accent);stroke-width:.05;stroke-dasharray:.12 .1}
 #tSvg .rel{stroke:var(--shu);stroke-width:.06;stroke-dasharray:.2 .12}
 #tSvg .trail{stroke:var(--sumi);stroke-width:.05;stroke-dasharray:.15 .1;opacity:.6}
