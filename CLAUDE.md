@@ -24,7 +24,8 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
 ## Releasing a change
 1. Edit files in `src/` (or `sync.js`). If card data changed, run `node src/build_seed.js`. Then run `python3 src/build.py`.
 2. Bump `VERSION` in `sw.js`. Devices only fetch the new version when this changes.
-3. Commit and push to `main`. Devices show "App updated" the next time they open online.
+3. Commit and push to `main`. Devices load the new version the next time they open online
+   (network-first page load with a 2.5 s fallback to the stored copy, then an automatic reload).
 
 ## Notes
 - Player data lives in localStorage (`bushido-warbands-v1`, `bushido-games-v1`, `bushido-current-v1`,

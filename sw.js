@@ -1,6 +1,6 @@
 /* Offline support: the app and its PDF reader are stored on the device,
    so the tracker opens and works with no connection. */
-const VERSION = "bt-2026-10-12-1";
+const VERSION = "bt-2026-10-12-2";
 const CORE = [
   "./", "./index.html", "./manifest.webmanifest", "./sync.js", "./config.js",
   "./icon-192.png", "./icon-512.png", "./icon-maskable.png",
@@ -12,7 +12,8 @@ const FIREBASE = ["firebase-app.js", "firebase-auth.js", "firebase-firestore.js"
 self.addEventListener("install", e => {
   e.waitUntil((async () => {
     const c = await caches.open(VERSION);
-    await c.addAll(CORE);
+    /* cache: "reload" skips the browser's HTTP cache, so an update never stores stale files */
+    await c.addAll(CORE.map(u => new Request(u, { cache: "reload" })));
     await Promise.allSettled(FIREBASE.map(u => c.add(u)));
     self.skipWaiting();
   })());
@@ -32,12 +33,14 @@ self.addEventListener("fetch", e => {
   if (/googleapis\.com$/.test(url.hostname) && !url.hostname.startsWith("fonts.")) return;
   if (/securetoken|identitytoolkit|firebaseinstallations/.test(url.hostname)) return;
 
+  /* Opening the app: use the latest version when online, the stored copy when offline or slow */
   if (req.mode === "navigate") {
     e.respondWith((async () => {
       const c = await caches.open(VERSION);
-      const cached = await c.match("./index.html");
-      const fresh = fetch(req).then(r => { if (r.ok) c.put("./index.html", r.clone()); return r; }).catch(() => null);
-      return cached || (await fresh) || new Response("Offline", { status: 503 });
+      const fresh = fetch(req, { cache: "no-cache" }).then(r => { if (r.ok) c.put("./index.html", r.clone()); return r; }).catch(() => null);
+      const quick = await Promise.race([fresh, new Promise(res => setTimeout(() => res(null), 2500))]);
+      if (quick && quick.ok) return quick;
+      return (await c.match("./index.html")) || (await fresh) || new Response("Offline", { status: 503 });
     })());
     return;
   }

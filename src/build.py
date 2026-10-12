@@ -43,8 +43,10 @@ body{{margin:0}}img{{max-width:100%}}[hidden]{{display:none!important}}
 if ("serviceWorker" in navigator) {{
   const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.register("sw.js").catch(() => {{}});
+  /* A new version took over: reload once so it shows straight away (the game is already saved) */
+  let reloaded = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {{
-    if (hadController) App.toast("App updated. Close and reopen it to use the new version.");
+    if (hadController && !reloaded) {{ reloaded = true; location.reload(); }}
   }});
 }}
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {{}});
