@@ -206,11 +206,62 @@ textarea{width:100%;min-height:220px;font:13px/1.4 ui-monospace,Menlo,Consolas,m
   .models{grid-template-columns:1fr 1fr;align-items:start}
   .cards{grid-template-columns:1fr 1fr;align-items:start}
 }
+
+/* ---------- Home and end-of-game screens ---------- */
+.screen{padding-block:18px 8px}
+.home-head{display:flex;align-items:flex-end;gap:12px;padding-block:8px 4px}
+.home-head h1{font-family:var(--display);font-weight:800;font-size:34px;line-height:1;margin:0}
+.home-head .mark{font-family:var(--display);font-weight:800;font-size:40px;line-height:1;color:var(--accent)}
+.home-head p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:26px 2px 8px}
+.sec-h h2{margin:0}
+.sec-h span{font-size:12.5px;color:var(--muted)}
+.slot .btn.small{min-height:36px}
+.slot.res-win{border-left:3px solid var(--poison)}
+.slot.res-loss{border-left:3px solid var(--harm)}
+.slot.res-draw{border-left:3px solid var(--muted)}
+.slot.fresh{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.import{display:grid;gap:8px;margin-top:10px}
+.import .row{margin-top:0}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:14px;color:var(--muted);font-size:14px}
+.play-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px;padding-top:14px;border-top:1px solid var(--line)}
+.play-actions .spacer{flex:1}
+.btn.armed{border-color:var(--harm);color:var(--harm)}
+.home-btn{display:inline-flex;align-items:center;gap:4px}
+.home-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-1px}
+.end-hero{padding-block:10px 4px}
+.end-hero small{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.end-hero h1{font-family:var(--display);font-weight:800;font-size:40px;line-height:1.05;margin:4px 0 2px}
+.end-hero h1.win{color:var(--poison)}
+.end-hero h1.loss{color:var(--harm)}
+.end-hero p{margin:0;color:var(--muted)}
+.score-line{display:flex;align-items:baseline;gap:12px;margin-top:12px;font-variant-numeric:tabular-nums}
+.score-line b{font-family:var(--display);font-size:44px;line-height:1}
+.score-line span{color:var(--muted);font-size:13px;display:block}
+.score-line i{font-style:normal;color:var(--muted);font-size:28px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:16px}
+.tiles div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center}
+.tiles small{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tiles b{font-size:20px;font-variant-numeric:tabular-nums}
+.roster{display:grid;gap:6px}
+.roster-row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+.roster-row b{font-size:15px}
+.roster-row .st{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;align-self:center}
+.roster-row .st.dead{color:var(--harm)}
+.roster-row .st.up{color:var(--poison)}
+.roster-row .meta{grid-column:1 / -1;font-size:13px;color:var(--muted)}
+.roster-row.is-dead b{color:var(--muted);text-decoration:line-through}
+.end-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+@media (max-width:400px){.tiles{grid-template-columns:repeat(2,1fr)}}
 </style>
 
+<div id="homeView" class="screen" hidden></div>
+<div id="endView" class="screen" hidden></div>
+
+<div id="playView">
 <div class="bar">
   <div class="bar-top">
-    <div class="turn"><button class="list-btn" id="listBtn" aria-label="Games and warbands"><small id="listName">Risen Sun</small></button><span id="turnLabel">Deployment</span></div>
+    <div class="turn"><button class="list-btn home-btn" id="listBtn" aria-label="Home"><small id="listName">Risen Sun</small></button><span id="turnLabel">Deployment</span></div>
   </div>
   <div class="bar-row">
     <div class="score"><b>VP</b><button class="step" data-score="vp" data-d="-1" aria-label="Remove VP">−</button><span class="v num" id="vp">0</span><button class="step" data-score="vp" data-d="1" aria-label="Add VP">+</button></div>
@@ -232,8 +283,15 @@ textarea{width:100%;min-height:220px;font:13px/1.4 ui-monospace,Menlo,Consolas,m
 <h2>Cards in play</h2>
 <div class="cards" id="cards"></div>
 
+<div class="play-actions">
+  <button class="btn" id="goHome">Home</button>
+  <span class="spacer"></span>
+  <button class="btn" id="abandonGame">Abandon game</button>
+  <button class="btn primary" id="endGame">End game</button>
+</div>
+</div>
+
 <div class="foot">
-  <button class="btn" id="openSetup">Games &amp; warbands</button>
   <button class="btn" id="syncBtn" hidden>Sync <span class="sync-status" id="syncStatus" data-kind="off">Off</span></button>
   <button class="btn" id="themeBtn">Light / dark</button>
 </div>

@@ -7,7 +7,10 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
 - `src/` is the source. Edit these, never `index.html` directly.
   - `shell.html`: title, font link, CSS and page markup (everything before the script).
   - `parser.js`: reads newrecruit.eu list PDFs (pdf.js text items with positions) into warbands.
-  - `app.js`: the tracker (state, phases, reminders, rendering, warbands and games, backup).
+  - `app.js`: the tracker. Three screens, remembered per device in `bushido-view-v1`:
+    home (games in progress, warbands to play, import, finished games, backup), play (the current game),
+    and `end:<gameId>` (summary of a finished game). Games carry `status: "finished"` once ended;
+    abandoning a game deletes it (with an Undo toast).
   - `seed.json`: card library and three starter lists bundled into the app.
   - `build.py`: run `python3 src/build.py` from the repo root to regenerate `index.html`.
   - `cards/*.js`: card sets transcribed by hand (e.g. from card images) for lists whose PDF lacks rules.

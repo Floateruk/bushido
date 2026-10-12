@@ -147,10 +147,11 @@ function startGame(wbId) {
   GAMES[id] = { id, wbId, name: wb.name, created: Date.now(), updated: Date.now(), state: gameFromWb(wb) };
   window.Sync?.pushGame(GAMES[id]);
   switchGame(id);
+  go("play");
 }
 function switchGame(id) {
   CUR = id; S = GAMES[id].state; undoStack = []; openDetail.clear(); openChip = null; oppOpen = false;
-  saveAll(); render();
+  saveAll();
 }
 
 /* First run: keep the game already in progress, and add the lists we already know */
@@ -190,14 +191,22 @@ if (!WB) {
   store(REVKEY, SEED.rev);
   saveAll();
 })();
-if (!CUR || !GAMES[CUR]) {
-  const recent = Object.values(GAMES).sort((a, b) => b.updated - a.updated)[0];
-  if (recent) CUR = recent.id;
-  else { const first = Object.values(WB)[0]; const id = "g" + uid() + uid(); GAMES[id] = { id, wbId: first.id, name: first.name, created: Date.now(), updated: Date.now(), state: gameFromWb(first) }; CUR = id; }
-  saveAll();
+if (CUR && !GAMES[CUR]) CUR = null;
+S = CUR ? GAMES[CUR].state : null;
+
+/* Screens: "home", "play" (the current game) or "end:<gameId>" (a finished game's summary) */
+const VIEWKEY = "bushido-view-v1";
+const isOver = g => !!g && g.status === "finished";
+let VIEW = load(VIEWKEY, null);
+if (!VIEW) VIEW = CUR && !isOver(GAMES[CUR]) ? "play" : "home";
+let homeMsg = "", freshWb = null, abandoned = null;
+function go(view) {
+  VIEW = view; store(VIEWKEY, view); closeSheet();
+  clearTimeout(toastTimer); $("toastHost").innerHTML = "";
+  render();
+  try { window.scrollTo(0, 0); } catch (e) {}
 }
-S = GAMES[CUR].state;
-function save() { GAMES[CUR].state = S; GAMES[CUR].updated = Date.now(); store(GKEY, GAMES); store(CURKEY, CUR); window.Sync?.pushGame(GAMES[CUR]); }
+function save() { if (!CUR || !GAMES[CUR]) return; GAMES[CUR].state = S; GAMES[CUR].updated = Date.now(); store(GKEY, GAMES); store(CURKEY, CUR); window.Sync?.pushGame(GAMES[CUR]); }
 function mutate(fn) { undoStack.push(JSON.stringify(S)); if (undoStack.length > 60) undoStack.shift(); fn(); save(); render(); }
 function undo() { if (!undoStack.length) return; S = JSON.parse(undoStack.pop()); save(); render(); toast("Undone"); }
 const hasLS = m => /\bLast Stand\b/i.test(m.def.traits || "") || !!m.states["Last Stand"];
@@ -325,8 +334,20 @@ function chipsFor(m) {
 }
 const stat = (a, b) => a === "" || a == null ? "–" : b ? `${a}/${b}` : a;
 
+const HOME_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/></svg>`;
 function render() {
-  $("listName").textContent = S.listName + " ▾";
+  if (VIEW === "play" && (!CUR || !GAMES[CUR] || !S)) VIEW = "home";
+  if (VIEW === "play" && isOver(GAMES[CUR])) VIEW = "end:" + CUR;
+  if (VIEW.startsWith("end:") && !GAMES[VIEW.slice(4)]) VIEW = "home";
+  $("homeView").hidden = VIEW !== "home";
+  $("endView").hidden = !VIEW.startsWith("end:");
+  $("playView").hidden = VIEW !== "play";
+  if (VIEW === "home") return renderHome();
+  if (VIEW !== "play") return renderEnd(GAMES[VIEW.slice(4)]);
+  renderPlay();
+}
+function renderPlay() {
+  $("listName").innerHTML = HOME_ICON + " " + esc(S.listName);
   $("turnLabel").textContent = S.turn ? `Turn ${S.turn}` : "Deployment";
   $("phases").innerHTML = PH.filter(p => S.turn ? p[0] !== "deploy" : true).map(p => `<span class="${p[0] === S.phase ? "on" : ""}">${p[1]}</span>`).join("");
   $("next").textContent = S.phase === "deploy" ? "Start turn 1" : S.phase === "start" ? "Main phase ▸" : S.phase === "main" ? "End phase ▸" : `Turn ${S.turn + 1} ▸`;
@@ -418,43 +439,105 @@ function enemySheet(state, remKey, temp, card) {
   $("sheetHost").dataset.ctx = JSON.stringify({ state, remKey, temp, card });
 }
 const phaseName = { deploy: "Deployment", start: "Start Phase", main: "Main Phase", end: "End Phase" };
-function gamesSheet(msg) {
-  const games = Object.values(GAMES).sort((a, b) => b.updated - a.updated);
+const resultOf = st => st.vp > st.opp.vp ? "win" : st.vp < st.opp.vp ? "loss" : "draw";
+const RESULT = { win: "Victory", loss: "Defeat", draw: "Draw" };
+const confirmBtn = (key, label, ask) => sheetConfirm === key
+  ? `<button class="btn small danger" data-sdel="${key}">${ask}</button>`
+  : `<button class="btn small quiet" data-sdel="${key}" aria-label="${esc(label)}">✕</button>`;
+function renderHome() {
+  const all = Object.values(GAMES).sort((a, b) => b.updated - a.updated);
+  const live = all.filter(g => !isOver(g)), done = all.filter(isOver);
   const wbs = Object.values(WB).sort((a, b) => a.name.localeCompare(b.name));
   const libCount = Object.values(LIB.cards).filter(c => c.kind === "profile").length;
-  const confirmBtn = (key, label) => sheetConfirm === key ? `<button class="btn small danger" data-sdel="${key}">Delete?</button>` : `<button class="btn small quiet" data-sdel="${key}" aria-label="Delete ${esc(label)}">✕</button>`;
-  sheet(`<h3>Games &amp; warbands</h3>
-    <h4 class="sheet-h">Games</h4>
-    <div class="slots">${games.map(g => { const st = g.state; return `<div class="slot ${g.id === CUR ? "cur" : ""}">
-      <div class="slot-main"><b>${esc(g.name)}</b><span>${st.turn ? `Turn ${st.turn} · ${phaseName[st.phase]}` : "Deployment"} · VP ${st.vp} · ${esc(dayLabel(g.updated))}</span></div>
-      ${g.id === CUR ? `<span class="slot-tag">Playing</span>` : `<button class="btn small" data-resume="${g.id}">Resume</button>`}
-      ${g.id === CUR ? "" : confirmBtn("g:" + g.id, g.name)}</div>`; }).join("") || `<p class="note">No saved games.</p>`}</div>
-    <h4 class="sheet-h">Warbands</h4>
-    <div class="slots">${wbs.map(w => `<div class="slot">
+  $("homeView").innerHTML = `
+    <header class="home-head"><span class="mark" aria-hidden="true">武</span><div><h1>Bushido</h1><p>Table tracker</p></div></header>
+    ${homeMsg ? `<p class="note" role="status">${esc(homeMsg)}</p>` : ""}
+
+    ${live.length ? `<div class="sec-h"><h2>Games in progress</h2></div>
+    <div class="slots">${live.map(g => { const st = g.state; return `<div class="slot">
+      <div class="slot-main"><b>${esc(g.name)}</b><span>${st.turn ? `Turn ${st.turn} · ${phaseName[st.phase]}` : "Deployment"} · VP ${st.vp}–${st.opp.vp} · ${esc(dayLabel(g.updated))}</span></div>
+      <button class="btn small primary" data-resume="${g.id}">Continue</button>${confirmBtn("g:" + g.id, "Abandon " + g.name, "Abandon?")}</div>`; }).join("")}</div>` : ""}
+
+    <div class="sec-h"><h2>Start a game</h2><span>${wbs.length} warband${wbs.length === 1 ? "" : "s"}</span></div>
+    <div class="slots">${wbs.map(w => `<div class="slot ${w.id === freshWb ? "fresh" : ""}">
       <div class="slot-main"><b>${esc(w.name)}</b><span>${esc(w.sub ? w.sub + " · " : "")}${w.models.length} models · ${w.cards.length} cards</span></div>
-      <button class="btn small primary" data-newgame="${w.id}">New game</button>${confirmBtn("w:" + w.id, w.name)}</div>`).join("") || `<p class="note">No warbands yet. Import a list PDF below.</p>`}</div>
-    <div class="row"><label class="btn primary file-btn" for="pdfFile">Import list PDF</label><input type="file" id="pdfFile" accept="application/pdf,.pdf" hidden></div>
-    <p class="note" id="importNote" role="status">${msg || "Use the PDF export from newrecruit.eu. It's saved as a warband and a new game starts with it."}</p>
-    <details class="paste"><summary>Paste list text instead</summary>
-      <p class="note">Works for cards already in your library (${libCount} profile cards from PDFs you've loaded).</p>
-      <textarea id="listText" spellcheck="false">${esc(SAMPLE)}</textarea>
-      <div class="row"><button class="btn" id="doImport">Save warband and start game</button></div>
-    </details>
+      <button class="btn small primary" data-newgame="${w.id}">Play</button>${confirmBtn("w:" + w.id, "Delete " + w.name, "Delete?")}</div>`).join("")
+      || `<p class="empty">No warbands yet. Import a list below.</p>`}</div>
+
+    <div class="sec-h"><h2>Add a warband</h2></div>
+    <div class="import">
+      <div class="row"><label class="btn primary file-btn" for="pdfFile">Import list PDF</label><input type="file" id="pdfFile" accept="application/pdf,.pdf" hidden></div>
+      <p class="note" id="importNote" role="status">Use the PDF export from newrecruit.eu. It brings in stats, Ki feats, equipment, card text and rules.</p>
+      <details class="paste"><summary>Paste list text instead</summary>
+        <p class="note">Works for cards already in your library (${libCount} profile cards so far).</p>
+        <textarea id="listText" spellcheck="false" placeholder="Paste a newrecruit.eu text export"></textarea>
+        <div class="row"><button class="btn" id="doImport">Save warband</button></div>
+      </details>
+    </div>
+
+    ${done.length ? `<div class="sec-h"><h2>Finished games</h2></div>
+    <div class="slots">${done.map(g => { const st = g.state, r = resultOf(st); return `<div class="slot res-${r}">
+      <div class="slot-main"><b>${esc(g.name)}</b><span>${RESULT[r]} ${st.vp}–${st.opp.vp} · ${st.turn} turn${st.turn === 1 ? "" : "s"} · ${esc(dayLabel(g.finished || g.updated))}</span></div>
+      <button class="btn small" data-viewgame="${g.id}">View</button>${confirmBtn("g:" + g.id, "Delete " + g.name, "Delete?")}</div>`; }).join("")}</div>` : ""}
+
     <details class="paste"><summary>Backup and restore</summary>
       <p class="note">Copies all your warbands, games and card library as text, so you can move them to another copy of the tracker.</p>
       <div class="row"><button class="btn" id="copyBackup">Copy backup</button></div>
       <textarea id="backupText" spellcheck="false" placeholder="To restore, paste a backup here" aria-label="Backup text"></textarea>
       <div class="row"><button class="btn" id="doRestore">Restore from pasted backup</button></div>
       <p class="note" id="backupNote" role="status"></p>
-    </details>`);
+    </details>`;
+}
+const duration = ms => { const m = Math.max(1, Math.round(ms / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`; };
+function renderEnd(g) {
+  const st = g.state, r = resultOf(st);
+  const scored = st.vp || st.opp.vp;
+  const lost = st.models.filter(m => !alive(m)), wounds = st.models.reduce((a, m) => a + m.dmg, 0);
+  const wb = WB[g.wbId] || Object.values(WB).find(w => w.name === g.name);
+  $("endView").innerHTML = `
+    <div class="end-hero">
+      <small>${esc(g.name)} · ${esc(dayLabel(g.finished || g.updated))}</small>
+      <h1 class="${scored ? r : ""}">${scored ? RESULT[r] : "Game over"}</h1>
+      <p>${st.turn ? `${st.turn} turn${st.turn === 1 ? "" : "s"}, ended in the ${phaseName[st.phase]}` : "Ended during Deployment"} · played for ${duration((g.finished || g.updated) - g.created)}</p>
+      <div class="score-line"><div><b>${st.vp}</b><span>Your VP</span></div><i>–</i><div><b>${st.opp.vp}</b><span>Their VP</span></div></div>
+    </div>
+    <div class="tiles">
+      <div><small>Turns</small><b>${st.turn}</b></div>
+      <div><small>SP</small><b>${st.sp}</b></div>
+      <div><small>Models lost</small><b>${lost.length}/${st.models.length}</b></div>
+      <div><small>Wounds taken</small><b>${wounds}</b></div>
+    </div>
+
+    <div class="sec-h"><h2>Your warband</h2></div>
+    <div class="roster">${st.models.map(m => {
+      const dead = !alive(m), ls = onLastStand(m);
+      const states = Object.entries(m.states).map(([k, c]) => k + (c > 1 ? " ×" + c : ""));
+      const gone = Object.keys(m.discarded || {});
+      const bits = [`Wounds ${m.dmg}/${m.def.w}`, `Ki ${m.ki}`, states.length ? states.join(", ") : "", gone.length ? "Discarded: " + gone.join(", ") : ""].filter(Boolean);
+      return `<div class="roster-row ${dead ? "is-dead" : ""}"><b>${esc(m.def.name)}</b>
+        <span class="st ${dead ? "dead" : "up"}">${dead ? "Dead" : ls ? "Last Stand" : "Standing"}</span>
+        <span class="meta">${esc(bits.join(" · "))}</span></div>`;
+    }).join("")}</div>
+
+    ${st.opp.models.length ? `<div class="sec-h"><h2>Opponent</h2></div>
+    <div class="roster">${st.opp.models.map(m => { const states = Object.entries(m.states).map(([k, c]) => k + (c > 1 ? " ×" + c : "")); return `<div class="roster-row"><b>${esc(m.name)}</b><span></span><span class="meta">${esc(states.join(", ") || "No markers")}</span></div>`; }).join("")}</div>` : ""}
+
+    ${st.cards.length ? `<div class="sec-h"><h2>Cards</h2></div>
+    <div class="roster">${st.cards.map(c => `<div class="roster-row"><b>${esc(c.name)}</b><span class="st ${c.done ? "up" : ""}">${/Event|Curse/.test(c.type) ? (c.done ? "Played" : "Not played") : ""}</span><span class="meta">${esc(c.type)}</span></div>`).join("")}</div>` : ""}
+
+    <div class="end-actions">
+      <button class="btn primary" id="endHome">Home</button>
+      ${wb ? `<button class="btn" data-newgame="${wb.id}">Play again</button>` : ""}
+      <button class="btn" data-reopen="${g.id}">Reopen game</button>
+    </div>`;
 }
 function glossSheet(term) {
   sheet(`<h3>${esc(term)}</h3><p class="gloss">${esc(LIB.glossary[term])}</p>`);
 }
 let toastTimer;
-function toast(msg, withUndo) {
+function toast(msg, withUndo, action) {
   clearTimeout(toastTimer);
-  $("toastHost").innerHTML = `<div class="toast" role="status"><span>${esc(msg)}</span>${withUndo ? `<button data-undo="1">Undo</button>` : ""}</div>`;
+  $("toastHost").innerHTML = `<div class="toast" role="status"><span>${esc(msg)}</span>${action || (withUndo ? `<button data-undo="1">Undo</button>` : "")}</div>`;
   toastTimer = setTimeout(() => $("toastHost").innerHTML = "", 4000);
 }
 
@@ -497,9 +580,9 @@ document.addEventListener("change", async e => {
     if (!g.models.length) { note.textContent = "No profile cards found. Is this a newrecruit.eu list PDF?"; return; }
     addToLibrary(p);
     const wb = addWarband(wbFromGame(g));
-    closeSheet();
-    startGame(wb.id);
-    toast(`Saved ${wb.name} and started a game: ${g.models.length} models, ${g.cards.length} cards`);
+    freshWb = wb.id; homeMsg = "";
+    go("home");
+    toast(`Saved ${wb.name}: ${g.models.length} models, ${g.cards.length} cards. Tap Play to start.`);
   } catch (err) { note.textContent = `Couldn't read that PDF (${err.message}). Try again, or paste the list text.`; }
 });
 
@@ -512,14 +595,35 @@ document.addEventListener("click", e => {
   if (t.id === "next") return nextPhase();
   if (t.id === "undo" || ds.undo) return undo();
   if (!ds.sdel) sheetConfirm = null;
-  if (t.id === "openSetup" || t.id === "listBtn") return gamesSheet();
-  if (ds.resume) { closeSheet(); switchGame(ds.resume); return toast(`Resumed ${GAMES[CUR].name}`); }
-  if (ds.newgame) { closeSheet(); startGame(ds.newgame); return toast(`New game: ${GAMES[CUR].name}`); }
+  if (t.id !== "endGame") disarmEnd();
+  if (t.id !== "abandonGame") disarmAbandon();
+  if (t.id === "listBtn" || t.id === "goHome" || t.id === "endHome") { homeMsg = ""; freshWb = null; return go("home"); }
+  if (ds.resume) { switchGame(ds.resume); go("play"); return toast(`Continuing ${GAMES[CUR].name}`); }
+  if (ds.newgame) { freshWb = null; startGame(ds.newgame); return toast(`New game: ${GAMES[CUR].name}`); }
+  if (ds.viewgame) return go("end:" + ds.viewgame);
+  if (ds.reopen) {
+    const g = GAMES[ds.reopen]; g.status = "playing"; delete g.finished; g.updated = Date.now();
+    switchGame(g.id); save(); go("play"); return toast("Game reopened");
+  }
   if (ds.sdel) {
-    if (sheetConfirm !== ds.sdel) { sheetConfirm = ds.sdel; return gamesSheet(); }
+    if (sheetConfirm !== ds.sdel) { sheetConfirm = ds.sdel; return render(); }
     const [kind, id] = ds.sdel.split(":"); sheetConfirm = null;
-    if (kind === "g") delete GAMES[id]; else delete WB[id];
-    saveAll(); window.Sync?.remove(kind === "g" ? "games" : "warbands", id); return gamesSheet(kind === "g" ? "Game deleted." : "Warband deleted. Its saved games are kept.");
+    if (kind === "g") { delete GAMES[id]; if (id === CUR) { CUR = null; S = null; } } else delete WB[id];
+    saveAll(); window.Sync?.remove(kind === "g" ? "games" : "warbands", id);
+    homeMsg = kind === "g" ? "" : "Warband deleted. Games already played with it are kept.";
+    return render();
+  }
+  if (t.id === "endGame") {
+    if (!endArmed) { endArmed = true; t.textContent = "End game?"; t.classList.add("armed"); clearTimeout(endTimer); endTimer = setTimeout(disarmEnd, 3000); return; }
+    disarmEnd(); return finishGame();
+  }
+  if (t.id === "abandonGame") {
+    if (!abandonArmed) { abandonArmed = true; t.textContent = "Abandon? Game will be deleted"; t.classList.add("armed"); clearTimeout(abandonTimer); abandonTimer = setTimeout(disarmAbandon, 3000); return; }
+    disarmAbandon(); return abandonGame();
+  }
+  if (ds.unabandon !== undefined && abandoned) {
+    GAMES[abandoned.id] = abandoned; window.Sync?.pushGame(abandoned);
+    switchGame(abandoned.id); abandoned = null; go("play"); return toast("Game restored");
   }
   if (t.id === "copyBackup") {
     const text = JSON.stringify({ bushidoBackup: 1, WB, GAMES, LIB });
@@ -535,9 +639,9 @@ document.addEventListener("click", e => {
     for (const x of Object.values(b.WB || {})) if (!WB[x.id] || (WB[x.id].updated || 0) < (x.updated || 0)) { WB[x.id] = x; w++; window.Sync?.pushWarband(x); }
     for (const x of Object.values(b.GAMES || {})) if (!GAMES[x.id] || GAMES[x.id].updated < x.updated) { GAMES[x.id] = x; g++; window.Sync?.pushGame(x); }
     if (b.LIB) { Object.assign(LIB.cards, b.LIB.cards); Object.assign(LIB.equip, b.LIB.equip); Object.assign(LIB.glossary, b.LIB.glossary); saveLib(); window.Sync?.pushLibrary(); }
-    if (GAMES[CUR]) S = GAMES[CUR].state;
-    saveAll(); render();
-    return gamesSheet(`Restored ${w} warbands and ${g} games.`);
+    if (CUR && GAMES[CUR]) S = GAMES[CUR].state;
+    saveAll(); homeMsg = `Restored ${w} warbands and ${g} games.`;
+    return render();
   }
   if (ds.oppfill !== undefined) {
     const wb = WB[$("oppWb").value]; if (!wb) return;
@@ -553,8 +657,8 @@ document.addEventListener("click", e => {
   if (t.id === "doImport") {
     const g = gameFromText($("listText").value);
     if (!g.models.length) { $("importNote").textContent = g.unknown.length ? `None of these are in your library yet: ${g.unknown.join(", ")}. Load the PDF instead.` : "No models found. Check the list has ## section headings."; return; }
-    const wb = addWarband(wbFromGame(g)); closeSheet(); startGame(wb.id);
-    return toast(g.unknown.length ? `Saved. Not in library: ${g.unknown.join(", ")}` : `Saved ${wb.name} and started a game`);
+    const wb = addWarband(wbFromGame(g)); freshWb = wb.id; homeMsg = ""; go("home");
+    return toast(g.unknown.length ? `Saved ${wb.name}. Not in library: ${g.unknown.join(", ")}` : `Saved ${wb.name}. Tap Play to start.`);
   }
   if (ds.score) return mutate(() => { S[ds.score] = Math.max(0, S[ds.score] + +ds.d); });
   if (ds.pip) {
@@ -582,6 +686,20 @@ document.addEventListener("click", e => {
   if (ds.oppvp) return mutate(() => { S.opp.vp = Math.max(0, S.opp.vp + +ds.oppvp); });
   if (ds.oppdel) { if (oppConfirm !== ds.oppdel) { oppConfirm = ds.oppdel; return render(); } oppConfirm = null; return mutate(() => { S.opp.models = S.opp.models.filter(x => x.id !== ds.oppdel); }); }
 });
+let endArmed = false, endTimer, abandonArmed = false, abandonTimer;
+function disarmEnd() { endArmed = false; clearTimeout(endTimer); const b = $("endGame"); if (b) { b.textContent = "End game"; b.classList.remove("armed"); } }
+function disarmAbandon() { abandonArmed = false; clearTimeout(abandonTimer); const b = $("abandonGame"); if (b) { b.textContent = "Abandon game"; b.classList.remove("armed"); } }
+function finishGame() {
+  const g = GAMES[CUR]; g.status = "finished"; g.finished = Date.now();
+  save(); go("end:" + g.id);
+}
+function abandonGame() {
+  const g = GAMES[CUR]; abandoned = g;
+  delete GAMES[CUR]; window.Sync?.remove("games", CUR);
+  CUR = null; S = null; saveAll(); homeMsg = "";
+  go("home");
+  toast(`Abandoned ${g.name}`, false, `<button data-unabandon="">Undo</button>`);
+}
 let restartArmed = false, restartTimer;
 const RESTART_ICON = `<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg>`;
 function disarmRestart() { restartArmed = false; const b = $("restart"); if (b) { b.classList.remove("armed"); b.innerHTML = RESTART_ICON; } }
