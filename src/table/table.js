@@ -222,23 +222,23 @@ function terrFill(d) {
   return d.size === "Tiny" ? "var(--t-low)" : "var(--t-stone)";
 }
 function boardSVG() {
-  const s = SCN(TBL.scenarioId), out = [];
+  const s = SCN(TBL.scenarioId), out = [inkDefs()];
   out.push(`<rect x="0" y="0" width="24" height="24" class="felt"/>`);
   for (let i = 1; i < 24; i++) out.push(`<line x1="${i}" y1="0" x2="${i}" y2="24" class="${i % 6 ? "g1" : "g6"}"/><line x1="0" y1="${i}" x2="24" y2="${i}" class="${i % 6 ? "g1" : "g6"}"/>`);
-  /* deployment zones and neutral edges */
+  /* deployment zones and neutral edges, as brush strokes along the table edge */
   for (const side of ["F", "E"]) {
     const g = sideGeom(side), col = ALIGN[side];
-    if (TBL.deployment === "cornerSquare") out.push(`<polygon points="${ptsAttr(g.area)}" fill="${col}" class="dz"/>`);
-    for (const [a, b] of g.edges) out.push(`<line x1="${a.x}" y1="${SY(a.y)}" x2="${b.x}" y2="${SY(b.y)}" stroke="${col}" class="dedge"/>`);
+    if (TBL.deployment === "cornerSquare") out.push(`<polygon points="${ptsAttr(g.area)}" fill="${col}" class="dz" filter="url(#inkWash)"/>`);
+    for (const [a, b] of g.edges) out.push(`<path d="${brush(a.x, SY(a.y), b.x, SY(b.y), 0.16)}" fill="${col}" class="dedge"/>`);
   }
-  for (const [x1, y1, x2, y2] of DEPLOYMENTS[TBL.deployment].neutral) out.push(`<line x1="${x1}" y1="${SY(y1)}" x2="${x2}" y2="${SY(y2)}" stroke="var(--side-n)" class="nedge"/>`);
+  for (const [x1, y1, x2, y2] of DEPLOYMENTS[TBL.deployment].neutral) out.push(`<path d="${brush(x1, SY(y1), x2, SY(y2), 0.1)}" fill="var(--side-n)" class="nedge"/>`);
   /* scenario zones */
-  for (const z of TBL.zones) out.push(`<circle cx="${z.x}" cy="${SY(z.y)}" r="${z.d / 2}" fill="${ALIGN[z.align]}" class="zone ${tSel && tSel.id === z.id ? "sel" : ""}" data-k="zone" data-id="${z.id}"/>`);
-  /* terrain */
+  for (const z of TBL.zones) out.push(`<g class="zone ${tSel && tSel.id === z.id ? "sel" : ""}" data-k="zone" data-id="${z.id}"><circle cx="${z.x}" cy="${SY(z.y)}" r="${z.d / 2}" fill="${ALIGN[z.align]}" class="zwash" filter="url(#inkWash)"/><circle cx="${z.x}" cy="${SY(z.y)}" r="${z.d / 2}" class="zrim" filter="url(#inkEdge)"/></g>`);
+  /* terrain, painted in ink; the outline only shows when selected or misplaced */
   for (const t of TBL.terrain) {
     const d = TBYID[t.typeId], P = terrPoly(t), bad = terrainProblems(t, TBL.terrain).length;
     out.push(`<g class="terr ${tSel && tSel.id === t.id ? "sel" : ""} ${bad ? "bad" : ""}" data-k="terrain" data-id="${t.id}">
-      <polygon points="${ptsAttr(P)}" fill="${terrFill(d)}"/>
+      ${inkTerrain(t, d, terrFill(d))}<polygon points="${ptsAttr(P)}" class="edge"/>
       <text x="${t.x}" y="${SY(t.y)}" class="tlabel">${esc(d.name)}</text></g>`);
   }
   /* objectives: the tick shows which player it faces (Friendly faces you, Enemy faces them, Neutral faces neither) */
@@ -246,7 +246,7 @@ function boardSVG() {
   for (const o of TBL.objectives) {
     const ang = { F: 180, E: 0, N: 90 }[o.align];
     out.push(`<g class="obj ${tSel && tSel.id === o.id ? "sel" : ""}" data-k="obj" data-id="${o.id}" transform="translate(${o.x} ${SY(o.y)})">
-      <circle r="${or}" fill="${ALIGN[o.align]}"/><line x1="0" y1="0" x2="0" y2="${-or}" transform="rotate(${ang})" class="otick"/></g>`);
+      ${inkObjective(o, or, ALIGN[o.align], ang)}</g>`);
   }
   /* models */
   for (const side of ["F", "E"]) for (const m of TBL.sides[side].models) {
@@ -256,6 +256,7 @@ function boardSVG() {
     out.push(`<g class="tok ${side} ${sel ? "sel" : ""} ${bad ? "bad" : ""}" data-k="model" data-id="${m.id}" transform="translate(${m.x.toFixed(3)} ${SY(m.y).toFixed(3)})">
       <circle r="${m.r}" class="base"/>
       <path d="M ${-m.r} 0 A ${m.r} ${m.r} 0 0 1 ${m.r} 0 Z" class="arc" transform="rotate(${m.facing})"/>
+      <path d="${ensoPath(0, 0, m.r - 0.02, Math.max(0.09, m.r * 0.18), m.facing - 60, 330)}" class="ring"/>
       <line x1="0" y1="${(-m.r * 0.62).toFixed(3)}" x2="0" y2="${(-m.r - 0.08).toFixed(3)}" class="face" transform="rotate(${m.facing})"/>
       ${m.vim ? `<circle r="${m.r + 0.12}" class="vimring"/>` : ""}
       <text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text></g>`);
@@ -280,6 +281,7 @@ function boardSVG() {
     out.push(`<line x1="${tDrag.start.x}" y1="${SY(tDrag.start.y)}" x2="${m.x}" y2="${SY(m.y)}" class="trail"/><text x="${m.x}" y="${SY(m.y) - m.r - 0.35}" class="dlabel">${r1(dist(tDrag.start, m))}"</text>`);
   }
   if (tRuler) out.push(`<line x1="${tRuler.a.x}" y1="${SY(tRuler.a.y)}" x2="${tRuler.b.x}" y2="${SY(tRuler.b.y)}" class="ruler"/><text x="${(tRuler.a.x + tRuler.b.x) / 2}" y="${SY((tRuler.a.y + tRuler.b.y) / 2) - 0.3}" class="dlabel">${r1(dist(tRuler.a, tRuler.b))}"</text>`);
+  out.push(inkMount());
   return out.join("");
 }
 

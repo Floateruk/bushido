@@ -8,19 +8,26 @@
 .hub-tile[disabled]{opacity:.55;cursor:default}
 
 /* ---------- Table screen (laptop-first, full width) ---------- */
+/* Sumi-e palette: ink on rice paper, indigo (ai) for you, vermilion (shu) for the opponent, ochre for neutral */
 :root{
-  --side-f:#3f6fd1; --side-e:#c8463a; --side-n:#d6ab2e;
-  --felt:#d9dccb; --g1:rgba(40,50,30,.08); --g6:rgba(40,50,30,.28);
-  --t-stone:#6d6158; --t-low:#9a8f84; --t-wood:#4f8a46; --t-water:#6f9fbf; --t-road:#c9b17e; --t-hill:#b08d55;
+  --side-f:#2f4f86; --side-e:#b8392a; --side-n:#b5862a; --shu:#b8392a;
+  --paper:#efe6d1; --paper-hi:#f8f2e4; --sumi:#1f1b17; --mount:#2b2621; --mount-line:#b5862a; --petal:#e2a3a8;
+  --felt:transparent; --g1:rgba(31,27,23,.07); --g6:rgba(31,27,23,.2);
+  --t-stone:#5d554d; --t-low:#8a8177; --t-wood:#5f6d3a; --t-water:#557d97; --t-road:#c39c5a; --t-hill:#9a7a4a;
+  --paper-grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .32  0 0 0 0 .25  0 0 0 0 .15  0 0 0 .45 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --felt:#2c3326; --g1:rgba(230,240,210,.06); --g6:rgba(230,240,210,.22);
-  --t-stone:#8a7e72; --t-low:#6e665e; --t-wood:#3f7a3a; --t-water:#3f6f8f; --t-road:#8f7a52; --t-hill:#7d6540;
-  --side-f:#6f97ef; --side-e:#e8705f; --side-n:#e5c25a}}
+  --side-f:#7f9fd6; --side-e:#e0705c; --side-n:#d6aa52; --shu:#d4604c;
+  --paper:#26231e; --paper-hi:#302c26; --sumi:#e8dfcb; --mount:#0f0d0b; --mount-line:#8a6a2a; --petal:#c98a90;
+  --g1:rgba(232,223,203,.06); --g6:rgba(232,223,203,.17);
+  --t-stone:#a59a8c; --t-low:#7d756b; --t-wood:#7f8f55; --t-water:#5f8aa6; --t-road:#a8854a; --t-hill:#94764a;
+  --paper-grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .9  0 0 0 0 .85  0 0 0 0 .75  0 0 0 .12 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}}
 :root[data-theme="dark"]{
-  --felt:#2c3326; --g1:rgba(230,240,210,.06); --g6:rgba(230,240,210,.22);
-  --t-stone:#8a7e72; --t-low:#6e665e; --t-wood:#3f7a3a; --t-water:#3f6f8f; --t-road:#8f7a52; --t-hill:#7d6540;
-  --side-f:#6f97ef; --side-e:#e8705f; --side-n:#e5c25a}
+  --side-f:#7f9fd6; --side-e:#e0705c; --side-n:#d6aa52; --shu:#d4604c;
+  --paper:#26231e; --paper-hi:#302c26; --sumi:#e8dfcb; --mount:#0f0d0b; --mount-line:#8a6a2a; --petal:#c98a90;
+  --g1:rgba(232,223,203,.06); --g6:rgba(232,223,203,.17);
+  --t-stone:#a59a8c; --t-low:#7d756b; --t-wood:#7f8f55; --t-water:#5f8aa6; --t-road:#a8854a; --t-hill:#94764a;
+  --paper-grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .9  0 0 0 0 .85  0 0 0 0 .75  0 0 0 .12 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
 body.table-mode{max-width:none}
 #tableView{padding-block:10px 0}
 .thead{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding-block:4px 10px}
@@ -28,7 +35,7 @@ body.table-mode{max-width:none}
 .thead .spacer{flex:1}
 .tgrid{display:grid;grid-template-columns:minmax(230px,280px) minmax(0,1fr) minmax(280px,340px);gap:14px;align-items:start}
 .tboard{position:sticky;top:8px;min-width:0}
-#tSvg{display:block;width:100%;max-height:calc(100vh - 110px);aspect-ratio:1/1;margin:0 auto;touch-action:none;user-select:none;background:var(--bg)}
+#tSvg{display:block;width:100%;max-height:calc(100vh - 110px);aspect-ratio:1/1;margin:0 auto;touch-action:none;user-select:none;background:var(--paper-grain),var(--paper);border-radius:4px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
 #tSvg.crosshair{cursor:crosshair}
 .thint{font-size:12.5px;color:var(--muted);text-align:center;margin:6px 0 0}
 .tside{display:grid;gap:10px;min-width:0}
@@ -78,41 +85,57 @@ label.inline{display:inline-flex;gap:6px;align-items:center;font-size:13px}
 .tform .fixed{font-weight:500;color:var(--ink);font-size:15px}
 .tdice{align-items:center}
 
-/* SVG board */
-#tSvg .felt{fill:var(--felt);stroke:var(--g6);stroke-width:.06}
-#tSvg .g1{stroke:var(--g1);stroke-width:.03}
-#tSvg .g6{stroke:var(--g6);stroke-width:.05;stroke-dasharray:.25 .2}
-#tSvg .dz{opacity:.22}
-#tSvg .dedge{stroke-width:.32;stroke-linecap:round;opacity:.9}
-#tSvg .nedge{stroke-width:.2;stroke-linecap:round;opacity:.85}
-#tSvg .zone{opacity:.32;stroke:var(--ink);stroke-width:.04;stroke-opacity:.4;cursor:pointer}
-#tSvg .zone.sel{stroke:var(--accent);stroke-width:.1;stroke-opacity:1}
-#tSvg .terr polygon{stroke:rgba(0,0,0,.35);stroke-width:.05;opacity:.88;cursor:move}
-#tSvg .terr.sel polygon{stroke:var(--accent);stroke-width:.14;opacity:1}
-#tSvg .terr.bad polygon{stroke:var(--fire);stroke-width:.12;stroke-dasharray:.3 .2}
-#tSvg .tlabel{font:600 .42px var(--body);fill:#fff;text-anchor:middle;dominant-baseline:middle;pointer-events:none;paint-order:stroke;stroke:rgba(0,0,0,.55);stroke-width:.08}
+/* SVG board: sumi-e on rice paper */
+#tSvg .felt{fill:none}
+#tSvg .g1{stroke:var(--g1);stroke-width:.025}
+#tSvg .g6{stroke:var(--g6);stroke-width:.04;stroke-dasharray:.3 .18}
+#tSvg .dz{opacity:.2}
+#tSvg .dedge{opacity:.85}
+#tSvg .nedge{opacity:.75}
+#tSvg .mount{fill:var(--mount)}
+#tSvg .mount-line{fill:none;stroke:var(--mount-line);stroke-width:.035;opacity:.8}
+#tSvg .seal rect{fill:var(--shu)}
+#tSvg .seal text{font:800 .36px var(--display);fill:#f6efe2;text-anchor:middle;dominant-baseline:middle}
+#tSvg .zone{cursor:pointer}
+#tSvg .zwash{opacity:.2}
+#tSvg .zrim{fill:none;stroke:var(--sumi);stroke-width:.06;stroke-dasharray:.45 .2;opacity:.55}
+#tSvg .zone.sel .zrim{stroke:var(--accent);stroke-width:.12;opacity:1}
+#tSvg .terr{cursor:move}
+#tSvg .ink-solid{fill:var(--sumi);opacity:.82}
+#tSvg .ink-fine{fill:none;stroke:var(--sumi);stroke-width:.035;stroke-linecap:round;opacity:.6}
+#tSvg .ink-dot{fill:var(--sumi);opacity:.55}
+#tSvg .ink-deep{fill:var(--sumi);opacity:.7}
+#tSvg .moss{fill:var(--t-wood);opacity:.8}
+#tSvg .petal{fill:var(--petal);opacity:.85}
+#tSvg .koi{fill:#d4683a;opacity:.85}
+#tSvg .koi.w{fill:var(--paper-hi)}
+#tSvg .shu-dot{fill:var(--shu)}
+#tSvg .rope{fill:none;stroke:var(--sumi);stroke-width:.03;opacity:.6}
+#tSvg .rim{fill:none;stroke:var(--sumi);stroke-width:.07;opacity:.75}
+#tSvg .rim.soft{stroke-width:.045;stroke-dasharray:.35 .15;opacity:.5}
+#tSvg .terr .edge{fill:none;stroke:none;pointer-events:none}
+#tSvg .terr.sel .edge{stroke:var(--accent);stroke-width:.12}
+#tSvg .terr.bad .edge{stroke:var(--fire);stroke-width:.12;stroke-dasharray:.3 .2}
+#tSvg .tlabel{font:700 .4px var(--display);fill:var(--sumi);text-anchor:middle;dominant-baseline:middle;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-width:.12;stroke-linejoin:round}
 #tSvg .obj{cursor:pointer}
-#tSvg .obj circle{stroke:rgba(0,0,0,.55);stroke-width:.06}
-#tSvg .obj.sel circle{stroke:var(--accent);stroke-width:.14}
-#tSvg .otick{stroke:#111;stroke-width:.1;stroke-linecap:round}
+#tSvg .obj-wash{opacity:.55}
+#tSvg .obj.sel .ink-solid{fill:var(--accent);opacity:1}
 #tSvg .tok{cursor:grab}
-#tSvg .tok .base{fill:var(--raised);stroke-width:.08}
-#tSvg .tok.F .base{stroke:var(--side-f)}
-#tSvg .tok.E .base{stroke:var(--side-e)}
-#tSvg .tok .arc{opacity:.45}
-#tSvg .tok.F .arc{fill:var(--side-f)}
-#tSvg .tok.E .arc{fill:var(--side-e)}
-#tSvg .tok .face{stroke:var(--ink);stroke-width:.07;stroke-linecap:round}
-#tSvg .tok .ini{font-family:var(--body);font-weight:700;fill:var(--ink);text-anchor:middle;pointer-events:none}
-#tSvg .tok.sel .base{stroke:var(--accent);stroke-width:.13}
-#tSvg .tok.bad .base{stroke:var(--fire);stroke-dasharray:.18 .12}
+#tSvg .tok .base{fill:var(--paper-hi);stroke:none}
+#tSvg .tok .arc{opacity:.32}
+#tSvg .tok.F .arc,#tSvg .tok.F .ring{fill:var(--side-f)}
+#tSvg .tok.E .arc,#tSvg .tok.E .ring{fill:var(--side-e)}
+#tSvg .tok .face{stroke:var(--sumi);stroke-width:.07;stroke-linecap:round}
+#tSvg .tok .ini{font-family:var(--display);font-weight:800;fill:var(--sumi);text-anchor:middle;pointer-events:none}
+#tSvg .tok.sel .ring{fill:var(--accent)}
+#tSvg .tok.bad .base{stroke:var(--fire);stroke-width:.08;stroke-dasharray:.18 .12}
 #tSvg .vimring{fill:none;stroke:var(--accent);stroke-width:.07;stroke-dasharray:.1 .08}
-#tSvg .handle{fill:var(--accent);stroke:var(--bg);stroke-width:.05;cursor:grab}
+#tSvg .handle{fill:var(--accent);stroke:var(--paper);stroke-width:.05;cursor:grab}
 #tSvg .hline{stroke:var(--accent);stroke-width:.05;stroke-dasharray:.12 .1}
-#tSvg .rel{stroke:var(--accent);stroke-width:.06;stroke-dasharray:.2 .12}
-#tSvg .trail{stroke:var(--ink);stroke-width:.05;stroke-dasharray:.15 .1;opacity:.6}
-#tSvg .ruler{stroke:var(--accent);stroke-width:.09}
-#tSvg .dlabel{font:700 .6px var(--body);fill:var(--ink);text-anchor:middle;paint-order:stroke;stroke:var(--bg);stroke-width:.14}
+#tSvg .rel{stroke:var(--shu);stroke-width:.06;stroke-dasharray:.2 .12}
+#tSvg .trail{stroke:var(--sumi);stroke-width:.05;stroke-dasharray:.15 .1;opacity:.6}
+#tSvg .ruler{stroke:var(--shu);stroke-width:.08;stroke-linecap:round}
+#tSvg .dlabel{font:800 .6px var(--display);fill:var(--sumi);text-anchor:middle;paint-order:stroke;stroke:var(--paper);stroke-width:.14}
 
 @media (max-width:1100px){
   .tgrid{grid-template-columns:minmax(0,1fr)}

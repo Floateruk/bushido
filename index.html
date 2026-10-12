@@ -280,19 +280,26 @@ textarea{width:100%;min-height:220px;font:13px/1.4 ui-monospace,Menlo,Consolas,m
 .hub-tile[disabled]{opacity:.55;cursor:default}
 
 /* ---------- Table screen (laptop-first, full width) ---------- */
+/* Sumi-e palette: ink on rice paper, indigo (ai) for you, vermilion (shu) for the opponent, ochre for neutral */
 :root{
-  --side-f:#3f6fd1; --side-e:#c8463a; --side-n:#d6ab2e;
-  --felt:#d9dccb; --g1:rgba(40,50,30,.08); --g6:rgba(40,50,30,.28);
-  --t-stone:#6d6158; --t-low:#9a8f84; --t-wood:#4f8a46; --t-water:#6f9fbf; --t-road:#c9b17e; --t-hill:#b08d55;
+  --side-f:#2f4f86; --side-e:#b8392a; --side-n:#b5862a; --shu:#b8392a;
+  --paper:#efe6d1; --paper-hi:#f8f2e4; --sumi:#1f1b17; --mount:#2b2621; --mount-line:#b5862a; --petal:#e2a3a8;
+  --felt:transparent; --g1:rgba(31,27,23,.07); --g6:rgba(31,27,23,.2);
+  --t-stone:#5d554d; --t-low:#8a8177; --t-wood:#5f6d3a; --t-water:#557d97; --t-road:#c39c5a; --t-hill:#9a7a4a;
+  --paper-grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .32  0 0 0 0 .25  0 0 0 0 .15  0 0 0 .45 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --felt:#2c3326; --g1:rgba(230,240,210,.06); --g6:rgba(230,240,210,.22);
-  --t-stone:#8a7e72; --t-low:#6e665e; --t-wood:#3f7a3a; --t-water:#3f6f8f; --t-road:#8f7a52; --t-hill:#7d6540;
-  --side-f:#6f97ef; --side-e:#e8705f; --side-n:#e5c25a}}
+  --side-f:#7f9fd6; --side-e:#e0705c; --side-n:#d6aa52; --shu:#d4604c;
+  --paper:#26231e; --paper-hi:#302c26; --sumi:#e8dfcb; --mount:#0f0d0b; --mount-line:#8a6a2a; --petal:#c98a90;
+  --g1:rgba(232,223,203,.06); --g6:rgba(232,223,203,.17);
+  --t-stone:#a59a8c; --t-low:#7d756b; --t-wood:#7f8f55; --t-water:#5f8aa6; --t-road:#a8854a; --t-hill:#94764a;
+  --paper-grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .9  0 0 0 0 .85  0 0 0 0 .75  0 0 0 .12 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}}
 :root[data-theme="dark"]{
-  --felt:#2c3326; --g1:rgba(230,240,210,.06); --g6:rgba(230,240,210,.22);
-  --t-stone:#8a7e72; --t-low:#6e665e; --t-wood:#3f7a3a; --t-water:#3f6f8f; --t-road:#8f7a52; --t-hill:#7d6540;
-  --side-f:#6f97ef; --side-e:#e8705f; --side-n:#e5c25a}
+  --side-f:#7f9fd6; --side-e:#e0705c; --side-n:#d6aa52; --shu:#d4604c;
+  --paper:#26231e; --paper-hi:#302c26; --sumi:#e8dfcb; --mount:#0f0d0b; --mount-line:#8a6a2a; --petal:#c98a90;
+  --g1:rgba(232,223,203,.06); --g6:rgba(232,223,203,.17);
+  --t-stone:#a59a8c; --t-low:#7d756b; --t-wood:#7f8f55; --t-water:#5f8aa6; --t-road:#a8854a; --t-hill:#94764a;
+  --paper-grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .9  0 0 0 0 .85  0 0 0 0 .75  0 0 0 .12 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
 body.table-mode{max-width:none}
 #tableView{padding-block:10px 0}
 .thead{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding-block:4px 10px}
@@ -300,7 +307,7 @@ body.table-mode{max-width:none}
 .thead .spacer{flex:1}
 .tgrid{display:grid;grid-template-columns:minmax(230px,280px) minmax(0,1fr) minmax(280px,340px);gap:14px;align-items:start}
 .tboard{position:sticky;top:8px;min-width:0}
-#tSvg{display:block;width:100%;max-height:calc(100vh - 110px);aspect-ratio:1/1;margin:0 auto;touch-action:none;user-select:none;background:var(--bg)}
+#tSvg{display:block;width:100%;max-height:calc(100vh - 110px);aspect-ratio:1/1;margin:0 auto;touch-action:none;user-select:none;background:var(--paper-grain),var(--paper);border-radius:4px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
 #tSvg.crosshair{cursor:crosshair}
 .thint{font-size:12.5px;color:var(--muted);text-align:center;margin:6px 0 0}
 .tside{display:grid;gap:10px;min-width:0}
@@ -350,41 +357,57 @@ label.inline{display:inline-flex;gap:6px;align-items:center;font-size:13px}
 .tform .fixed{font-weight:500;color:var(--ink);font-size:15px}
 .tdice{align-items:center}
 
-/* SVG board */
-#tSvg .felt{fill:var(--felt);stroke:var(--g6);stroke-width:.06}
-#tSvg .g1{stroke:var(--g1);stroke-width:.03}
-#tSvg .g6{stroke:var(--g6);stroke-width:.05;stroke-dasharray:.25 .2}
-#tSvg .dz{opacity:.22}
-#tSvg .dedge{stroke-width:.32;stroke-linecap:round;opacity:.9}
-#tSvg .nedge{stroke-width:.2;stroke-linecap:round;opacity:.85}
-#tSvg .zone{opacity:.32;stroke:var(--ink);stroke-width:.04;stroke-opacity:.4;cursor:pointer}
-#tSvg .zone.sel{stroke:var(--accent);stroke-width:.1;stroke-opacity:1}
-#tSvg .terr polygon{stroke:rgba(0,0,0,.35);stroke-width:.05;opacity:.88;cursor:move}
-#tSvg .terr.sel polygon{stroke:var(--accent);stroke-width:.14;opacity:1}
-#tSvg .terr.bad polygon{stroke:var(--fire);stroke-width:.12;stroke-dasharray:.3 .2}
-#tSvg .tlabel{font:600 .42px var(--body);fill:#fff;text-anchor:middle;dominant-baseline:middle;pointer-events:none;paint-order:stroke;stroke:rgba(0,0,0,.55);stroke-width:.08}
+/* SVG board: sumi-e on rice paper */
+#tSvg .felt{fill:none}
+#tSvg .g1{stroke:var(--g1);stroke-width:.025}
+#tSvg .g6{stroke:var(--g6);stroke-width:.04;stroke-dasharray:.3 .18}
+#tSvg .dz{opacity:.2}
+#tSvg .dedge{opacity:.85}
+#tSvg .nedge{opacity:.75}
+#tSvg .mount{fill:var(--mount)}
+#tSvg .mount-line{fill:none;stroke:var(--mount-line);stroke-width:.035;opacity:.8}
+#tSvg .seal rect{fill:var(--shu)}
+#tSvg .seal text{font:800 .36px var(--display);fill:#f6efe2;text-anchor:middle;dominant-baseline:middle}
+#tSvg .zone{cursor:pointer}
+#tSvg .zwash{opacity:.2}
+#tSvg .zrim{fill:none;stroke:var(--sumi);stroke-width:.06;stroke-dasharray:.45 .2;opacity:.55}
+#tSvg .zone.sel .zrim{stroke:var(--accent);stroke-width:.12;opacity:1}
+#tSvg .terr{cursor:move}
+#tSvg .ink-solid{fill:var(--sumi);opacity:.82}
+#tSvg .ink-fine{fill:none;stroke:var(--sumi);stroke-width:.035;stroke-linecap:round;opacity:.6}
+#tSvg .ink-dot{fill:var(--sumi);opacity:.55}
+#tSvg .ink-deep{fill:var(--sumi);opacity:.7}
+#tSvg .moss{fill:var(--t-wood);opacity:.8}
+#tSvg .petal{fill:var(--petal);opacity:.85}
+#tSvg .koi{fill:#d4683a;opacity:.85}
+#tSvg .koi.w{fill:var(--paper-hi)}
+#tSvg .shu-dot{fill:var(--shu)}
+#tSvg .rope{fill:none;stroke:var(--sumi);stroke-width:.03;opacity:.6}
+#tSvg .rim{fill:none;stroke:var(--sumi);stroke-width:.07;opacity:.75}
+#tSvg .rim.soft{stroke-width:.045;stroke-dasharray:.35 .15;opacity:.5}
+#tSvg .terr .edge{fill:none;stroke:none;pointer-events:none}
+#tSvg .terr.sel .edge{stroke:var(--accent);stroke-width:.12}
+#tSvg .terr.bad .edge{stroke:var(--fire);stroke-width:.12;stroke-dasharray:.3 .2}
+#tSvg .tlabel{font:700 .4px var(--display);fill:var(--sumi);text-anchor:middle;dominant-baseline:middle;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-width:.12;stroke-linejoin:round}
 #tSvg .obj{cursor:pointer}
-#tSvg .obj circle{stroke:rgba(0,0,0,.55);stroke-width:.06}
-#tSvg .obj.sel circle{stroke:var(--accent);stroke-width:.14}
-#tSvg .otick{stroke:#111;stroke-width:.1;stroke-linecap:round}
+#tSvg .obj-wash{opacity:.55}
+#tSvg .obj.sel .ink-solid{fill:var(--accent);opacity:1}
 #tSvg .tok{cursor:grab}
-#tSvg .tok .base{fill:var(--raised);stroke-width:.08}
-#tSvg .tok.F .base{stroke:var(--side-f)}
-#tSvg .tok.E .base{stroke:var(--side-e)}
-#tSvg .tok .arc{opacity:.45}
-#tSvg .tok.F .arc{fill:var(--side-f)}
-#tSvg .tok.E .arc{fill:var(--side-e)}
-#tSvg .tok .face{stroke:var(--ink);stroke-width:.07;stroke-linecap:round}
-#tSvg .tok .ini{font-family:var(--body);font-weight:700;fill:var(--ink);text-anchor:middle;pointer-events:none}
-#tSvg .tok.sel .base{stroke:var(--accent);stroke-width:.13}
-#tSvg .tok.bad .base{stroke:var(--fire);stroke-dasharray:.18 .12}
+#tSvg .tok .base{fill:var(--paper-hi);stroke:none}
+#tSvg .tok .arc{opacity:.32}
+#tSvg .tok.F .arc,#tSvg .tok.F .ring{fill:var(--side-f)}
+#tSvg .tok.E .arc,#tSvg .tok.E .ring{fill:var(--side-e)}
+#tSvg .tok .face{stroke:var(--sumi);stroke-width:.07;stroke-linecap:round}
+#tSvg .tok .ini{font-family:var(--display);font-weight:800;fill:var(--sumi);text-anchor:middle;pointer-events:none}
+#tSvg .tok.sel .ring{fill:var(--accent)}
+#tSvg .tok.bad .base{stroke:var(--fire);stroke-width:.08;stroke-dasharray:.18 .12}
 #tSvg .vimring{fill:none;stroke:var(--accent);stroke-width:.07;stroke-dasharray:.1 .08}
-#tSvg .handle{fill:var(--accent);stroke:var(--bg);stroke-width:.05;cursor:grab}
+#tSvg .handle{fill:var(--accent);stroke:var(--paper);stroke-width:.05;cursor:grab}
 #tSvg .hline{stroke:var(--accent);stroke-width:.05;stroke-dasharray:.12 .1}
-#tSvg .rel{stroke:var(--accent);stroke-width:.06;stroke-dasharray:.2 .12}
-#tSvg .trail{stroke:var(--ink);stroke-width:.05;stroke-dasharray:.15 .1;opacity:.6}
-#tSvg .ruler{stroke:var(--accent);stroke-width:.09}
-#tSvg .dlabel{font:700 .6px var(--body);fill:var(--ink);text-anchor:middle;paint-order:stroke;stroke:var(--bg);stroke-width:.14}
+#tSvg .rel{stroke:var(--shu);stroke-width:.06;stroke-dasharray:.2 .12}
+#tSvg .trail{stroke:var(--sumi);stroke-width:.05;stroke-dasharray:.15 .1;opacity:.6}
+#tSvg .ruler{stroke:var(--shu);stroke-width:.08;stroke-linecap:round}
+#tSvg .dlabel{font:800 .6px var(--display);fill:var(--sumi);text-anchor:middle;paint-order:stroke;stroke:var(--paper);stroke-width:.14}
 
 @media (max-width:1100px){
   .tgrid{grid-template-columns:minmax(0,1fr)}
@@ -797,6 +820,320 @@ const TERRAIN = [
   T("grassy-hill", "Grassy Hill", "feudal", "Normal", "Enhancing", "Large", "ellipse", 7, 5, "High ground: Reach in melee, sight over smaller things.")
 ];
 
+/* Sumi-e (ink wash) drawing for the table board: rice paper, brushed terrain pictures, ensō objectives.
+   Terrain is drawn in the piece's own frame (u along its width, v along its height, centred on 0,0), then
+   placed with translate + rotate, so the picture turns with the piece. Strokes are seeded by the piece id,
+   so a piece looks the same on every redraw. */
+const INK_KIND = {
+  "honden": "building", "minka": "building", "kura": "building", "tea-house": "building", "burnt-shrine": "burnt",
+  "bell-tower": "tower", "yagura": "tower", "castle-wall": "castle", "cliff-face": "cliff", "lantern-row": "lanterns",
+  "bamboo-fence": "fence", "low-wall": "lowwall", "fallen-bamboo": "fallen", "rice-bales": "bales",
+  "onryo-well": "well", "village-well": "well", "ridge-pine": "pine", "sakura": "sakura", "hanging-tree": "deadtree",
+  "mossy-boulder": "boulder", "dense-bamboo": "bamboo", "bamboo-thicket": "bamboo", "bamboo-copse": "bamboo",
+  "elephant-grass": "grass", "mountain-stream": "stream", "jungle-stream": "stream", "koi-pond": "pond",
+  "blood-pond": "pond", "rice-paddy": "paddy", "dirt-road": "road", "forest-path": "road", "wooden-bridge": "bridge",
+  "grassy-hill": "hill", "rocky-outcrop": "hill", "spirit-fog": "fog", "graveyard": "graves", "corpse-pit": "pit",
+  "cursed-stones": "stones", "gravel-garden": "gravel", "haystacks": "hay"
+};
+/* Pieces whose edge is soft (drawn as a broken line rather than a solid brush rim) */
+const INK_SOFT = new Set(["fog", "bamboo", "grass", "hill", "stream", "pond", "paddy", "road", "pit", "gravel", "graves", "stones", "hay"]);
+
+function inkRng(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = h << 13 | h >>> 19; }
+  return () => { h = Math.imul(h ^ h >>> 16, 2246822507); h = Math.imul(h ^ h >>> 13, 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+}
+const f2 = n => (Math.round(n * 100) / 100).toString();
+/* A tapered brush stroke from (x1,y1) to (x2,y2): w is the width at the middle, bend curves it sideways */
+function brush(x1, y1, x2, y2, w, bend = 0) {
+  const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+  return `M${f2(x1)} ${f2(y1)}Q${f2(mx + nx * (bend + w))} ${f2(my + ny * (bend + w))} ${f2(x2)} ${f2(y2)}Q${f2(mx + nx * (bend - w))} ${f2(my + ny * (bend - w))} ${f2(x1)} ${f2(y1)}Z`;
+}
+/* A brushed ring (ensō-like): a thick-to-thin stroke round a circle, leaving a small gap */
+function ensoPath(cx, cy, r, w, start = -60, sweep = 320, ry = r) {
+  const N = 36, outer = [], inner = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, a = (start + t * sweep) * Math.PI / 180, ww = w * (0.25 + 0.75 * Math.pow(Math.sin(Math.PI * Math.min(1, t * 1.15)), 0.5));
+    outer.push(`${f2(cx + Math.cos(a) * (r + ww / 2))} ${f2(cy + Math.sin(a) * (ry + ww / 2))}`);
+    inner.unshift(`${f2(cx + Math.cos(a) * (r - ww / 2))} ${f2(cy + Math.sin(a) * (ry - ww / 2))}`);
+  }
+  return `M${outer.join("L")}L${inner.join("L")}Z`;
+}
+
+function inkDefs() {
+  return `<defs>
+    <filter id="inkEdge" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="2.4" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="0.1" xChannelSelector="R" yChannelSelector="G"/></filter>
+    <filter id="inkWash" x="-15%" y="-15%" width="130%" height="130%"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="0.35" xChannelSelector="R" yChannelSelector="G" result="d"/><feTurbulence type="fractalNoise" baseFrequency="0.45" numOctaves="2" seed="11" result="m"/><feColorMatrix in="m" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.6 0 0 0 -0.15" result="ma"/><feComposite in="d" in2="ma" operator="arithmetic" k1="1" result="w"/><feGaussianBlur in="w" stdDeviation="0.04"/></filter>
+  </defs>`;
+}
+
+/* The scroll mounting round the board, with a red seal in the corner */
+function inkMount() {
+  return `<path class="mount" fill-rule="evenodd" d="M-0.7 -0.7H24.7V24.7H-0.7Z M0 0V24H24V0Z"/>
+    <rect x="-0.14" y="-0.14" width="24.28" height="24.28" class="mount-line"/>
+    <g class="seal" transform="translate(24.12 24.12)"><rect width="0.5" height="0.5" rx="0.05"/><text x="0.25" y="0.27">武</text></g>`;
+}
+
+/* Terrain art in the piece's own frame. Returns SVG markup. */
+function inkTerrain(t, d, fill) {
+  const kind = INK_KIND[d.id] || (d.visibility === "Clear" ? "pond" : "building");
+  const R = inkRng(t.id + d.id), w = d.w / 2, h = d.h / 2, rnd = (a, b) => a + R() * (b - a);
+  const ell = d.shape === "ellipse";
+  const inside = (u, v, m = 0) => ell ? (u * u) / Math.pow(Math.max(0.05, w - m), 2) + (v * v) / Math.pow(Math.max(0.05, h - m), 2) <= 1
+    : Math.abs(u) <= w - m && Math.abs(v) <= h - m;
+  const scatter = (n, m = 0.2) => { const P = []; for (let k = 0; k < n * 20 && P.length < n; k++) { const u = rnd(-w, w), v = rnd(-h, h); if (inside(u, v, m)) P.push([u, v]); } return P; };
+  const shape = cls => ell ? `<ellipse rx="${f2(w)}" ry="${f2(h)}" class="${cls}"/>` : `<rect x="${f2(-w)}" y="${f2(-h)}" width="${f2(2 * w)}" height="${f2(2 * h)}" class="${cls}"/>`;
+  const long = w >= h;  /* draw linear motifs along the long side */
+  const ink = [], fine = [], tint = [];  /* filled ink strokes, thin ink lines, coloured touches */
+  const line = (x1, y1, x2, y2) => fine.push(`M${f2(x1)} ${f2(y1)}L${f2(x2)} ${f2(y2)}`);
+  const area = 4 * w * h;
+  let washFill = fill, washOp = null;
+
+  switch (kind) {
+    case "building": case "burnt": {
+      /* roof seen from above: a ridge along the long side with tiles brushed down to the eaves */
+      const L = long ? w : h, S = long ? h : w, P = (a, b) => long ? [a, b] : [b, a];
+      const [ax, ay] = P(-L * 0.78, 0), [bx, by] = P(L * 0.78, 0);
+      ink.push(brush(ax, ay, bx, by, 0.16, 0));
+      const n = Math.max(6, Math.round(L * 3.2));
+      for (let i = 0; i <= n; i++) {
+        const a = -L * 0.92 + (i / n) * L * 1.84;
+        for (const s of [-1, 1]) {
+          if (kind === "burnt" && R() < 0.35) continue;
+          const [x1, y1] = P(a, s * 0.12), [x2, y2] = P(a + rnd(-0.05, 0.05), s * (S - 0.12));
+          fine.push(`M${f2(x1)} ${f2(y1)}L${f2(x2)} ${f2(y2)}`);
+        }
+      }
+      for (const s of [-1, 1]) { const [x1, y1] = P(-L * 0.97, s * (S - 0.1)), [x2, y2] = P(L * 0.97, s * (S - 0.1)); ink.push(brush(x1, y1, x2, y2, 0.07, s * 0.04)); }
+      if (kind === "burnt") for (const [u, v] of scatter(Math.round(area / 3), 0.3)) ink.push(brush(u, v, u + rnd(-0.6, 0.6), v + rnd(-0.6, 0.6), rnd(0.12, 0.3), rnd(-0.1, 0.1)));
+      washOp = 0.5;
+      break;
+    }
+    case "tower": {
+      /* hipped roof: corners to a short ridge, layered eaves */
+      ink.push(brush(-w * 0.2, 0, w * 0.2, 0, 0.14));
+      for (const [cx, cy] of [[-w, -h], [w, -h], [w, h], [-w, h]]) ink.push(brush(cx * 0.95, cy * 0.95, Math.sign(cx) * w * 0.2, 0, 0.07));
+      for (const k of [0.82, 0.55]) fine.push(`M${f2(-w * k)} ${f2(-h * k)}H${f2(w * k)}V${f2(h * k)}H${f2(-w * k)}Z`);
+      if (d.id === "bell-tower") tint.push(`<circle r="${f2(Math.min(w, h) * 0.18)}" class="ink-dot"/>`);
+      washOp = 0.5;
+      break;
+    }
+    case "castle": {
+      /* stone base: courses of blocks, a dark coping stroke along the top */
+      const L = long ? w : h, S = long ? h : w, P = (a, b) => long ? [a, b] : [b, a];
+      const rows = 3;
+      for (let r = 1; r < rows; r++) { const b = -S + (2 * S * r) / rows, [x1, y1] = P(-L, b), [x2, y2] = P(L, b); line(x1, y1, x2, y2); }
+      for (let r = 0; r < rows; r++) {
+        let a = -L + (r % 2 ? 0.35 : 0);
+        while (a < L) { const b1 = -S + (2 * S * r) / rows, b2 = b1 + (2 * S) / rows, [x1, y1] = P(a, b1), [x2, y2] = P(a, b2); line(x1, y1, x2, y2); a += rnd(0.6, 0.9); }
+      }
+      const [ax, ay] = P(-L * 0.98, -S * 0.75), [bx, by] = P(L * 0.98, -S * 0.75);
+      ink.push(brush(ax, ay, bx, by, 0.2, rnd(-0.05, 0.05)));
+      washOp = 0.45;
+      break;
+    }
+    case "cliff": {
+      /* jagged rock: heavy diagonal hatching (axe-cut strokes) */
+      const L = long ? w : h, S = long ? h : w, P = (a, b) => long ? [a, b] : [b, a];
+      for (let a = -L + 0.2; a < L; a += rnd(0.35, 0.6)) {
+        const [x1, y1] = P(a, -S * 0.9), [x2, y2] = P(a + rnd(0.3, 0.7), S * rnd(0.1, 0.9));
+        ink.push(brush(x1, y1, x2, y2, rnd(0.08, 0.2), rnd(-0.1, 0.1)));
+      }
+      const [ax, ay] = P(-L, -S * 0.9), [bx, by] = P(L, -S * 0.9);
+      ink.push(brush(ax, ay, bx, by, 0.22));
+      washOp = 0.55;
+      break;
+    }
+    case "lanterns": {
+      const L = long ? w : h, P = (a, b) => long ? [a, b] : [b, a], n = Math.max(3, Math.round(L * 1.2));
+      for (let i = 0; i < n; i++) {
+        const [cx, cy] = P(-L + (2 * L) * (i + 0.5) / n, 0), s = 0.32;
+        fine.push(`M${f2(cx - s)} ${f2(cy - s)}H${f2(cx + s)}V${f2(cy + s)}H${f2(cx - s)}Z`);
+        tint.push(`<circle cx="${f2(cx)}" cy="${f2(cy)}" r="0.13" class="ink-dot"/>`);
+      }
+      washOp = 0.2;
+      break;
+    }
+    case "fence": case "fallen": {
+      const L = long ? w : h, S = long ? h : w, P = (a, b) => long ? [a, b] : [b, a];
+      if (kind === "fence") {
+        for (const b of [-S * 0.4, S * 0.4]) { const [x1, y1] = P(-L, b), [x2, y2] = P(L, b); line(x1, y1, x2, y2); }
+        for (let a = -L + 0.1; a < L; a += 0.28) { const [x1, y1] = P(a, -S * 0.9), [x2, y2] = P(a, S * 0.9); ink.push(brush(x1, y1, x2, y2, 0.06)); }
+      } else {
+        for (let k = 0; k < 4; k++) {
+          const b = rnd(-S * 0.6, S * 0.6), [x1, y1] = P(-L * rnd(0.7, 0.98), b), [x2, y2] = P(L * rnd(0.7, 0.98), b + rnd(-0.3, 0.3));
+          ink.push(brush(x1, y1, x2, y2, 0.09, rnd(-0.08, 0.08)));
+          for (let a = -L * 0.6; a < L * 0.7; a += rnd(0.7, 1.1)) { const t = (a + L) / (2 * L), x = x1 + (x2 - x1) * t, y = y1 + (y2 - y1) * t, [ox, oy] = P(0, 0.12); line(x - ox, y - oy, x + ox, y + oy); }
+        }
+      }
+      washOp = 0.15;
+      break;
+    }
+    case "lowwall": case "bales": {
+      const L = long ? w : h, S = long ? h : w, P = (a, b) => long ? [a, b] : [b, a];
+      const sz = kind === "bales" ? Math.min(S * 0.9, 0.5) : S * 0.8;
+      for (let a = -L + sz; a <= L - sz * 0.8; a += sz * (kind === "bales" ? 2 : 1.6)) {
+        for (const b of kind === "bales" && S > 0.6 ? [-S / 2, S / 2] : [0]) {
+          const [cx, cy] = P(a, b);
+          fine.push(`M${f2(cx - sz * 0.9)} ${f2(cy)}a${f2(sz * 0.9)} ${f2(sz * 0.7)} ${f2(rnd(-20, 20))} 1 0 ${f2(sz * 1.8)} 0a${f2(sz * 0.9)} ${f2(sz * 0.7)} 0 1 0 ${f2(-sz * 1.8)} 0`);
+          if (kind === "bales") { const [ox, oy] = P(0, sz * 0.7); line(cx - ox, cy - oy, cx + ox, cy + oy); }
+        }
+      }
+      washOp = 0.3;
+      break;
+    }
+    case "well": {
+      const r = Math.min(w, h);
+      ink.push(ensoPath(0, 0, r * 0.72, r * 0.32, rnd(0, 360), 340));
+      tint.push(`<circle r="${f2(r * 0.42)}" class="ink-deep"/>`);
+      ink.push(brush(-r * 0.95, -r * 0.2, r * 0.95, -r * 0.2, 0.05), brush(-r * 0.95, r * 0.2, r * 0.95, r * 0.2, 0.05));
+      washOp = 0.25;
+      break;
+    }
+    case "pine": case "deadtree": case "sakura": {
+      const r = Math.min(w, h);
+      /* trunk and branches seen from above, radiating from the centre */
+      const nb = kind === "deadtree" ? 7 : 5;
+      for (let i = 0; i < nb; i++) {
+        const a = (i / nb) * Math.PI * 2 + rnd(-0.3, 0.3), L = r * rnd(0.6, 0.95);
+        ink.push(brush(0, 0, Math.cos(a) * L, Math.sin(a) * L, kind === "deadtree" ? 0.1 : 0.07, rnd(-0.15, 0.15)));
+        if (kind === "deadtree") { const m = L * 0.6, b = a + rnd(0.4, 0.8) * (R() < 0.5 ? -1 : 1); ink.push(brush(Math.cos(a) * m, Math.sin(a) * m, Math.cos(a) * m + Math.cos(b) * r * 0.35, Math.sin(a) * m + Math.sin(b) * r * 0.35, 0.05)); }
+        if (kind === "deadtree" && i % 2) { const x = Math.cos(a) * L * 0.8, y = Math.sin(a) * L * 0.8; tint.push(`<path d="M${f2(x)} ${f2(y)}l0.06 0.22" class="rope"/>`); }
+        if (kind === "pine") for (const k of [0.55, 0.85]) {
+          const cx = Math.cos(a) * L * k, cy = Math.sin(a) * L * k;
+          for (let j = -3; j <= 3; j++) { const b = a + j * 0.32; line(cx, cy, cx + Math.cos(b) * 0.38, cy + Math.sin(b) * 0.38); }
+        }
+      }
+      ink.push(`M0 0m-0.16 0a0.16 0.16 0 1 0 0.32 0a0.16 0.16 0 1 0 -0.32 0`);
+      if (kind === "sakura") for (const [u, v] of scatter(Math.round(area * 4.5), 0.1)) tint.push(`<circle cx="${f2(u)}" cy="${f2(v)}" r="${f2(rnd(0.05, 0.12))}" class="petal"/>`);
+      washOp = kind === "sakura" ? 0.22 : 0.3;
+      if (kind === "sakura") washFill = "var(--petal)";
+      break;
+    }
+    case "boulder": {
+      const r = Math.min(w, h);
+      for (let i = 0; i < 4; i++) { const a = rnd(0, Math.PI * 2); ink.push(brush(Math.cos(a) * r * 0.2, Math.sin(a) * r * 0.2, Math.cos(a + 0.6) * r * 0.85, Math.sin(a + 0.6) * r * 0.85, 0.07, 0.1)); }
+      ink.push(ensoPath(0, 0, r * 0.88, 0.16, rnd(0, 360), 200));
+      for (const [u, v] of scatter(14, 0.25)) tint.push(`<circle cx="${f2(u)}" cy="${f2(v)}" r="0.06" class="moss"/>`);
+      washOp = 0.45;
+      break;
+    }
+    case "bamboo": case "grass": {
+      const dense = d.id === "dense-bamboo" ? 1.6 : d.id === "bamboo-copse" ? 1.1 : kind === "grass" ? 2.6 : 0.8;
+      if (kind === "bamboo") for (const [u, v] of scatter(Math.round(area * 0.6 * dense), 0.25)) fine.push(`M${f2(u - 0.07)} ${f2(v)}a0.07 0.07 0 1 0 0.14 0a0.07 0.07 0 1 0 -0.14 0`);
+      for (const [u, v] of scatter(Math.round(area * 0.9 * dense), 0.3)) {
+        if (kind === "grass") { const a = rnd(-2.2, -0.9), L = rnd(0.5, 0.9); ink.push(brush(u, v, u + Math.cos(a) * L, v + Math.sin(a) * L, 0.025, rnd(-0.12, 0.12))); continue; }
+        /* sumi-e bamboo leaves: three or four tapered strokes fanning from one point */
+        const base = rnd(0, Math.PI * 2), k = R() < 0.5 ? 3 : 4;
+        for (let j = 0; j < k; j++) { const a = base + (j - (k - 1) / 2) * 0.5, L = rnd(0.35, 0.6); ink.push(brush(u, v, u + Math.cos(a) * L, v + Math.sin(a) * L, rnd(0.06, 0.09), rnd(-0.04, 0.04))); }
+      }
+      washOp = d.id === "dense-bamboo" ? 0.45 : 0.3;
+      break;
+    }
+    case "stream": case "pond": case "paddy": {
+      if (d.id === "blood-pond") washFill = "var(--shu)";
+      const L = long ? w : h, S = long ? h : w, P = (a, b) => long ? [a, b] : [b, a];
+      if (kind === "paddy") {
+        for (let b = -S + 0.45; b < S; b += 0.6) { const [x1, y1] = P(-L + 0.2, b), [x2, y2] = P(L - 0.2, b); line(x1, y1, x2, y2);
+          for (let a = -L + 0.4; a < L - 0.2; a += 0.45) { const [x, y] = P(a, b); ink.push(brush(x, y, x + rnd(-0.08, 0.08), y - 0.16, 0.02)); } }
+        washOp = 0.32;
+        break;
+      }
+      /* ripples: short wave strokes along the flow */
+      for (const [u, v] of scatter(Math.round(area * (kind === "stream" ? 1.4 : 0.9)), 0.25)) {
+        const [dx, dy] = P(0.32, 0), [nx, ny] = P(0, -0.08);
+        fine.push(`M${f2(u - dx)} ${f2(v - dy)}q${f2(dx / 2 + nx)} ${f2(dy / 2 + ny)} ${f2(dx)} ${f2(dy)}t${f2(dx)} ${f2(dy)}`);
+      }
+      if (d.id === "koi-pond") for (let i = 0; i < 3; i++) { const [u, v] = scatter(1, 0.6)[0] || [0, 0], a = rnd(0, 6.28); tint.push(`<path d="${brush(u, v, u + Math.cos(a) * 0.45, v + Math.sin(a) * 0.45, 0.13, 0.05)}" class="${i ? "koi" : "koi w"}"/>`); }
+      if (kind === "stream") for (let i = 0; i < Math.round(L); i++) { const [u, v] = scatter(1, 0.15)[0] || [0, 0]; fine.push(`M${f2(u - 0.12)} ${f2(v)}a0.12 0.09 0 1 0 0.24 0a0.12 0.09 0 1 0 -0.24 0`); }
+      washOp = d.id === "blood-pond" ? 0.42 : 0.38;
+      break;
+    }
+    case "road": case "bridge": {
+      const L = long ? w : h, S = long ? h : w, P = (a, b) => long ? [a, b] : [b, a];
+      if (kind === "bridge") {
+        for (let a = -L + 0.2; a < L; a += 0.3) { const [x1, y1] = P(a, -S * 0.8), [x2, y2] = P(a, S * 0.8); line(x1, y1, x2, y2); }
+        for (const b of [-S * 0.88, S * 0.88]) { const [x1, y1] = P(-L * 0.98, b), [x2, y2] = P(L * 0.98, b); ink.push(brush(x1, y1, x2, y2, 0.1, b > 0 ? -0.12 : 0.12)); }
+        tint.push(`<circle cx="${f2(P(-L * 0.98, -S * 0.88)[0])}" cy="${f2(P(-L * 0.98, -S * 0.88)[1])}" r="0.1" class="shu-dot"/><circle cx="${f2(P(L * 0.98, S * 0.88)[0])}" cy="${f2(P(L * 0.98, S * 0.88)[1])}" r="0.1" class="shu-dot"/>`);
+        washOp = 0.35;
+      } else {
+        for (const b of [-S * 0.85, S * 0.85]) for (let a = -L; a < L; a += rnd(0.5, 0.9)) { const [x1, y1] = P(a, b), [x2, y2] = P(Math.min(L, a + rnd(0.3, 0.6)), b + rnd(-0.06, 0.06)); line(x1, y1, x2, y2); }
+        for (const [u, v] of scatter(Math.round(area * 0.8), 0.25)) tint.push(`<circle cx="${f2(u)}" cy="${f2(v)}" r="${f2(rnd(0.03, 0.06))}" class="ink-dot"/>`);
+        washOp = 0.28;
+      }
+      break;
+    }
+    case "hill": {
+      /* contour strokes, broken like a quick sketch */
+      for (const k of [0.8, 0.55, 0.3]) ink.push(ensoPath(0, 0, w * k, 0.09, rnd(0, 360), rnd(230, 300), h * k));
+      if (d.id === "rocky-outcrop") for (const [u, v] of scatter(6, 0.6)) ink.push(brush(u, v, u + rnd(-0.5, 0.5), v + rnd(-0.5, 0.5), 0.07));
+      else for (const [u, v] of scatter(Math.round(area * 0.35), 0.4)) ink.push(brush(u, v, u + rnd(-0.1, 0.1), v - 0.22, 0.025));
+      washOp = 0.32;
+      break;
+    }
+    case "fog": {
+      for (const [u, v] of scatter(Math.round(area / 3.5), 0.8)) { const r = rnd(0.3, 0.55); fine.push(`M${f2(u + r)} ${f2(v)}a${f2(r)} ${f2(r)} 0 1 1 ${f2(-r * 0.8)} ${f2(-r * 0.6)}a${f2(r * 0.5)} ${f2(r * 0.5)} 0 1 1 ${f2(r * 0.3)} ${f2(r * 0.6)}`); }
+      washOp = 0.18;
+      break;
+    }
+    case "graves": {
+      for (const [u, v] of scatter(Math.round(area / 1.6), 0.35)) { const a = rnd(-25, 25); tint.push(`<rect x="${f2(u - 0.17)}" y="${f2(v - 0.1)}" width="0.34" height="0.2" transform="rotate(${f2(a)} ${f2(u)} ${f2(v)})" class="ink-deep"/>`); }
+      for (const [u, v] of scatter(5, 0.3)) ink.push(brush(u, v, u + rnd(-0.1, 0.1), v - 0.5, 0.035));
+      washOp = 0.25;
+      break;
+    }
+    case "pit": {
+      for (const [u, v] of scatter(Math.round(area * 1.2), 0.35)) { const a = rnd(0, 6.28); ink.push(brush(u, v, u + Math.cos(a) * 0.3, v + Math.sin(a) * 0.3, 0.035)); tint.push(`<circle cx="${f2(u)}" cy="${f2(v)}" r="0.05" class="ink-dot"/>`); }
+      washOp = 0.4;
+      break;
+    }
+    case "stones": {
+      const n = 7;
+      for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2, x = Math.cos(a) * w * 0.7, y = Math.sin(a) * h * 0.7; tint.push(`<ellipse cx="${f2(x)}" cy="${f2(y)}" rx="0.32" ry="0.22" transform="rotate(${f2(a * 57.3)} ${f2(x)} ${f2(y)})" class="ink-deep"/>`); }
+      fine.push(`M${f2(w * 0.7)} 0a${f2(w * 0.7)} ${f2(h * 0.7)} 0 1 0 ${f2(-w * 1.4)} 0a${f2(w * 0.7)} ${f2(h * 0.7)} 0 1 0 ${f2(w * 1.4)} 0`);
+      for (let i = 0; i < n; i++) { const a = ((i + 0.5) / n) * Math.PI * 2, x = Math.cos(a) * w * 0.7, y = Math.sin(a) * h * 0.7; tint.push(`<path d="M${f2(x)} ${f2(y)}l0.05 0.25l-0.1 0.05" class="rope"/>`); }
+      washOp = 0.22;
+      break;
+    }
+    case "gravel": {
+      const rx = rnd(-w * 0.4, w * 0.4), ry = rnd(-h * 0.3, h * 0.3);
+      for (const k of [0.45, 0.7, 0.95]) fine.push(`M${f2(rx + k)} ${f2(ry)}a${f2(k)} ${f2(k * 0.8)} 0 1 0 ${f2(-2 * k)} 0a${f2(k)} ${f2(k * 0.8)} 0 1 0 ${f2(2 * k)} 0`);
+      for (let b = -h + 0.25; b < h; b += 0.25) { let a = -w; const segs = []; while (a < w) { const a2 = Math.min(w, a + 0.3); const mid = (a + a2) / 2; if (Math.hypot((mid - rx) / 1.05, (b - ry) / 0.86) > 1) segs.push([a, a2]); a = a2; } for (const [a1, a2] of segs) line(a1, b, a2, b); }
+      tint.push(`<ellipse cx="${f2(rx)}" cy="${f2(ry)}" rx="0.32" ry="0.24" class="ink-deep"/>`);
+      washOp = 0.12;
+      break;
+    }
+    case "hay": {
+      for (const [u, v] of [[-w * 0.45, -h * 0.2], [w * 0.4, h * 0.25], [w * 0.05, -h * 0.05]]) {
+        const r = Math.min(w, h) * 0.55;
+        for (let j = 0; j < 12; j++) { const a = (j / 12) * Math.PI * 2; ink.push(brush(u, v, u + Math.cos(a) * r, v + Math.sin(a) * r, 0.03, 0.05)); }
+        ink.push(`M${f2(u - 0.1)} ${f2(v)}a0.1 0.1 0 1 0 0.2 0a0.1 0.1 0 1 0 -0.2 0`);
+      }
+      washOp = 0.3;
+      break;
+    }
+  }
+  const op = washOp ?? 0.35;
+  return `<g transform="translate(${f2(t.x)} ${f2(SY(t.y))}) rotate(${f2(t.rot)})">
+    <g class="wash" filter="url(#inkWash)"><g fill="${washFill}" style="opacity:${op}">${shape("")}</g></g>
+    <clipPath id="clip-${t.id}">${shape("")}</clipPath>
+    <g clip-path="url(#clip-${t.id})" class="art">
+      ${fine.length ? `<path d="${fine.join("")}" class="ink-fine"/>` : ""}
+      ${ink.length ? `<path d="${ink.join("")}" class="ink-solid"/>` : ""}
+      ${tint.join("")}
+    </g>
+    <g filter="url(#inkEdge)">${shape(INK_SOFT.has(kind) ? "rim soft" : "rim")}</g>
+  </g>`;
+}
+
+/* An objective as a brushed ensō over a wash of its alignment colour */
+function inkObjective(o, r, col, ang) {
+  const R = inkRng(o.id || "o");
+  return `<circle r="${f2(r * 0.92)}" fill="${col}" class="obj-wash"/>
+    <path d="${ensoPath(0, 0, r * 0.9, Math.max(0.12, r * 0.3), R() * 360, 325)}" class="ink-solid"/>
+    <path d="${brush(0, 0, 0, -r * 1.12, 0.07)}" transform="rotate(${ang})" class="ink-solid"/>`;
+}
+
 /* ---------- Table: a 24" x 24" battlefield for scenarios, terrain and deployment ----------
    Coordinates are inches from the bottom-left corner, y up; your side (F, blue) deploys along the bottom,
    the opponent (E, red) along the top. Facing is in degrees clockwise, 0 = towards the top edge.
@@ -1021,23 +1358,23 @@ function terrFill(d) {
   return d.size === "Tiny" ? "var(--t-low)" : "var(--t-stone)";
 }
 function boardSVG() {
-  const s = SCN(TBL.scenarioId), out = [];
+  const s = SCN(TBL.scenarioId), out = [inkDefs()];
   out.push(`<rect x="0" y="0" width="24" height="24" class="felt"/>`);
   for (let i = 1; i < 24; i++) out.push(`<line x1="${i}" y1="0" x2="${i}" y2="24" class="${i % 6 ? "g1" : "g6"}"/><line x1="0" y1="${i}" x2="24" y2="${i}" class="${i % 6 ? "g1" : "g6"}"/>`);
-  /* deployment zones and neutral edges */
+  /* deployment zones and neutral edges, as brush strokes along the table edge */
   for (const side of ["F", "E"]) {
     const g = sideGeom(side), col = ALIGN[side];
-    if (TBL.deployment === "cornerSquare") out.push(`<polygon points="${ptsAttr(g.area)}" fill="${col}" class="dz"/>`);
-    for (const [a, b] of g.edges) out.push(`<line x1="${a.x}" y1="${SY(a.y)}" x2="${b.x}" y2="${SY(b.y)}" stroke="${col}" class="dedge"/>`);
+    if (TBL.deployment === "cornerSquare") out.push(`<polygon points="${ptsAttr(g.area)}" fill="${col}" class="dz" filter="url(#inkWash)"/>`);
+    for (const [a, b] of g.edges) out.push(`<path d="${brush(a.x, SY(a.y), b.x, SY(b.y), 0.16)}" fill="${col}" class="dedge"/>`);
   }
-  for (const [x1, y1, x2, y2] of DEPLOYMENTS[TBL.deployment].neutral) out.push(`<line x1="${x1}" y1="${SY(y1)}" x2="${x2}" y2="${SY(y2)}" stroke="var(--side-n)" class="nedge"/>`);
+  for (const [x1, y1, x2, y2] of DEPLOYMENTS[TBL.deployment].neutral) out.push(`<path d="${brush(x1, SY(y1), x2, SY(y2), 0.1)}" fill="var(--side-n)" class="nedge"/>`);
   /* scenario zones */
-  for (const z of TBL.zones) out.push(`<circle cx="${z.x}" cy="${SY(z.y)}" r="${z.d / 2}" fill="${ALIGN[z.align]}" class="zone ${tSel && tSel.id === z.id ? "sel" : ""}" data-k="zone" data-id="${z.id}"/>`);
-  /* terrain */
+  for (const z of TBL.zones) out.push(`<g class="zone ${tSel && tSel.id === z.id ? "sel" : ""}" data-k="zone" data-id="${z.id}"><circle cx="${z.x}" cy="${SY(z.y)}" r="${z.d / 2}" fill="${ALIGN[z.align]}" class="zwash" filter="url(#inkWash)"/><circle cx="${z.x}" cy="${SY(z.y)}" r="${z.d / 2}" class="zrim" filter="url(#inkEdge)"/></g>`);
+  /* terrain, painted in ink; the outline only shows when selected or misplaced */
   for (const t of TBL.terrain) {
     const d = TBYID[t.typeId], P = terrPoly(t), bad = terrainProblems(t, TBL.terrain).length;
     out.push(`<g class="terr ${tSel && tSel.id === t.id ? "sel" : ""} ${bad ? "bad" : ""}" data-k="terrain" data-id="${t.id}">
-      <polygon points="${ptsAttr(P)}" fill="${terrFill(d)}"/>
+      ${inkTerrain(t, d, terrFill(d))}<polygon points="${ptsAttr(P)}" class="edge"/>
       <text x="${t.x}" y="${SY(t.y)}" class="tlabel">${esc(d.name)}</text></g>`);
   }
   /* objectives: the tick shows which player it faces (Friendly faces you, Enemy faces them, Neutral faces neither) */
@@ -1045,7 +1382,7 @@ function boardSVG() {
   for (const o of TBL.objectives) {
     const ang = { F: 180, E: 0, N: 90 }[o.align];
     out.push(`<g class="obj ${tSel && tSel.id === o.id ? "sel" : ""}" data-k="obj" data-id="${o.id}" transform="translate(${o.x} ${SY(o.y)})">
-      <circle r="${or}" fill="${ALIGN[o.align]}"/><line x1="0" y1="0" x2="0" y2="${-or}" transform="rotate(${ang})" class="otick"/></g>`);
+      ${inkObjective(o, or, ALIGN[o.align], ang)}</g>`);
   }
   /* models */
   for (const side of ["F", "E"]) for (const m of TBL.sides[side].models) {
@@ -1055,6 +1392,7 @@ function boardSVG() {
     out.push(`<g class="tok ${side} ${sel ? "sel" : ""} ${bad ? "bad" : ""}" data-k="model" data-id="${m.id}" transform="translate(${m.x.toFixed(3)} ${SY(m.y).toFixed(3)})">
       <circle r="${m.r}" class="base"/>
       <path d="M ${-m.r} 0 A ${m.r} ${m.r} 0 0 1 ${m.r} 0 Z" class="arc" transform="rotate(${m.facing})"/>
+      <path d="${ensoPath(0, 0, m.r - 0.02, Math.max(0.09, m.r * 0.18), m.facing - 60, 330)}" class="ring"/>
       <line x1="0" y1="${(-m.r * 0.62).toFixed(3)}" x2="0" y2="${(-m.r - 0.08).toFixed(3)}" class="face" transform="rotate(${m.facing})"/>
       ${m.vim ? `<circle r="${m.r + 0.12}" class="vimring"/>` : ""}
       <text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text></g>`);
@@ -1079,6 +1417,7 @@ function boardSVG() {
     out.push(`<line x1="${tDrag.start.x}" y1="${SY(tDrag.start.y)}" x2="${m.x}" y2="${SY(m.y)}" class="trail"/><text x="${m.x}" y="${SY(m.y) - m.r - 0.35}" class="dlabel">${r1(dist(tDrag.start, m))}"</text>`);
   }
   if (tRuler) out.push(`<line x1="${tRuler.a.x}" y1="${SY(tRuler.a.y)}" x2="${tRuler.b.x}" y2="${SY(tRuler.b.y)}" class="ruler"/><text x="${(tRuler.a.x + tRuler.b.x) / 2}" y="${SY((tRuler.a.y + tRuler.b.y) / 2) - 0.3}" class="dlabel">${r1(dist(tRuler.a, tRuler.b))}"</text>`);
+  out.push(inkMount());
   return out.join("");
 }
 

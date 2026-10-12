@@ -23,6 +23,8 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
   - `table.js`: setup, terrain generator (follows pack p.19 placement rules), tokens with facing
     (size and base read from the card's "Size & Base"), Elsewhere/Flank, deployment checks, ruler. Saved in
     `bushido-table-v1` (this device only for now).
+  - `ink.js`: sumi-e drawing for the board (brushed terrain pictures per piece, ensō objectives and token rings,
+    ink filters, scroll mount and seal). Seeded by piece id so pictures stay stable between redraws.
   - `table.css`: table styles, inlined into the page's `<style>`.
 - The home screen is a hub: My lists (`lists`), Table (`table`); Testing lists and Campaign are not built yet.
 - `sync.js` + `config.js`: Firebase Firestore sync (anonymous auth, `groups/{syncCode}/...`).
