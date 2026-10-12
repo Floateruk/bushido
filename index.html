@@ -240,8 +240,12 @@ textarea{width:100%;min-height:220px;font:13px/1.4 ui-monospace,Menlo,Consolas,m
 .play-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px;padding-top:14px;border-top:1px solid var(--line)}
 .play-actions .spacer{flex:1}
 .btn.armed{border-color:var(--harm);color:var(--harm)}
-.home-btn{display:inline-flex;align-items:center;gap:4px}
-.home-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-1px}
+/* Play screen title: home + warband name on one line, turn status on its own line below */
+.turn{display:flex;flex-direction:column;align-items:flex-start;gap:6px;white-space:normal;min-width:0}
+.list-btn.home-btn{display:flex;align-items:center;min-height:40px;padding:2px 10px 2px 0;border-radius:10px;max-width:100%}
+.home-btn small#listName{display:flex;align-items:center;gap:10px;margin:0;font-size:17px;font-weight:700;letter-spacing:.06em;color:var(--ink);min-width:0}
+.home-btn svg{width:24px;height:24px;flex:none;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#turnLabel{display:block}
 .end-hero{padding-block:10px 4px}
 .end-hero small{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .end-hero h1{font-family:var(--display);font-weight:800;font-size:40px;line-height:1.05;margin:4px 0 2px}

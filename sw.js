@@ -1,6 +1,6 @@
 /* Offline support: the app and its PDF reader are stored on the device,
    so the tracker opens and works with no connection. */
-const VERSION = "bt-2026-10-12-2";
+const VERSION = "bt-2026-10-12-3";
 const CORE = [
   "./", "./index.html", "./manifest.webmanifest", "./sync.js", "./config.js",
   "./icon-192.png", "./icon-512.png", "./icon-maskable.png",
