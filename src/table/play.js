@@ -127,7 +127,7 @@ document.addEventListener("click", e => {
   if (d.tnextturn !== undefined) {
     const n = playState().turn + 1, notes = startTurn(n);
     renderTable();
-    return toast(`Turn ${n}: Ki generated and ${ACT_PER_TURN} activation counters each${notes.length ? "; " + notes.join("; ") : ""}.`, false, `<button data-tundoturn="">Undo</button>`);
+    return toast(`Turn ${n}: ${ACT_PER_TURN} activation counters each${notes.length ? "; " + notes.join("; ") : ""}.`, false, `<button data-tundoturn="">Undo</button>`);
   }
   if (d.tundoturn !== undefined && tUndo) { TBL = JSON.parse(tUndo); tUndo = null; tSave(); $("toastHost").innerHTML = ""; return renderTable(); }
   if (d.tlast) { const P = playState(); if (d.tlast === "yes") P.lastTurn = P.turn; else P.rolled = P.turn; tSave(); return renderTable(); }
@@ -141,7 +141,8 @@ document.addEventListener("keydown", e => {
   else if (e.key === "+" || e.key === "=") spendAct(tSel.id, 1);
 });
 
-/* ---------- Wounds and Ki (self-contained: the My lists tracker is for real-life games) ----------
+/* ---------- Wounds and Ki: not shown on the table (they belong to the Testing lists area, to be built);
+   kept here so Testing lists can use them. The My lists tracker is for real-life games. ----------
    Each table model keeps m.dmg (wounds marked), m.ki (Ki tokens) and m.used (limited Ki feats used).
    Rulebook: Ki Generation in the Starting Phase adds the first number of the Ki statistic (up to the cap);
    a model at 0 wounds is Killed and removed, unless it has Last Stand: then it stays until the End Phase. */
@@ -223,11 +224,4 @@ document.addEventListener("click", e => {
     tSave(); renderTable(); return toast(`${m.name}: ${f.n} (−${f.c} Ki)`);
   }
   if (d.trestore) { const [m] = findModel(d.trestore); m.where = "table"; m.dmg = maxW(m) - 1; tSave(); return renderTable(); }
-});
-document.addEventListener("keydown", e => {
-  if (VIEW !== "table" || !TBL || !tSel || tSel.kind !== "model") return;
-  if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || "")) return;
-  const [m] = findModel(tSel.id); if (!m) return;
-  if (e.key === "w") setWounds(m, (m.dmg || 0) + 1);
-  else if (e.key === "W") setWounds(m, (m.dmg || 0) - 1);
 });

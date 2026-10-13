@@ -334,7 +334,7 @@ function boardSVG() {
       <path d="M ${-m.r} 0 A ${m.r} ${m.r} 0 0 1 ${m.r} 0 Z" class="arc" transform="rotate(${m.facing})"/>
       <path d="${ensoPath(0, 0, m.r - 0.02, Math.max(0.09, m.r * 0.18), m.facing - 60, 330)}" class="ring"/>
       <line x1="0" y1="${(-m.r * 0.62).toFixed(3)}" x2="0" y2="${(-m.r - 0.08).toFixed(3)}" class="face" transform="rotate(${m.facing})"/>
-      ${m.vim ? `<circle r="${m.r + 0.12}" class="vimring"/>` : ""}${actDots(m)}${woundArc(m)}
+      ${m.vim ? `<circle r="${m.r + 0.12}" class="vimring"/>` : ""}${actDots(m)}
       <text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text>
       ${m.prone || m.blind || m.lastStand ? `<text y="${f2(m.r + 0.32)}" class="tstate">${[m.lastStand && "Last Stand", m.prone && "Prone", m.blind && "Blind"].filter(Boolean).join(" · ")}</text>` : ""}</g>`);
     if (sel) {
@@ -409,7 +409,7 @@ function trayHTML(side) {
   return `<div class="tray ${side}">
     <div class="tray-h"><b>${side === "F" ? "Your warband" : "Opponent"}</b><span>${esc(S.name)}</span></div>
     ${S.models.map(m => `<div class="trow ${tSel && tSel.id === m.id ? "sel" : ""} ${tArm === m.id ? "armed" : ""}">
-      <button class="tname" data-tsel="${m.id}">${esc(m.name)} <small>${m.size} · ${m.base}mm${m.scout ? " · " + esc(m.scout) : ""}${m.flank ? " · Flank" : ""}${trayStats(m)}</small></button>
+      <button class="tname" data-tsel="${m.id}">${esc(m.name)} <small>${m.size} · ${m.base}mm${m.scout ? " · " + esc(m.scout) : ""}${m.flank ? " · Flank" : ""}</small></button>
       ${status(m)}
       <div class="tacts">
         ${m.where === "dead" ? `<button class="tbtn" data-trestore="${m.id}">Return</button>` : m.where !== "table" ? `<button class="tbtn" data-tarm="${m.id}">${tArm === m.id ? "Click the table…" : "Place"}</button>` : `<button class="tbtn" data-ttray="${m.id}">Remove</button>`}
@@ -432,12 +432,11 @@ function selectedHTML() {
     return `<div class="tinfo"><b>${esc(m.name)}</b> <span class="muted">${side === "F" ? "Yours" : "Opponent"}</span>
       <p>${m.size} · ${m.base}mm base · facing ${Math.round(m.facing)}°${m.where === "table" ? ` · at (${r1(m.x)}, ${r1(m.y)})` : ""}</p>
       ${probs.map(p => `<p class="warn">⚠ ${esc(p)}</p>`).join("")}
-      ${actHTML(m)}${woundsHTML(m)}
+      ${actHTML(m)}
       ${btb.length ? `<p><b>Base to base</b> with ${btb.map(([o, s]) => `<span class="${s === side ? "" : "btb-foe"}">${esc(o.name)}</span>`).join(", ")}</p>` : ""}${rel}
       ${ghostRelevant(m, side) ? `<label class="inline tsmall"><input type="checkbox" data-tghost="${m.id}" ${isGhost(m, side) ? "checked" : ""}> Moves through models and terrain (Cloudwalk, Intangible)</label>` : ""}
       ${losStates(m, side)}
       <p class="muted tsmall">Hover another model to measure to it${tTool === "los" ? " and see the sight lines" : ""}.</p>
-      <details class="tfold" open><summary>Card</summary>${modelCardHTML(m, side)}</details>
       <details class="tfold" open><summary>Line of sight</summary>${losPanel(m, side) || `<p class="muted tsmall">Place the model on the table to check its line of sight.</p>`}</details></div>`;
   }
   if (tSel.kind === "terrain") {
@@ -505,7 +504,7 @@ function renderTable() {
       </aside>
       <div class="tboard">
         <svg id="tSvg" viewBox="-0.7 -0.7 25.4 25.4" class="${tTool === "ruler" || tArm ? "crosshair" : ""}" role="img" aria-label="Battlefield">${boardSVG()}</svg>
-        <p class="thint">${tMsg ? esc(tMsg) + " · " : ""}Drag to move (bases stop at models and Impassable terrain) · Turn with the handle (1°, Shift 15°), mouse wheel or Q / E (15°, Shift 5°) · Delete removes · M ruler · L line of sight · 1 / 2 spend activations · w wound (Shift+W heal) · Esc deselects</p>
+        <p class="thint">${tMsg ? esc(tMsg) + " · " : ""}Drag to move (bases stop at models and Impassable terrain) · Turn with the handle (1°, Shift 15°), mouse wheel or Q / E (15°, Shift 5°) · Delete removes · M ruler · L line of sight · 1 / 2 spend activations · Esc deselects</p>
       </div>
       <aside class="tside right">
         <div class="tcard"><h4>Selected</h4>${selectedHTML()}</div>
