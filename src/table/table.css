@@ -88,6 +88,21 @@ body.table-mode{max-width:none}
 .tact-dots i{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--ink);opacity:.5}
 .tact-dots i.on{background:var(--ink);opacity:.9}
 .tgame{display:grid;gap:8px}
+.twk{display:grid;gap:6px;margin:8px 0;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--raised)}
+.twk-row{display:grid;grid-template-columns:52px minmax(0,1fr) auto auto;align-items:center;gap:4px 6px}
+.twk-row small{white-space:nowrap;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.twk-row .tacts{grid-column:auto;margin:0;flex-wrap:nowrap}
+.twk-row .kgen{grid-column:2 / -1;margin-top:-2px}
+.twk-pips{display:inline-flex;flex-wrap:wrap;gap:3px;max-width:150px}
+.twp,.tkp{width:13px;height:13px;padding:0;border-radius:3px;border:1.5px solid var(--side-e);background:transparent}
+.twp.on{background:var(--side-e)}
+.tkp{border-radius:50%;border-color:var(--ki)}
+.tkp.on{background:var(--ki)}
+.tfeats{display:flex;flex-wrap:wrap;gap:4px}
+.tfeat{font-size:12.5px;padding:3px 8px 3px 4px;border:1px solid var(--line);border-radius:999px;background:var(--surface);display:inline-flex;gap:5px;align-items:center}
+.tfeat span{min-width:18px;height:18px;border-radius:50%;background:var(--ki);color:#fff;font-weight:700;font-size:11px;display:inline-grid;place-items:center}
+.tfeat[disabled]{opacity:.45}
+.tfeat.used{text-decoration:line-through}
 .tturn{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px}
 .tturn .tend{flex-basis:100%;margin:0}
 .tturn div{flex:1;display:grid}
@@ -177,6 +192,7 @@ label.inline{display:inline-flex;gap:6px;align-items:center;font-size:13px}
 #tSvg .actdot.on{fill:var(--sumi);opacity:.85}
 #tSvg .tok.exh .base{fill:var(--paper);opacity:.55}
 #tSvg .tok.exh .ini{opacity:.45}
+#tSvg .warc{fill:none;stroke:var(--shu);stroke-width:.07;stroke-linecap:round;pointer-events:none}
 #tSvg .vimring{fill:none;stroke:var(--accent);stroke-width:.07;stroke-dasharray:.1 .08}
 #tSvg .handle{fill:var(--accent);stroke:var(--paper);stroke-width:.05;cursor:grab}
 #tSvg .hline,#tSvg .rel,#tSvg .trail,#tSvg .ruler,#tSvg .dlabel,#tSvg .tstate{font:700 .26px var(--body);fill:var(--shu);text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-width:.08}
@@ -189,6 +205,7 @@ label.inline{display:inline-flex;gap:6px;align-items:center;font-size:13px}
 #tSvg .actdot.on{fill:var(--sumi);opacity:.85}
 #tSvg .tok.exh .base{fill:var(--paper);opacity:.55}
 #tSvg .tok.exh .ini{opacity:.45}
+#tSvg .warc{fill:none;stroke:var(--shu);stroke-width:.07;stroke-linecap:round;pointer-events:none}
 #tSvg .vimring{pointer-events:none}
 #tSvg .hline{stroke:var(--accent);stroke-width:.05;stroke-dasharray:.12 .1}
 #tSvg .rel{stroke:var(--shu);stroke-width:.06;stroke-dasharray:.2 .12}

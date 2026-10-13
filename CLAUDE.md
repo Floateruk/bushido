@@ -27,7 +27,9 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
   - `los.js`: line of sight and cover from the rulebook (facing, Aware, Blind/Sixth Sense, Prone, Size rules for
     models and terrain, Enhancing elevation, cover within 1"); L toggles the board overlay; Selected panel lists Can see / Seen by.
   - `play.js`: playing on the table: TBL.play {turn, sp, vp}, Next turn (2 activation counters each, pack resets of
-    SP/alignment, Flank reminders, Undo), activation dots behind tokens, full model card in the Selected panel.
+    SP/alignment, Flank reminders, Undo), activation dots inside tokens, full model card in the Selected panel. Wounds and Ki are tracked
+    here too (m.dmg, m.ki, m.used; Ki Generation each Starting Phase, Killed/Last Stand), separate from the My lists tracker,
+    which is for real-life games.
   - `ink.js`: sumi-e drawing for the board (brushed terrain pictures per piece, ensō objectives and token rings,
     ink filters, scroll mount and seal). Seeded by piece id so pictures stay stable between redraws.
   - `table.css`: table styles, inlined into the page's `<style>`.

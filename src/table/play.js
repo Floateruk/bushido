@@ -30,7 +30,9 @@ function vpTurn(text, s) {
 function startTurn(n) {
   const P = playState(), s = SCN(TBL.scenarioId), notes = [];
   tUndo = JSON.stringify(TBL);
+  if (n > 1) { const gone = endPhaseRemovals(); if (gone.length) notes.push(`removed at the End Phase (Last Stand): ${gone.join(", ")}`); }
   P.turn = n;
+  kiGeneration();
   for (const m of allModels()) { m.act = ACT_PER_TURN; m.blind = false; }   /* Blind markers go in the End Phase */
   for (const r of s.rules || []) {
     if (/^Reset( Scenario Points)?\s*\(/i.test(r) && turnsIn(r, /\(([\d,\/]+)\)/).includes(n)) { P.sp = { F: 0, E: 0 }; notes.push("Scenario Points reset to 0"); }
@@ -125,7 +127,7 @@ document.addEventListener("click", e => {
   if (d.tnextturn !== undefined) {
     const n = playState().turn + 1, notes = startTurn(n);
     renderTable();
-    return toast(`Turn ${n}: every model has ${ACT_PER_TURN} activation counters${notes.length ? "; " + notes.join("; ") : ""}.`, false, `<button data-tundoturn="">Undo</button>`);
+    return toast(`Turn ${n}: Ki generated and ${ACT_PER_TURN} activation counters each${notes.length ? "; " + notes.join("; ") : ""}.`, false, `<button data-tundoturn="">Undo</button>`);
   }
   if (d.tundoturn !== undefined && tUndo) { TBL = JSON.parse(tUndo); tUndo = null; tSave(); $("toastHost").innerHTML = ""; return renderTable(); }
   if (d.tlast) { const P = playState(); if (d.tlast === "yes") P.lastTurn = P.turn; else P.rolled = P.turn; tSave(); return renderTable(); }
@@ -137,4 +139,95 @@ document.addEventListener("keydown", e => {
   if (e.key === "1") spendAct(tSel.id, -1);
   else if (e.key === "2") spendAct(tSel.id, -2);
   else if (e.key === "+" || e.key === "=") spendAct(tSel.id, 1);
+});
+
+/* ---------- Wounds and Ki (self-contained: the My lists tracker is for real-life games) ----------
+   Each table model keeps m.dmg (wounds marked), m.ki (Ki tokens) and m.used (limited Ki feats used).
+   Rulebook: Ki Generation in the Starting Phase adds the first number of the Ki statistic (up to the cap);
+   a model at 0 wounds is Killed and removed, unless it has Last Stand: then it stays until the End Phase. */
+const defOf = m => { const s = findModel(m.id)[1]; return (s && cardOf(m, s)) || {}; };
+const maxW = m => +defOf(m).w || 1;
+const kiCapOf = m => +defOf(m).kiCap || 0;
+const hasLastStand = m => /\bLast Stand\b/i.test(defOf(m).traits || "");
+const woundsLeft = m => Math.max(0, maxW(m) - (m.dmg || 0));
+function kiGeneration() {
+  for (const m of allModels()) {
+    if (m.where === "dead") continue;
+    const d = defOf(m);
+    m.ki = Math.min(+d.kiCap || 0, (m.ki || 0) + (+d.kiGen || 0));
+    for (const k in m.used || {}) if (m.used[k] === "OpT") delete m.used[k];
+  }
+}
+/* End Phase of the turn just played: models on Last Stand are removed */
+function endPhaseRemovals() {
+  const gone = allModels().filter(m => m.where === "table" && m.lastStand);
+  gone.forEach(m => { m.where = "dead"; m.lastStand = false; });
+  return gone.map(m => m.name);
+}
+function setWounds(m, dmg) {
+  const w = maxW(m), before = JSON.stringify(TBL);
+  m.dmg = Math.max(0, Math.min(w, dmg));
+  if (m.dmg < w) { m.lastStand = false; tSave(); return renderTable(); }
+  if (hasLastStand(m)) { m.lastStand = true; tSave(); renderTable(); return toast(`${m.name} is on Last Stand: removed at the End Phase.`); }
+  m.where = "dead"; m.lastStand = false;
+  if (tSel && tSel.id === m.id) tSel = { kind: "model", id: m.id };
+  tUndo = before; tSave(); renderTable();
+  toast(`${m.name} is killed and removed from the table.`, false, `<button data-tundoturn="">Undo</button>`);
+}
+function woundsHTML(m) {
+  if (m.where !== "table" && m.where !== "dead" && TBL.step !== "play") return "";
+  const w = maxW(m), dmg = m.dmg || 0, cap = kiCapOf(m), ki = m.ki || 0, d = defOf(m);
+  /* pips: wounds left are filled; click a pip to set the wounds left to it */
+  const left = w - dmg;
+  const wp = Array.from({ length: w }, (_, i) => `<button class="twp ${i < left ? "on" : ""}" data-twound="${w - (left === i + 1 ? i : i + 1)}" data-id="${m.id}" aria-label="${i + 1} wounds left"></button>`).join("");
+  const kp = Array.from({ length: cap }, (_, i) => `<button class="tkp ${i < ki ? "on" : ""}" data-tki="${i < ki && i === ki - 1 ? i : i + 1}" data-id="${m.id}" aria-label="${i + 1} Ki"></button>`).join("");
+  const feats = (d.feats || []).map(f => {
+    const used = f.lim && (m.used || {})[f.n], can = m.where !== "dead" && !used && ki >= f.c;
+    return `<button class="tfeat ${used ? "used" : ""}" data-tfeat="${esc(f.n)}" data-id="${m.id}" ${can ? "" : "disabled"} title="${esc(f.d || "")}"><span>${f.c}</span>${esc(f.n)}${f.lim ? ` · ${f.lim}` : ""}</button>`;
+  }).join("");
+  return `<div class="twk">
+    <div class="twk-row"><small>Wounds</small><span class="twk-pips">${wp}</span><b class="num">${w - dmg}/${w}</b>
+      <span class="tacts"><button class="tbtn" data-twound="${dmg + 1}" data-id="${m.id}" title="Key w">−1</button><button class="tbtn" data-twound="${dmg - 1}" data-id="${m.id}" title="Shift+W">+1</button></span></div>
+    ${m.lastStand ? `<p class="warn">On Last Stand: removed at the End Phase</p>` : ""}
+    ${m.where === "dead" ? `<p class="warn">Killed <button class="tbtn" data-trestore="${m.id}">Return to the table</button></p>` : ""}
+    ${cap ? `<div class="twk-row"><small>Ki</small><span class="twk-pips">${kp}</span><b class="num">${ki}/${cap}</b>
+      <span class="tacts"><button class="tbtn" data-tki="${ki - 1}" data-id="${m.id}">−1</button><button class="tbtn" data-tki="${ki + 1}" data-id="${m.id}">+1</button></span>
+      <span class="muted tsmall kgen">Generates ${+d.kiGen || 0} Ki each Starting Phase</span></div>` : ""}
+    ${feats ? `<div class="tfeats">${feats}</div>` : ""}
+  </div>`;
+}
+/* On the board: a thin vermilion arc round the token for wounds taken (none when unhurt) */
+function woundArc(m) {
+  const w = maxW(m), dmg = Math.min(m.dmg || 0, w);
+  if (!dmg) return "";
+  const R = m.r + 0.07, frac = dmg / w;
+  if (frac >= 1) return `<circle r="${f2(R)}" class="warc"/>`;
+  const a = frac * Math.PI * 2, x = Math.sin(a) * R, y = -Math.cos(a) * R;
+  return `<path d="M0 ${f2(-R)}A${f2(R)} ${f2(R)} 0 ${frac > 0.5 ? 1 : 0} 1 ${f2(x)} ${f2(y)}" class="warc"/>`;
+}
+const trayStats = m => {
+  const cap = kiCapOf(m);
+  return TBL.step === "play" || m.dmg ? ` · W ${woundsLeft(m)}/${maxW(m)}${cap ? ` · Ki ${m.ki || 0}` : ""}` : "";
+};
+
+document.addEventListener("click", e => {
+  if (VIEW !== "table" || !TBL) return;
+  const t = e.target.closest("button"); if (!t) return;
+  const d = t.dataset;
+  if (d.twound !== undefined) { const [m] = findModel(d.id); return setWounds(m, +d.twound); }
+  if (d.tki !== undefined) { const [m] = findModel(d.id); m.ki = Math.max(0, Math.min(kiCapOf(m), +d.tki)); tSave(); return renderTable(); }
+  if (d.tfeat) {
+    const [m] = findModel(d.id), f = (defOf(m).feats || []).find(x => x.n === d.tfeat); if (!f) return;
+    m.ki = Math.max(0, (m.ki || 0) - f.c);
+    if (f.lim) { m.used = m.used || {}; m.used[f.n] = f.lim; }
+    tSave(); renderTable(); return toast(`${m.name}: ${f.n} (−${f.c} Ki)`);
+  }
+  if (d.trestore) { const [m] = findModel(d.trestore); m.where = "table"; m.dmg = maxW(m) - 1; tSave(); return renderTable(); }
+});
+document.addEventListener("keydown", e => {
+  if (VIEW !== "table" || !TBL || !tSel || tSel.kind !== "model") return;
+  if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || "")) return;
+  const [m] = findModel(tSel.id); if (!m) return;
+  if (e.key === "w") setWounds(m, (m.dmg || 0) + 1);
+  else if (e.key === "W") setWounds(m, (m.dmg || 0) - 1);
 });

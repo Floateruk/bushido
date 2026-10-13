@@ -334,9 +334,9 @@ function boardSVG() {
       <path d="M ${-m.r} 0 A ${m.r} ${m.r} 0 0 1 ${m.r} 0 Z" class="arc" transform="rotate(${m.facing})"/>
       <path d="${ensoPath(0, 0, m.r - 0.02, Math.max(0.09, m.r * 0.18), m.facing - 60, 330)}" class="ring"/>
       <line x1="0" y1="${(-m.r * 0.62).toFixed(3)}" x2="0" y2="${(-m.r - 0.08).toFixed(3)}" class="face" transform="rotate(${m.facing})"/>
-      ${m.vim ? `<circle r="${m.r + 0.12}" class="vimring"/>` : ""}${actDots(m)}
+      ${m.vim ? `<circle r="${m.r + 0.12}" class="vimring"/>` : ""}${actDots(m)}${woundArc(m)}
       <text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text>
-      ${m.prone || m.blind ? `<text y="${f2(m.r + 0.32)}" class="tstate">${[m.prone && "Prone", m.blind && "Blind"].filter(Boolean).join(" · ")}</text>` : ""}</g>`);
+      ${m.prone || m.blind || m.lastStand ? `<text y="${f2(m.r + 0.32)}" class="tstate">${[m.lastStand && "Last Stand", m.prone && "Prone", m.blind && "Blind"].filter(Boolean).join(" · ")}</text>` : ""}</g>`);
     if (sel) {
       const hx = Math.sin(rad(m.facing)) * (m.r + 0.45), hy = -Math.cos(rad(m.facing)) * (m.r + 0.45);
       out.push(`<g transform="translate(${m.x} ${SY(m.y)})"><line x1="0" y1="0" x2="${hx}" y2="${hy}" class="hline"/><circle cx="${hx}" cy="${hy}" r="0.22" class="handle" data-k="rotate" data-id="${m.id}"/></g>`);
@@ -403,17 +403,17 @@ function scenarioCard(s) {
 }
 function trayHTML(side) {
   const S = TBL.sides[side], s = SCN(TBL.scenarioId);
-  const status = m => m.where === "table" ? (modelProblems(m, side).length ? `<span class="warn">Check</span>` : `<span class="okk">On table</span>`)
+  const status = m => m.where === "dead" ? `<span class="warn">Killed</span>` : m.where === "table" ? (modelProblems(m, side).length ? `<span class="warn">Check</span>` : `<span class="okk">On table</span>`)
     : m.where === "elsewhere" ? `<span class="els">Elsewhere${m.flankTurn ? ` · Flank T${m.flankTurn} ${esc(m.flankEdge)}` : ""}</span>` : `<span class="muted">Not deployed</span>`;
   const edgesFor = TBL.deployment === "baseline" ? ["left edge", "right edge"] : ["left edge", "top edge", "bottom edge", "right edge"];
   return `<div class="tray ${side}">
     <div class="tray-h"><b>${side === "F" ? "Your warband" : "Opponent"}</b><span>${esc(S.name)}</span></div>
     ${S.models.map(m => `<div class="trow ${tSel && tSel.id === m.id ? "sel" : ""} ${tArm === m.id ? "armed" : ""}">
-      <button class="tname" data-tsel="${m.id}">${esc(m.name)} <small>${m.size} · ${m.base}mm${m.scout ? " · " + esc(m.scout) : ""}${m.flank ? " · Flank" : ""}</small></button>
+      <button class="tname" data-tsel="${m.id}">${esc(m.name)} <small>${m.size} · ${m.base}mm${m.scout ? " · " + esc(m.scout) : ""}${m.flank ? " · Flank" : ""}${trayStats(m)}</small></button>
       ${status(m)}
       <div class="tacts">
-        ${m.where !== "table" ? `<button class="tbtn" data-tarm="${m.id}">${tArm === m.id ? "Click the table…" : "Place"}</button>` : `<button class="tbtn" data-ttray="${m.id}">Remove</button>`}
-        ${m.where !== "elsewhere" ? `<button class="tbtn" data-telse="${m.id}">${m.flank ? "Flank" : "Elsewhere"}</button>` : `<button class="tbtn" data-ttray="${m.id}">Back</button>`}
+        ${m.where === "dead" ? `<button class="tbtn" data-trestore="${m.id}">Return</button>` : m.where !== "table" ? `<button class="tbtn" data-tarm="${m.id}">${tArm === m.id ? "Click the table…" : "Place"}</button>` : `<button class="tbtn" data-ttray="${m.id}">Remove</button>`}
+        ${m.where === "dead" ? "" : m.where !== "elsewhere" ? `<button class="tbtn" data-telse="${m.id}">${m.flank ? "Flank" : "Elsewhere"}</button>` : `<button class="tbtn" data-ttray="${m.id}">Back</button>`}
         ${s.vim ? `<button class="tbtn ${m.vim ? "on" : ""}" data-tvim="${m.id}" aria-pressed="${m.vim}">VIM</button>` : ""}
       </div>
       ${m.where === "elsewhere" && m.flank ? `<div class="tflank">Arrives turn <select data-tfturn="${m.id}">${[2, 3, 4].map(n => `<option ${m.flankTurn == n ? "selected" : ""}>${n}</option>`).join("")}</select>
@@ -432,7 +432,7 @@ function selectedHTML() {
     return `<div class="tinfo"><b>${esc(m.name)}</b> <span class="muted">${side === "F" ? "Yours" : "Opponent"}</span>
       <p>${m.size} · ${m.base}mm base · facing ${Math.round(m.facing)}°${m.where === "table" ? ` · at (${r1(m.x)}, ${r1(m.y)})` : ""}</p>
       ${probs.map(p => `<p class="warn">⚠ ${esc(p)}</p>`).join("")}
-      ${actHTML(m)}
+      ${actHTML(m)}${woundsHTML(m)}
       ${btb.length ? `<p><b>Base to base</b> with ${btb.map(([o, s]) => `<span class="${s === side ? "" : "btb-foe"}">${esc(o.name)}</span>`).join(", ")}</p>` : ""}${rel}
       ${ghostRelevant(m, side) ? `<label class="inline tsmall"><input type="checkbox" data-tghost="${m.id}" ${isGhost(m, side) ? "checked" : ""}> Moves through models and terrain (Cloudwalk, Intangible)</label>` : ""}
       ${losStates(m, side)}
@@ -505,7 +505,7 @@ function renderTable() {
       </aside>
       <div class="tboard">
         <svg id="tSvg" viewBox="-0.7 -0.7 25.4 25.4" class="${tTool === "ruler" || tArm ? "crosshair" : ""}" role="img" aria-label="Battlefield">${boardSVG()}</svg>
-        <p class="thint">${tMsg ? esc(tMsg) + " · " : ""}Drag to move (bases stop at models and Impassable terrain) · Turn with the handle (1°, Shift 15°), mouse wheel or Q / E (15°, Shift 5°) · Delete removes · M ruler · L line of sight · 1 / 2 spend activations · Esc deselects</p>
+        <p class="thint">${tMsg ? esc(tMsg) + " · " : ""}Drag to move (bases stop at models and Impassable terrain) · Turn with the handle (1°, Shift 15°), mouse wheel or Q / E (15°, Shift 5°) · Delete removes · M ruler · L line of sight · 1 / 2 spend activations · w wound (Shift+W heal) · Esc deselects</p>
       </div>
       <aside class="tside right">
         <div class="tcard"><h4>Selected</h4>${selectedHTML()}</div>
