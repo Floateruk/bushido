@@ -3,7 +3,8 @@
    the opponent (E, red) along the top. Facing is in degrees clockwise, 0 = towards the top edge.
    Built for a laptop: drag to move, mouse wheel or Q/E to turn, Delete to remove, M for the ruler. */
 const TBLKEY = "bushido-table-v1";
-let TBL;                         /* current table, loaded on first use */
+let TBL;
+let lastSelShown = null;                         /* current table, loaded on first use */
 let tSetup = null;               /* setup form choices */
 let tSel = null, tArm = null, tTool = null, tRuler = null, tDrag = null, tHover = null, tMsg = "", tConfirm = null;
 const TBYID = Object.fromEntries(TERRAIN.map(t => [t.id, t]));
@@ -328,12 +329,12 @@ function boardSVG() {
     if (m.where !== "table") continue;
     const sel = tSel && tSel.id === m.id, bad = modelProblems(m, side).length;
     const ini = m.name.split(/\s+/).map(w => w[0]).join("").slice(0, 2);
-    out.push(`<g class="tok ${side} ${sel ? "sel" : ""} ${bad ? "bad" : ""}" data-k="model" data-id="${m.id}" transform="translate(${m.x.toFixed(3)} ${SY(m.y).toFixed(3)})">
+    out.push(`<g class="tok ${side} ${sel ? "sel" : ""} ${bad ? "bad" : ""} ${TBL.step === "play" && m.act === 0 ? "exh" : ""}" data-k="model" data-id="${m.id}" transform="translate(${m.x.toFixed(3)} ${SY(m.y).toFixed(3)})">
       <circle r="${m.r}" class="base"/>
       <path d="M ${-m.r} 0 A ${m.r} ${m.r} 0 0 1 ${m.r} 0 Z" class="arc" transform="rotate(${m.facing})"/>
       <path d="${ensoPath(0, 0, m.r - 0.02, Math.max(0.09, m.r * 0.18), m.facing - 60, 330)}" class="ring"/>
       <line x1="0" y1="${(-m.r * 0.62).toFixed(3)}" x2="0" y2="${(-m.r - 0.08).toFixed(3)}" class="face" transform="rotate(${m.facing})"/>
-      ${m.vim ? `<circle r="${m.r + 0.12}" class="vimring"/>` : ""}
+      ${m.vim ? `<circle r="${m.r + 0.12}" class="vimring"/>` : ""}${actDots(m)}
       <text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text>
       ${m.prone || m.blind ? `<text y="${f2(m.r + 0.32)}" class="tstate">${[m.prone && "Prone", m.blind && "Blind"].filter(Boolean).join(" · ")}</text>` : ""}</g>`);
     if (sel) {
@@ -394,7 +395,7 @@ function scenarioCard(s) {
       <dt>Game length</dt><dd>${esc(s.length)}</dd>
       ${s.interactions.length ? `<dt>Interaction</dt><dd>${s.interactions.map(esc).join("<br>")}</dd>` : ""}
     </dl>
-    <h4>Victory points</h4><ol class="tvp">${s.victory.map(v => `<li>${esc(v)}</li>`).join("")}</ol>
+    ${TBL.step === "play" ? "" : `<h4>Victory points</h4><ol class="tvp">${s.victory.map(v => `<li>${esc(v)}</li>`).join("")}</ol>`}
     ${s.rules.length ? `<p class="trules">${s.rules.map(esc).join(" · ")}</p>` : ""}
     ${s.special ? `<p class="trules"><b>Special:</b> ${esc(s.special)}</p>` : ""}
     <p class="tsrc">${s.source === "rulebook" ? "Rulebook R2" : "Tournament & Scenario Pack 2510.1"}</p>
@@ -431,10 +432,13 @@ function selectedHTML() {
     return `<div class="tinfo"><b>${esc(m.name)}</b> <span class="muted">${side === "F" ? "Yours" : "Opponent"}</span>
       <p>${m.size} · ${m.base}mm base · facing ${Math.round(m.facing)}°${m.where === "table" ? ` · at (${r1(m.x)}, ${r1(m.y)})` : ""}</p>
       ${probs.map(p => `<p class="warn">⚠ ${esc(p)}</p>`).join("")}
+      ${actHTML(m)}
       ${btb.length ? `<p><b>Base to base</b> with ${btb.map(([o, s]) => `<span class="${s === side ? "" : "btb-foe"}">${esc(o.name)}</span>`).join(", ")}</p>` : ""}${rel}
       ${ghostRelevant(m, side) ? `<label class="inline tsmall"><input type="checkbox" data-tghost="${m.id}" ${isGhost(m, side) ? "checked" : ""}> Moves through models and terrain (Cloudwalk, Intangible)</label>` : ""}
-      ${losStates(m, side)}${losPanel(m, side)}
-      <p class="muted tsmall">Hover another model to measure to it${tTool === "los" ? " and see the sight lines" : ""}.</p></div>`;
+      ${losStates(m, side)}
+      <p class="muted tsmall">Hover another model to measure to it${tTool === "los" ? " and see the sight lines" : ""}.</p>
+      <details class="tfold" open><summary>Card</summary>${modelCardHTML(m, side)}</details>
+      <details class="tfold" open><summary>Line of sight</summary>${losPanel(m, side) || `<p class="muted tsmall">Place the model on the table to check its line of sight.</p>`}</details></div>`;
   }
   if (tSel.kind === "terrain") {
     const t = TBL.terrain.find(x => x.id === tSel.id); if (!t) return "";
@@ -493,15 +497,15 @@ function renderTable() {
       <button class="btn small ${tTool === "ruler" ? "primary" : ""}" data-ttool="ruler" title="M">Ruler</button>
       <button class="btn small ${tTool === "los" ? "primary" : ""}" data-ttool="los" title="L">Line of sight</button>
       <button class="btn small" data-tswap>Swap deployment zones</button>
-      <button class="btn small ${TBL.step === "play" ? "primary" : ""}" data-tstep>${TBL.step === "play" ? "Game started" : "Start game"}</button>
+      <button class="btn small ${TBL.step === "play" ? "primary" : ""}" data-tstep>${TBL.step === "play" ? "Back to setup" : "Start game"}</button>
       <button class="btn small quiet" data-tnew>${tConfirm === "tnew" ? "Clear table?" : "New table"}</button></div>
     <div class="tgrid">
-      <aside class="tside left">${scenarioCard(s)}
-        <div class="tcard"><h4>Game setup</h4><ol class="tsteps">${STEPS.map((t, i) => `<li><label><input type="checkbox" data-tcheck="${i + 1}" ${TBL.checks[i + 1] ? "checked" : ""}> ${esc(t)}</label></li>`).join("")}</ol></div>
+      <aside class="tside left">${gameCardHTML()}${scenarioCard(s)}
+        <details class="tcard tfold" ${TBL.step === "play" ? "" : "open"}><summary>Game setup</summary><ol class="tsteps">${STEPS.map((t, i) => `<li><label><input type="checkbox" data-tcheck="${i + 1}" ${TBL.checks[i + 1] ? "checked" : ""}> ${esc(t)}</label></li>`).join("")}</ol></details>
       </aside>
       <div class="tboard">
         <svg id="tSvg" viewBox="-0.7 -0.7 25.4 25.4" class="${tTool === "ruler" || tArm ? "crosshair" : ""}" role="img" aria-label="Battlefield">${boardSVG()}</svg>
-        <p class="thint">${tMsg ? esc(tMsg) + " · " : ""}Drag to move (bases stop at models and Impassable terrain) · Turn with the handle (1°, Shift 15°), mouse wheel or Q / E (15°, Shift 5°) · Delete removes · M ruler · L line of sight · Esc deselects</p>
+        <p class="thint">${tMsg ? esc(tMsg) + " · " : ""}Drag to move (bases stop at models and Impassable terrain) · Turn with the handle (1°, Shift 15°), mouse wheel or Q / E (15°, Shift 5°) · Delete removes · M ruler · L line of sight · 1 / 2 spend activations · Esc deselects</p>
       </div>
       <aside class="tside right">
         <div class="tcard"><h4>Selected</h4>${selectedHTML()}</div>
@@ -516,7 +520,10 @@ function renderTable() {
         </div>
       </aside>
     </div>`;
-  v.querySelector(".tside.right").scrollTop = keep;
+  /* a newly selected model or piece: show its details from the top */
+  const selId = tSel ? tSel.id : null;
+  v.querySelector(".tside.right").scrollTop = selId && selId !== lastSelShown ? 0 : keep;
+  lastSelShown = selId;
   bindBoard();
 }
 function redrawBoard() {
@@ -641,7 +648,11 @@ document.addEventListener("click", e => {
   if (tConfirm) { tConfirm = null; renderTable(); }
   if (d.ttool) { tTool = tTool === d.ttool ? null : d.ttool; tRuler = null; return renderTable(); }
   if (d.tswap !== undefined) { swapZones(); TBL.checks[6] = true; tSave(); return renderTable(); }
-  if (d.tstep !== undefined) { TBL.step = TBL.step === "play" ? "setup" : "play"; if (TBL.step === "play") TBL.checks[10] = true; tSave(); return renderTable(); }
+  if (d.tstep !== undefined) {
+    TBL.step = TBL.step === "play" ? "setup" : "play";
+    if (TBL.step === "play") { TBL.checks[10] = true; if (!TBL.play || !TBL.play.turn) startTurn(1); }
+    tSave(); return renderTable();
+  }
   if (d.tgen !== undefined) { generateTerrain(); TBL.checks[5] = true; tSel = null; tSave(); return renderTable(); }
   if (d.tclear !== undefined) { TBL.terrain = []; tSel = null; tMsg = ""; tSave(); return renderTable(); }
   if (d.tadd !== undefined) { const id = $("tAddSel").value; const nt = { id: "t" + uid(), typeId: id, x: 12, y: 12, rot: 0 }; TBL.terrain.push(nt); tSel = { kind: "terrain", id: nt.id }; tSave(); return renderTable(); }
