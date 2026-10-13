@@ -217,7 +217,15 @@ function relation(a, b) {
    A moving base may not pass through another model's base or Impassable terrain. Cloudwalk and Intangible
    ignore both while moving, but may not end the move overlapping either. Base to base (BtB) = bases touching. */
 const GHOST_RE = /\b(Cloud ?walk|Intangible)\b/i;
-const BTB_GAP = 0.03;
+const BTB_GAP = 0.01;  /* bases within 1/100" count as touching */
+/* Does anything this model could use mention Cloudwalk or Intangible: its card (traits, Ki feats, weapons,
+   equipment) or one of its warband's cards (events, enhancements)? Only then is the switch shown. */
+function ghostRelevant(m, side) {
+  if (isGhost(m, side)) return true;
+  const wb = WB[TBL.sides[side].wbId]; if (!wb) return false;
+  const d = wb.models.find(x => x.name === m.name);
+  return GHOST_RE.test(JSON.stringify(d || {})) || GHOST_RE.test(JSON.stringify(wb.cards || []));
+}
 function isGhost(m, side) {
   if (m.ghost === undefined) {  /* tables saved before this existed: read the trait from the warband */
     const wb = WB[TBL.sides[side].wbId], d = wb && wb.models.find(x => x.name === m.name);
@@ -231,23 +239,31 @@ function moveBlockers(m) {
   const models = tableModels().map(([o]) => o).filter(o => o !== m);
   const terr = TBL.terrain.filter(t => TBYID[t.typeId].passage === "Impassable").map(terrPoly);
   const B = { models, terr };
-  return { models: models.filter(o => dist(o, m) >= o.r + m.r - 0.005), terr: terr.filter(P => polyCircle(P, m, m.r) >= -0.005), all: B };
+  return { models: models.filter(o => dist(o, m) >= o.r + m.r - 0.0005), terr: terr.filter(P => polyCircle(P, m, m.r) >= -0.0005), all: B };
 }
 function clearAt(m, p, B) {
-  for (const o of B.models) if (dist(o, p) < o.r + m.r - 0.005) return false;
-  for (const P of B.terr) if (polyCircle(P, p, m.r) < -0.005) return false;
+  for (const o of B.models) if (dist(o, p) < o.r + m.r - 0.0005) return false;
+  for (const P of B.terr) if (polyCircle(P, p, m.r) < -0.0005) return false;
   return true;
 }
 const clampBoard = (m, p) => ({ x: Math.min(24 - m.r, Math.max(m.r, p.x)), y: Math.min(24 - m.r, Math.max(m.r, p.y)) });
-/* Walk the base towards the target in small steps, sliding round anything in the way */
+/* Walk the base towards the target in small steps. When something is in the way the base stops exactly at
+   the point of contact (found by halving the step), and slides along the obstacle only if you keep pulling
+   at an angle to it. Nothing snaps: where you let go is where the model stays. */
 function stepTowards(m, target, B) {
   let cur = { x: m.x, y: m.y };
-  for (let i = 0; i < 400; i++) {
+  for (let i = 0; i < 600; i++) {
     const dx = target.x - cur.x, dy = target.y - cur.y, L = Math.hypot(dx, dy);
-    if (L < 1e-3) break;
-    const st = Math.min(0.04, L), a0 = Math.atan2(dy, dx);
+    if (L < 1e-4) break;
+    const st = Math.min(0.04, L), ux = dx / L, uy = dy / L;
+    const at = f => clampBoard(m, { x: cur.x + ux * st * f, y: cur.y + uy * st * f });
+    if (clearAt(m, at(1), B)) { cur = at(1); continue; }
+    let lo = 0, hi = 1;
+    for (let k = 0; k < 14; k++) { const mid = (lo + hi) / 2; if (clearAt(m, at(mid), B)) lo = mid; else hi = mid; }
+    if (lo * st > 1e-4) { cur = at(lo); continue; }
     let next = null;
-    for (const da of [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9, 1.2, -1.2]) {
+    const a0 = Math.atan2(dy, dx);
+    for (const da of [0.3, -0.3, 0.6, -0.6, 0.9, -0.9, 1.2, -1.2]) {
       const q = clampBoard(m, { x: cur.x + Math.cos(a0 + da) * st, y: cur.y + Math.sin(a0 + da) * st });
       if (dist(q, target) < L - 1e-4 && clearAt(m, q, B)) { next = q; break; }
     }
@@ -255,17 +271,6 @@ function stepTowards(m, target, B) {
     cur = next;
   }
   return cur;
-}
-/* Close a small gap so the bases touch exactly */
-function snapBtB(m, p, B) {
-  for (const o of B.all.models) {
-    const d = dist(o, p), gap = d - o.r - m.r;
-    if (gap > 0.005 && gap < 0.12 && d > 0) {
-      const q = { x: o.x + (p.x - o.x) / d * (o.r + m.r), y: o.y + (p.y - o.y) / d * (o.r + m.r) };
-      if (clearAt(m, q, B)) return q;
-    }
-  }
-  return p;
 }
 function btbWith(m) { return tableModels().filter(([o]) => o !== m && dist(o, m) - o.r - m.r <= BTB_GAP); }
 /* Nearest free spot to p (for placing a model from the tray) */
@@ -424,7 +429,7 @@ function selectedHTML() {
       <p>${m.size} · ${m.base}mm base · facing ${Math.round(m.facing)}°${m.where === "table" ? ` · at (${r1(m.x)}, ${r1(m.y)})` : ""}</p>
       ${probs.map(p => `<p class="warn">⚠ ${esc(p)}</p>`).join("")}
       ${btb.length ? `<p><b>Base to base</b> with ${btb.map(([o, s]) => `<span class="${s === side ? "" : "btb-foe"}">${esc(o.name)}</span>`).join(", ")}</p>` : ""}${rel}
-      <label class="inline tsmall"><input type="checkbox" data-tghost="${m.id}" ${isGhost(m, side) ? "checked" : ""}> Moves through models and terrain (Cloudwalk, Intangible)</label>
+      ${ghostRelevant(m, side) ? `<label class="inline tsmall"><input type="checkbox" data-tghost="${m.id}" ${isGhost(m, side) ? "checked" : ""}> Moves through models and terrain (Cloudwalk, Intangible)</label>` : ""}
       <p class="muted tsmall">Hover another model to measure to it.</p></div>`;
   }
   if (tSel.kind === "terrain") {
@@ -491,7 +496,7 @@ function renderTable() {
       </aside>
       <div class="tboard">
         <svg id="tSvg" viewBox="-0.7 -0.7 25.4 25.4" class="${tTool === "ruler" || tArm ? "crosshair" : ""}" role="img" aria-label="Battlefield">${boardSVG()}</svg>
-        <p class="thint">${tMsg ? esc(tMsg) + " · " : ""}Drag to move (bases stop at models and Impassable terrain) · Mouse wheel or Q / E to turn (Shift for 5°) · Delete removes · M ruler · Esc deselects</p>
+        <p class="thint">${tMsg ? esc(tMsg) + " · " : ""}Drag to move (bases stop at models and Impassable terrain) · Turn with the handle (1°, Shift 15°), mouse wheel or Q / E (15°, Shift 5°) · Delete removes · M ruler · Esc deselects</p>
       </div>
       <aside class="tside right">
         <div class="tcard"><h4>Selected</h4>${selectedHTML()}</div>
@@ -533,8 +538,8 @@ function rotateSel(by) {
   if (tSel.kind === "terrain") it.rot = (it.rot + by + 360) % 360;
   tSave(); redrawBoard();
 }
+/* Keep the base on the table (a model moved past the edge stops when its base touches it) */
 function snapEdges(m) {
-  for (const k of ["x", "y"]) { if (Math.abs(m[k] - m.r) < 0.3) m[k] = m.r; if (Math.abs(24 - m[k] - m.r) < 0.3) m[k] = 24 - m.r; }
   m.x = Math.min(24 - m.r, Math.max(m.r, m.x)); m.y = Math.min(24 - m.r, Math.max(m.r, m.y));
 }
 function bindBoard() {
@@ -574,7 +579,7 @@ function bindBoard() {
     if (tDrag.mode === "ruler") { tRuler.b = p; return redrawBoard(); }
     if (tDrag.mode === "rotate") {
       const it = itemOf(tSel.kind, tDrag.id), a = (Math.atan2(p.x - it.x, p.y - it.y) * 180 / Math.PI + 360) % 360;
-      const snap = e.shiftKey ? 1 : 5, v = Math.round(a / snap) * snap % 360;
+      const snap = e.shiftKey ? 15 : 1, v = Math.round(a / snap) * snap % 360;
       if (tSel.kind === "model") it.facing = v; else it.rot = v;
       return redrawBoard();
     }
@@ -583,7 +588,7 @@ function bindBoard() {
       const target = { x: p.x + tDrag.off.x, y: p.y + tDrag.off.y }; tDrag.moved = true;
       if (tDrag.kind === "model") {
         if (tDrag.ghost) { Object.assign(it, clampBoard(it, target)); if (clearAt(it, it, tDrag.B)) tDrag.lastOK = { x: it.x, y: it.y }; }
-        else Object.assign(it, snapBtB(it, stepTowards(it, clampBoard(it, target), tDrag.B), tDrag.B));
+        else Object.assign(it, stepTowards(it, clampBoard(it, target), tDrag.B));
       } else Object.assign(it, target);
       redrawBoard();
     }

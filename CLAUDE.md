@@ -22,7 +22,7 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
   - `terrain.js`: 40 themed terrain pieces with [Passage, Visibility, Size]; footprints no bigger than a playing card (3.5" x 2.5").
   - `table.js`: setup, terrain generator (follows pack p.19 placement rules), tokens with facing
     (size and base read from the card's "Size & Base"), Elsewhere/Flank, deployment checks, ruler. Movement: bases stop at other bases and Impassable
-    terrain (Cloudwalk/Intangible pass through but can't end overlapping), base-to-base snapping and marks. Saved in
+    terrain (Cloudwalk/Intangible pass through but can't end overlapping), exact contact (no snapping), base-to-base marks. Saved in
     `bushido-table-v1` (this device only for now).
   - `ink.js`: sumi-e drawing for the board (brushed terrain pictures per piece, ensō objectives and token rings,
     ink filters, scroll mount and seal). Seeded by piece id so pictures stay stable between redraws.
