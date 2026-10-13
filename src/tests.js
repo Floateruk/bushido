@@ -148,10 +148,14 @@ function renderTest(id) {
     </section>`;
   };
   const onTable = TBL && TBL.testId === tg.id;
+  /* each side scrolls on its own: keep where each was when the screen redraws */
+  const keep = [...v.querySelectorAll(".xside")].map(el => el.scrollTop), keepId = v.dataset.test;
+  v.dataset.test = tg.id;
   v.innerHTML = `<div class="thead"><button class="btn small" data-area="tests">‹ Testing lists</button><h1>${esc(tg.name)}</h1><span class="spacer"></span>
       <button class="btn small ${onTable ? "" : "primary"}" data-xtable="${tg.id}">${onTable ? "Open the table" : "Set up the table"}</button></div>
     <p class="note">Wounds, Ki, feats and states. Turn, scores, positions and activations are on the Table${onTable ? "" : ": set it up there (on this device or another one with your sync code) and pick this test"}.</p>
     <div class="xgrid">${side("F")}${side("E")}</div>`;
+  if (keepId === tg.id) v.querySelectorAll(".xside").forEach((el, i) => el.scrollTop = keep[i] || 0);
 }
 
 /* ---------- Changes ---------- */

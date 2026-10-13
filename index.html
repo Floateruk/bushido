@@ -507,8 +507,19 @@ label.inline{display:inline-flex;gap:6px;align-items:center;font-size:13px}
 .xstat{margin:6px 0}
 .xstat b{font-size:14px}
 .xtraits{margin:6px 0 0;font-size:13px;color:var(--muted)}
+/* Two columns: the page fills the screen and each side scrolls on its own */
+body.test-mode{padding-bottom:0}
+body.test-mode #testView{display:flex;flex-direction:column;height:100vh;height:100dvh;padding-bottom:8px}
+body.test-mode #testView>.thead,body.test-mode #testView>.note{flex:none}
+body.test-mode .xgrid{flex:1;min-height:0}
+body.test-mode .xside{height:100%;overflow-y:auto;overscroll-behavior:contain;align-content:start;padding-bottom:16px;scrollbar-width:thin}
 /* Two columns in landscape (phone, tablet) and on any wide screen; one column only on a narrow portrait screen */
-@media (max-width:900px) and (orientation:portrait){.xgrid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:900px) and (orientation:portrait){
+  .xgrid{grid-template-columns:minmax(0,1fr)}
+  body.test-mode #testView{display:block;height:auto}
+  body.test-mode .xside{height:auto;overflow:visible}
+}
+@media (orientation:landscape) and (max-height:500px){ body.test-mode #testView>.note{display:none} }
 /* Landscape phones: tighter cards so two columns fit */
 @media (orientation:landscape) and (max-width:950px){
   #testView .xgrid{gap:8px}
@@ -2383,10 +2394,14 @@ function renderTest(id) {
     </section>`;
   };
   const onTable = TBL && TBL.testId === tg.id;
+  /* each side scrolls on its own: keep where each was when the screen redraws */
+  const keep = [...v.querySelectorAll(".xside")].map(el => el.scrollTop), keepId = v.dataset.test;
+  v.dataset.test = tg.id;
   v.innerHTML = `<div class="thead"><button class="btn small" data-area="tests">‹ Testing lists</button><h1>${esc(tg.name)}</h1><span class="spacer"></span>
       <button class="btn small ${onTable ? "" : "primary"}" data-xtable="${tg.id}">${onTable ? "Open the table" : "Set up the table"}</button></div>
     <p class="note">Wounds, Ki, feats and states. Turn, scores, positions and activations are on the Table${onTable ? "" : ": set it up there (on this device or another one with your sync code) and pick this test"}.</p>
     <div class="xgrid">${side("F")}${side("E")}</div>`;
+  if (keepId === tg.id) v.querySelectorAll(".xside").forEach((el, i) => el.scrollTop = keep[i] || 0);
 }
 
 /* ---------- Changes ---------- */
@@ -2811,7 +2826,8 @@ function render() {
   const testing = VIEW === "tests" || VIEW.startsWith("test:");
   $("testView").hidden = !testing;
   document.body.classList.toggle("table-mode", VIEW === "table" || VIEW.startsWith("test:"));
-  document.querySelector(".foot").hidden = VIEW === "table";
+  document.querySelector(".foot").hidden = VIEW === "table" || VIEW.startsWith("test:");
+  document.body.classList.toggle("test-mode", VIEW.startsWith("test:"));
   if (VIEW === "home") return renderHub();
   if (VIEW === "lists") return renderHome();
   if (VIEW === "table") return renderTable();

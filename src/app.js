@@ -347,7 +347,8 @@ function render() {
   const testing = VIEW === "tests" || VIEW.startsWith("test:");
   $("testView").hidden = !testing;
   document.body.classList.toggle("table-mode", VIEW === "table" || VIEW.startsWith("test:"));
-  document.querySelector(".foot").hidden = VIEW === "table";
+  document.querySelector(".foot").hidden = VIEW === "table" || VIEW.startsWith("test:");
+  document.body.classList.toggle("test-mode", VIEW.startsWith("test:"));
   if (VIEW === "home") return renderHub();
   if (VIEW === "lists") return renderHome();
   if (VIEW === "table") return renderTable();

@@ -235,8 +235,19 @@ label.inline{display:inline-flex;gap:6px;align-items:center;font-size:13px}
 .xstat{margin:6px 0}
 .xstat b{font-size:14px}
 .xtraits{margin:6px 0 0;font-size:13px;color:var(--muted)}
+/* Two columns: the page fills the screen and each side scrolls on its own */
+body.test-mode{padding-bottom:0}
+body.test-mode #testView{display:flex;flex-direction:column;height:100vh;height:100dvh;padding-bottom:8px}
+body.test-mode #testView>.thead,body.test-mode #testView>.note{flex:none}
+body.test-mode .xgrid{flex:1;min-height:0}
+body.test-mode .xside{height:100%;overflow-y:auto;overscroll-behavior:contain;align-content:start;padding-bottom:16px;scrollbar-width:thin}
 /* Two columns in landscape (phone, tablet) and on any wide screen; one column only on a narrow portrait screen */
-@media (max-width:900px) and (orientation:portrait){.xgrid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:900px) and (orientation:portrait){
+  .xgrid{grid-template-columns:minmax(0,1fr)}
+  body.test-mode #testView{display:block;height:auto}
+  body.test-mode .xside{height:auto;overflow:visible}
+}
+@media (orientation:landscape) and (max-height:500px){ body.test-mode #testView>.note{display:none} }
 /* Landscape phones: tighter cards so two columns fit */
 @media (orientation:landscape) and (max-width:950px){
   #testView .xgrid{gap:8px}
