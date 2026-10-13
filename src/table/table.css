@@ -74,6 +74,9 @@ body.table-mode{max-width:none}
 .muted{color:var(--muted)}
 .tsmall{font-size:12.5px}
 .tinfo p{margin:4px 0}
+.tlos h5{margin:8px 0 2px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tlos ul{margin:0;padding-left:16px;display:grid;gap:2px}
+.tinfo .tacts{margin:6px 0}
 .tthemes{display:grid;gap:4px;font-size:13px;margin-bottom:6px}
 label.inline{display:inline-flex;gap:6px;align-items:center;font-size:13px}
 .tlegend{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted)}
@@ -132,9 +135,21 @@ label.inline{display:inline-flex;gap:6px;align-items:center;font-size:13px}
 #tSvg .btb{fill:var(--sumi);pointer-events:none}
 #tSvg .btb.foe rect{fill:var(--shu);stroke:var(--paper);stroke-width:.03}
 .btb-foe{color:var(--side-e);font-weight:700}
+#tSvg .tstate{font:700 .26px var(--body);fill:var(--shu);text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-width:.08}
+#tSvg .los-face{stroke:var(--sumi);stroke-width:.04;stroke-dasharray:.25 .15;opacity:.45;pointer-events:none}
+#tSvg .los-line{stroke:var(--sumi);stroke-width:.025;opacity:.45;pointer-events:none}
+#tSvg .los-no{stroke:var(--shu);stroke-width:.06;stroke-dasharray:.2 .15;pointer-events:none}
+#tSvg .los-ring{fill:none;stroke:var(--sumi);stroke-width:.07;pointer-events:none}
+#tSvg .los-ring.cover{stroke-dasharray:.18 .12}
 #tSvg .vimring{fill:none;stroke:var(--accent);stroke-width:.07;stroke-dasharray:.1 .08}
 #tSvg .handle{fill:var(--accent);stroke:var(--paper);stroke-width:.05;cursor:grab}
-#tSvg .hline,#tSvg .rel,#tSvg .trail,#tSvg .ruler,#tSvg .dlabel,#tSvg .vimring{pointer-events:none}
+#tSvg .hline,#tSvg .rel,#tSvg .trail,#tSvg .ruler,#tSvg .dlabel,#tSvg .tstate{font:700 .26px var(--body);fill:var(--shu);text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-width:.08}
+#tSvg .los-face{stroke:var(--sumi);stroke-width:.04;stroke-dasharray:.25 .15;opacity:.45;pointer-events:none}
+#tSvg .los-line{stroke:var(--sumi);stroke-width:.025;opacity:.45;pointer-events:none}
+#tSvg .los-no{stroke:var(--shu);stroke-width:.06;stroke-dasharray:.2 .15;pointer-events:none}
+#tSvg .los-ring{fill:none;stroke:var(--sumi);stroke-width:.07;pointer-events:none}
+#tSvg .los-ring.cover{stroke-dasharray:.18 .12}
+#tSvg .vimring{pointer-events:none}
 #tSvg .hline{stroke:var(--accent);stroke-width:.05;stroke-dasharray:.12 .1}
 #tSvg .rel{stroke:var(--shu);stroke-width:.06;stroke-dasharray:.2 .12}
 #tSvg .trail{stroke:var(--sumi);stroke-width:.05;stroke-dasharray:.15 .1;opacity:.6}

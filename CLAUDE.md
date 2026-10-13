@@ -24,6 +24,8 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
     (size and base read from the card's "Size & Base"), Elsewhere/Flank, deployment checks, ruler. Movement: bases stop at other bases and Impassable
     terrain (Cloudwalk/Intangible pass through but can't end overlapping), exact contact (no snapping), base-to-base marks. Saved in
     `bushido-table-v1` (this device only for now).
+  - `los.js`: line of sight and cover from the rulebook (facing, Aware, Blind/Sixth Sense, Prone, Size rules for
+    models and terrain, Enhancing elevation, cover within 1"); L toggles the board overlay; Selected panel lists Can see / Seen by.
   - `ink.js`: sumi-e drawing for the board (brushed terrain pictures per piece, ensō objectives and token rings,
     ink filters, scroll mount and seal). Seeded by piece id so pictures stay stable between redraws.
   - `table.css`: table styles, inlined into the page's `<style>`.

@@ -333,7 +333,8 @@ function boardSVG() {
       <path d="${ensoPath(0, 0, m.r - 0.02, Math.max(0.09, m.r * 0.18), m.facing - 60, 330)}" class="ring"/>
       <line x1="0" y1="${(-m.r * 0.62).toFixed(3)}" x2="0" y2="${(-m.r - 0.08).toFixed(3)}" class="face" transform="rotate(${m.facing})"/>
       ${m.vim ? `<circle r="${m.r + 0.12}" class="vimring"/>` : ""}
-      <text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text></g>`);
+      <text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text>
+      ${m.prone || m.blind ? `<text y="${f2(m.r + 0.32)}" class="tstate">${[m.prone && "Prone", m.blind && "Blind"].filter(Boolean).join(" · ")}</text>` : ""}</g>`);
     if (sel) {
       const hx = Math.sin(rad(m.facing)) * (m.r + 0.45), hy = -Math.cos(rad(m.facing)) * (m.r + 0.45);
       out.push(`<g transform="translate(${m.x} ${SY(m.y)})"><line x1="0" y1="0" x2="${hx}" y2="${hy}" class="hline"/><circle cx="${hx}" cy="${hy}" r="0.22" class="handle" data-k="rotate" data-id="${m.id}"/></g>`);
@@ -355,7 +356,7 @@ function boardSVG() {
       out.push(`<g transform="translate(${t.x} ${SY(t.y)})"><line x1="0" y1="0" x2="${hx}" y2="${hy}" class="hline"/><circle cx="${hx}" cy="${hy}" r="0.24" class="handle" data-k="rotate" data-id="${t.id}"/></g>`); }
   }
   /* a line from the selected model to the hovered one */
-  if (tSel && tSel.kind === "model" && tHover && tHover !== tSel.id) {
+  if (tSel && tSel.kind === "model" && tHover && tHover !== tSel.id && tTool !== "los") {
     const [a] = findModel(tSel.id), [b] = findModel(tHover);
     if (a && b && a.where === "table" && b.where === "table") out.push(`<line x1="${a.x}" y1="${SY(a.y)}" x2="${b.x}" y2="${SY(b.y)}" class="rel"/>`);
   }
@@ -364,6 +365,7 @@ function boardSVG() {
     out.push(`<line x1="${tDrag.start.x}" y1="${SY(tDrag.start.y)}" x2="${m.x}" y2="${SY(m.y)}" class="trail"/><text x="${m.x}" y="${SY(m.y) - m.r - 0.35}" class="dlabel">${r1(dist(tDrag.start, m))}"</text>`);
   }
   if (tRuler) out.push(`<line x1="${tRuler.a.x}" y1="${SY(tRuler.a.y)}" x2="${tRuler.b.x}" y2="${SY(tRuler.b.y)}" class="ruler"/><text x="${(tRuler.a.x + tRuler.b.x) / 2}" y="${SY((tRuler.a.y + tRuler.b.y) / 2) - 0.3}" class="dlabel">${r1(dist(tRuler.a, tRuler.b))}"</text>`);
+  out.push(losOverlay());
   out.push(inkMount());
   return out.join("");
 }
@@ -424,13 +426,14 @@ function selectedHTML() {
     const [m, side] = findModel(tSel.id); if (!m) return "";
     const probs = m.where === "table" ? modelProblems(m, side) : [], btb = m.where === "table" ? btbWith(m) : [];
     let rel = "";
-    if (tHover && tHover !== m.id) { const [b] = findModel(tHover); if (b && b.where === "table" && m.where === "table") { const r = relation(m, b); rel = `<p>To <b>${esc(b.name)}</b>: ${r.edge <= BTB_GAP ? "base to base" : r1(r.edge) + '" edge to edge'} · ${r.inArc ? "in front arc" : "behind (outside front arc)"}</p>`; } }
+    if (tHover && tHover !== m.id) { const [b] = findModel(tHover); if (b && b.where === "table" && m.where === "table") { const r = relation(m, b); rel = `<p>To <b>${esc(b.name)}</b>: ${r.edge <= BTB_GAP ? "base to base" : r1(r.edge) + '" edge to edge'} · ${r.inArc ? "in front arc" : "behind (outside front arc)"}</p><p>${esc(losText(losCheck(m, side, b, findModel(tHover)[1])))}</p>`; } }
     return `<div class="tinfo"><b>${esc(m.name)}</b> <span class="muted">${side === "F" ? "Yours" : "Opponent"}</span>
       <p>${m.size} · ${m.base}mm base · facing ${Math.round(m.facing)}°${m.where === "table" ? ` · at (${r1(m.x)}, ${r1(m.y)})` : ""}</p>
       ${probs.map(p => `<p class="warn">⚠ ${esc(p)}</p>`).join("")}
       ${btb.length ? `<p><b>Base to base</b> with ${btb.map(([o, s]) => `<span class="${s === side ? "" : "btb-foe"}">${esc(o.name)}</span>`).join(", ")}</p>` : ""}${rel}
       ${ghostRelevant(m, side) ? `<label class="inline tsmall"><input type="checkbox" data-tghost="${m.id}" ${isGhost(m, side) ? "checked" : ""}> Moves through models and terrain (Cloudwalk, Intangible)</label>` : ""}
-      <p class="muted tsmall">Hover another model to measure to it.</p></div>`;
+      ${losStates(m, side)}${losPanel(m, side)}
+      <p class="muted tsmall">Hover another model to measure to it${tTool === "los" ? " and see the sight lines" : ""}.</p></div>`;
   }
   if (tSel.kind === "terrain") {
     const t = TBL.terrain.find(x => x.id === tSel.id); if (!t) return "";
@@ -487,6 +490,7 @@ function renderTable() {
       <span class="muted">${esc(TBL.sides.F.name)} vs ${esc(TBL.sides.E.name)}</span>
       <span class="spacer"></span>
       <button class="btn small ${tTool === "ruler" ? "primary" : ""}" data-ttool="ruler" title="M">Ruler</button>
+      <button class="btn small ${tTool === "los" ? "primary" : ""}" data-ttool="los" title="L">Line of sight</button>
       <button class="btn small" data-tswap>Swap deployment zones</button>
       <button class="btn small ${TBL.step === "play" ? "primary" : ""}" data-tstep>${TBL.step === "play" ? "Game started" : "Start game"}</button>
       <button class="btn small quiet" data-tnew>${tConfirm === "tnew" ? "Clear table?" : "New table"}</button></div>
@@ -496,7 +500,7 @@ function renderTable() {
       </aside>
       <div class="tboard">
         <svg id="tSvg" viewBox="-0.7 -0.7 25.4 25.4" class="${tTool === "ruler" || tArm ? "crosshair" : ""}" role="img" aria-label="Battlefield">${boardSVG()}</svg>
-        <p class="thint">${tMsg ? esc(tMsg) + " · " : ""}Drag to move (bases stop at models and Impassable terrain) · Turn with the handle (1°, Shift 15°), mouse wheel or Q / E (15°, Shift 5°) · Delete removes · M ruler · Esc deselects</p>
+        <p class="thint">${tMsg ? esc(tMsg) + " · " : ""}Drag to move (bases stop at models and Impassable terrain) · Turn with the handle (1°, Shift 15°), mouse wheel or Q / E (15°, Shift 5°) · Delete removes · M ruler · L line of sight · Esc deselects</p>
       </div>
       <aside class="tside right">
         <div class="tcard"><h4>Selected</h4>${selectedHTML()}</div>
@@ -646,6 +650,7 @@ document.addEventListener("click", e => {
   if (d.tarm) { tArm = tArm === d.tarm ? null : d.tarm; tTool = null; return renderTable(); }
   if (d.ttray) { const [m] = findModel(d.ttray); m.where = "tray"; delete m.flankTurn; tSave(); return renderTable(); }
   if (d.telse) { const [m] = findModel(d.telse); m.where = "elsewhere"; if (m.flank) { m.flankTurn = 2; m.flankEdge = "left edge"; } tSave(); return renderTable(); }
+  if (d.tstate) { const [m] = findModel(d.id); m[d.tstate] = !m[d.tstate]; tSave(); return renderTable(); }
   if (d.tvim) { const [m, side] = findModel(d.tvim); const was = m.vim; TBL.sides[side].models.forEach(x => x.vim = false); m.vim = !was; if (m.vim) TBL.checks[8] = TBL.sides.F.models.some(x => x.vim) && TBL.sides.E.models.some(x => x.vim); tSave(); return renderTable(); }
   if (d.tauto) { autoDeploy(d.tauto); tSave(); return renderTable(); }
 });
@@ -666,6 +671,7 @@ document.addEventListener("keydown", e => {
   const k = e.key.toLowerCase();
   if (k === "q" || k === "e") { e.preventDefault(); rotateSel((k === "e" ? 1 : -1) * (e.shiftKey ? 5 : 15)); }
   else if (k === "m") { tTool = tTool === "ruler" ? null : "ruler"; tRuler = null; renderTable(); }
+  else if (k === "l") { tTool = tTool === "los" ? null : "los"; tRuler = null; renderTable(); }
   else if (k === "escape") { tSel = null; tArm = null; tTool = null; tRuler = null; renderTable(); }
   else if ((k === "delete" || k === "backspace") && tSel) {
     e.preventDefault();

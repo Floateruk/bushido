@@ -346,6 +346,9 @@ body.table-mode{max-width:none}
 .muted{color:var(--muted)}
 .tsmall{font-size:12.5px}
 .tinfo p{margin:4px 0}
+.tlos h5{margin:8px 0 2px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tlos ul{margin:0;padding-left:16px;display:grid;gap:2px}
+.tinfo .tacts{margin:6px 0}
 .tthemes{display:grid;gap:4px;font-size:13px;margin-bottom:6px}
 label.inline{display:inline-flex;gap:6px;align-items:center;font-size:13px}
 .tlegend{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted)}
@@ -404,9 +407,21 @@ label.inline{display:inline-flex;gap:6px;align-items:center;font-size:13px}
 #tSvg .btb{fill:var(--sumi);pointer-events:none}
 #tSvg .btb.foe rect{fill:var(--shu);stroke:var(--paper);stroke-width:.03}
 .btb-foe{color:var(--side-e);font-weight:700}
+#tSvg .tstate{font:700 .26px var(--body);fill:var(--shu);text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-width:.08}
+#tSvg .los-face{stroke:var(--sumi);stroke-width:.04;stroke-dasharray:.25 .15;opacity:.45;pointer-events:none}
+#tSvg .los-line{stroke:var(--sumi);stroke-width:.025;opacity:.45;pointer-events:none}
+#tSvg .los-no{stroke:var(--shu);stroke-width:.06;stroke-dasharray:.2 .15;pointer-events:none}
+#tSvg .los-ring{fill:none;stroke:var(--sumi);stroke-width:.07;pointer-events:none}
+#tSvg .los-ring.cover{stroke-dasharray:.18 .12}
 #tSvg .vimring{fill:none;stroke:var(--accent);stroke-width:.07;stroke-dasharray:.1 .08}
 #tSvg .handle{fill:var(--accent);stroke:var(--paper);stroke-width:.05;cursor:grab}
-#tSvg .hline,#tSvg .rel,#tSvg .trail,#tSvg .ruler,#tSvg .dlabel,#tSvg .vimring{pointer-events:none}
+#tSvg .hline,#tSvg .rel,#tSvg .trail,#tSvg .ruler,#tSvg .dlabel,#tSvg .tstate{font:700 .26px var(--body);fill:var(--shu);text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-width:.08}
+#tSvg .los-face{stroke:var(--sumi);stroke-width:.04;stroke-dasharray:.25 .15;opacity:.45;pointer-events:none}
+#tSvg .los-line{stroke:var(--sumi);stroke-width:.025;opacity:.45;pointer-events:none}
+#tSvg .los-no{stroke:var(--shu);stroke-width:.06;stroke-dasharray:.2 .15;pointer-events:none}
+#tSvg .los-ring{fill:none;stroke:var(--sumi);stroke-width:.07;pointer-events:none}
+#tSvg .los-ring.cover{stroke-dasharray:.18 .12}
+#tSvg .vimring{pointer-events:none}
 #tSvg .hline{stroke:var(--accent);stroke-width:.05;stroke-dasharray:.12 .1}
 #tSvg .rel{stroke:var(--shu);stroke-width:.06;stroke-dasharray:.2 .12}
 #tSvg .trail{stroke:var(--sumi);stroke-width:.05;stroke-dasharray:.15 .1;opacity:.6}
@@ -1473,7 +1488,8 @@ function boardSVG() {
       <path d="${ensoPath(0, 0, m.r - 0.02, Math.max(0.09, m.r * 0.18), m.facing - 60, 330)}" class="ring"/>
       <line x1="0" y1="${(-m.r * 0.62).toFixed(3)}" x2="0" y2="${(-m.r - 0.08).toFixed(3)}" class="face" transform="rotate(${m.facing})"/>
       ${m.vim ? `<circle r="${m.r + 0.12}" class="vimring"/>` : ""}
-      <text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text></g>`);
+      <text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text>
+      ${m.prone || m.blind ? `<text y="${f2(m.r + 0.32)}" class="tstate">${[m.prone && "Prone", m.blind && "Blind"].filter(Boolean).join(" · ")}</text>` : ""}</g>`);
     if (sel) {
       const hx = Math.sin(rad(m.facing)) * (m.r + 0.45), hy = -Math.cos(rad(m.facing)) * (m.r + 0.45);
       out.push(`<g transform="translate(${m.x} ${SY(m.y)})"><line x1="0" y1="0" x2="${hx}" y2="${hy}" class="hline"/><circle cx="${hx}" cy="${hy}" r="0.22" class="handle" data-k="rotate" data-id="${m.id}"/></g>`);
@@ -1495,7 +1511,7 @@ function boardSVG() {
       out.push(`<g transform="translate(${t.x} ${SY(t.y)})"><line x1="0" y1="0" x2="${hx}" y2="${hy}" class="hline"/><circle cx="${hx}" cy="${hy}" r="0.24" class="handle" data-k="rotate" data-id="${t.id}"/></g>`); }
   }
   /* a line from the selected model to the hovered one */
-  if (tSel && tSel.kind === "model" && tHover && tHover !== tSel.id) {
+  if (tSel && tSel.kind === "model" && tHover && tHover !== tSel.id && tTool !== "los") {
     const [a] = findModel(tSel.id), [b] = findModel(tHover);
     if (a && b && a.where === "table" && b.where === "table") out.push(`<line x1="${a.x}" y1="${SY(a.y)}" x2="${b.x}" y2="${SY(b.y)}" class="rel"/>`);
   }
@@ -1504,6 +1520,7 @@ function boardSVG() {
     out.push(`<line x1="${tDrag.start.x}" y1="${SY(tDrag.start.y)}" x2="${m.x}" y2="${SY(m.y)}" class="trail"/><text x="${m.x}" y="${SY(m.y) - m.r - 0.35}" class="dlabel">${r1(dist(tDrag.start, m))}"</text>`);
   }
   if (tRuler) out.push(`<line x1="${tRuler.a.x}" y1="${SY(tRuler.a.y)}" x2="${tRuler.b.x}" y2="${SY(tRuler.b.y)}" class="ruler"/><text x="${(tRuler.a.x + tRuler.b.x) / 2}" y="${SY((tRuler.a.y + tRuler.b.y) / 2) - 0.3}" class="dlabel">${r1(dist(tRuler.a, tRuler.b))}"</text>`);
+  out.push(losOverlay());
   out.push(inkMount());
   return out.join("");
 }
@@ -1564,13 +1581,14 @@ function selectedHTML() {
     const [m, side] = findModel(tSel.id); if (!m) return "";
     const probs = m.where === "table" ? modelProblems(m, side) : [], btb = m.where === "table" ? btbWith(m) : [];
     let rel = "";
-    if (tHover && tHover !== m.id) { const [b] = findModel(tHover); if (b && b.where === "table" && m.where === "table") { const r = relation(m, b); rel = `<p>To <b>${esc(b.name)}</b>: ${r.edge <= BTB_GAP ? "base to base" : r1(r.edge) + '" edge to edge'} · ${r.inArc ? "in front arc" : "behind (outside front arc)"}</p>`; } }
+    if (tHover && tHover !== m.id) { const [b] = findModel(tHover); if (b && b.where === "table" && m.where === "table") { const r = relation(m, b); rel = `<p>To <b>${esc(b.name)}</b>: ${r.edge <= BTB_GAP ? "base to base" : r1(r.edge) + '" edge to edge'} · ${r.inArc ? "in front arc" : "behind (outside front arc)"}</p><p>${esc(losText(losCheck(m, side, b, findModel(tHover)[1])))}</p>`; } }
     return `<div class="tinfo"><b>${esc(m.name)}</b> <span class="muted">${side === "F" ? "Yours" : "Opponent"}</span>
       <p>${m.size} · ${m.base}mm base · facing ${Math.round(m.facing)}°${m.where === "table" ? ` · at (${r1(m.x)}, ${r1(m.y)})` : ""}</p>
       ${probs.map(p => `<p class="warn">⚠ ${esc(p)}</p>`).join("")}
       ${btb.length ? `<p><b>Base to base</b> with ${btb.map(([o, s]) => `<span class="${s === side ? "" : "btb-foe"}">${esc(o.name)}</span>`).join(", ")}</p>` : ""}${rel}
       ${ghostRelevant(m, side) ? `<label class="inline tsmall"><input type="checkbox" data-tghost="${m.id}" ${isGhost(m, side) ? "checked" : ""}> Moves through models and terrain (Cloudwalk, Intangible)</label>` : ""}
-      <p class="muted tsmall">Hover another model to measure to it.</p></div>`;
+      ${losStates(m, side)}${losPanel(m, side)}
+      <p class="muted tsmall">Hover another model to measure to it${tTool === "los" ? " and see the sight lines" : ""}.</p></div>`;
   }
   if (tSel.kind === "terrain") {
     const t = TBL.terrain.find(x => x.id === tSel.id); if (!t) return "";
@@ -1627,6 +1645,7 @@ function renderTable() {
       <span class="muted">${esc(TBL.sides.F.name)} vs ${esc(TBL.sides.E.name)}</span>
       <span class="spacer"></span>
       <button class="btn small ${tTool === "ruler" ? "primary" : ""}" data-ttool="ruler" title="M">Ruler</button>
+      <button class="btn small ${tTool === "los" ? "primary" : ""}" data-ttool="los" title="L">Line of sight</button>
       <button class="btn small" data-tswap>Swap deployment zones</button>
       <button class="btn small ${TBL.step === "play" ? "primary" : ""}" data-tstep>${TBL.step === "play" ? "Game started" : "Start game"}</button>
       <button class="btn small quiet" data-tnew>${tConfirm === "tnew" ? "Clear table?" : "New table"}</button></div>
@@ -1636,7 +1655,7 @@ function renderTable() {
       </aside>
       <div class="tboard">
         <svg id="tSvg" viewBox="-0.7 -0.7 25.4 25.4" class="${tTool === "ruler" || tArm ? "crosshair" : ""}" role="img" aria-label="Battlefield">${boardSVG()}</svg>
-        <p class="thint">${tMsg ? esc(tMsg) + " · " : ""}Drag to move (bases stop at models and Impassable terrain) · Turn with the handle (1°, Shift 15°), mouse wheel or Q / E (15°, Shift 5°) · Delete removes · M ruler · Esc deselects</p>
+        <p class="thint">${tMsg ? esc(tMsg) + " · " : ""}Drag to move (bases stop at models and Impassable terrain) · Turn with the handle (1°, Shift 15°), mouse wheel or Q / E (15°, Shift 5°) · Delete removes · M ruler · L line of sight · Esc deselects</p>
       </div>
       <aside class="tside right">
         <div class="tcard"><h4>Selected</h4>${selectedHTML()}</div>
@@ -1786,6 +1805,7 @@ document.addEventListener("click", e => {
   if (d.tarm) { tArm = tArm === d.tarm ? null : d.tarm; tTool = null; return renderTable(); }
   if (d.ttray) { const [m] = findModel(d.ttray); m.where = "tray"; delete m.flankTurn; tSave(); return renderTable(); }
   if (d.telse) { const [m] = findModel(d.telse); m.where = "elsewhere"; if (m.flank) { m.flankTurn = 2; m.flankEdge = "left edge"; } tSave(); return renderTable(); }
+  if (d.tstate) { const [m] = findModel(d.id); m[d.tstate] = !m[d.tstate]; tSave(); return renderTable(); }
   if (d.tvim) { const [m, side] = findModel(d.tvim); const was = m.vim; TBL.sides[side].models.forEach(x => x.vim = false); m.vim = !was; if (m.vim) TBL.checks[8] = TBL.sides.F.models.some(x => x.vim) && TBL.sides.E.models.some(x => x.vim); tSave(); return renderTable(); }
   if (d.tauto) { autoDeploy(d.tauto); tSave(); return renderTable(); }
 });
@@ -1806,6 +1826,7 @@ document.addEventListener("keydown", e => {
   const k = e.key.toLowerCase();
   if (k === "q" || k === "e") { e.preventDefault(); rotateSel((k === "e" ? 1 : -1) * (e.shiftKey ? 5 : 15)); }
   else if (k === "m") { tTool = tTool === "ruler" ? null : "ruler"; tRuler = null; renderTable(); }
+  else if (k === "l") { tTool = tTool === "los" ? null : "los"; tRuler = null; renderTable(); }
   else if (k === "escape") { tSel = null; tArm = null; tTool = null; tRuler = null; renderTable(); }
   else if ((k === "delete" || k === "backspace") && tSel) {
     e.preventDefault();
@@ -1814,6 +1835,123 @@ document.addEventListener("keydown", e => {
     tSel = null; tSave(); renderTable();
   }
 });
+
+/* ---------- Line of sight and cover ----------
+   Rulebook R2: LoS (p.6), Cover (p.4), terrain Visibility (p.74), Aware, Blind, Prone, Enhancing.
+   - LoS is a straight line from any part of the observer's base to a point of the target in the observer's
+     Facing (the 180° in front of it; all round with Aware). A Blind observer can't draw LoS outside BtB.
+   - Blocking terrain and models block it, except models and terrain smaller than the target, and models
+     (other than the target) and terrain smaller than the observer. A model on Enhancing terrain also
+     ignores models and terrain smaller than that terrain. Prone models don't block. Zero terrain never does.
+   - Cover: any line from the observer that passes through Obscuring or Blocking terrain within 1" of the
+     target (even terrain too small to block it, like a Tiny wall).
+   The board is flat, so heights are the Size categories, exactly as the rules use them. */
+const SIZE_RANK = { Zero: 0, Tiny: 1, Small: 2, Medium: 3, Large: 4, Huge: 5 };
+const AWARE_RE = /\bAware\b/;
+const LOS_PTS = 24;   /* points sampled round each base, plus its centre */
+
+function cardOf(m, side) { const wb = WB[TBL.sides[side].wbId]; return wb ? wb.models.find(x => x.name === m.name) : null; }
+function mentionsRe(m, side, re) {
+  const wb = WB[TBL.sides[side].wbId];
+  return re.test(JSON.stringify(cardOf(m, side) || {})) || (!!wb && re.test(JSON.stringify(wb.cards || [])));
+}
+function isAware(m, side) {
+  if (m.aware === undefined) { const d = cardOf(m, side); m.aware = !!(d && AWARE_RE.test(d.traits || "")); }
+  return m.aware;
+}
+function basePoints(m) {
+  const P = [{ x: m.x, y: m.y }];
+  for (let i = 0; i < LOS_PTS; i++) { const a = i / LOS_PTS * Math.PI * 2; P.push({ x: m.x + Math.cos(a) * m.r * 0.999, y: m.y + Math.sin(a) * m.r * 0.999 }); }
+  return P;
+}
+/* Size of the highest Enhancing terrain the model stands on (centre of its base inside the footprint) */
+function elevationOf(m) {
+  let e = 0, by = null;
+  for (const t of TBL.terrain) { const d = TBYID[t.typeId]; if (d.visibility === "Enhancing" && inPoly(m, terrPoly(t)) && SIZE_RANK[d.size] > e) { e = SIZE_RANK[d.size]; by = d.name; } }
+  return { e, by };
+}
+const inFacing = (a, q) => (q.x - a.x) * Math.sin(rad(a.facing)) + (q.y - a.y) * Math.cos(rad(a.facing)) >= -1e-6;
+
+function losCheck(a, sa, b, sb) {
+  const res = { los: false, cover: false, coverBy: [], blockedBy: [], lines: [], seen: 0, total: 0, note: "" };
+  const touching = dist(a, b) - a.r - b.r <= BTB_GAP;
+  const sixth = /\bSixth Sense\b/.test((cardOf(a, sa) || {}).traits || "");  /* Immune [Blind] */
+  if (a.blind && !sixth && !touching) { res.note = "Blind: no LoS outside base contact"; return res; }
+  const aware = isAware(a, sa), elev = elevationOf(a);
+  const thr = Math.max(SIZE_RANK[a.size] || 2, SIZE_RANK[b.size] || 2, elev.e);
+  const terr = TBL.terrain.map(t => ({ d: TBYID[t.typeId], P: terrPoly(t) }));
+  /* terrain a model stands inside doesn't hide it from itself */
+  const blockT = terr.filter(o => o.d.visibility === "Blocking" && SIZE_RANK[o.d.size] >= thr && !inPoly(a, o.P) && !inPoly(b, o.P));
+  const others = tableModels().map(([m]) => m).filter(m => m !== a && m !== b && !m.prone && (SIZE_RANK[m.size] || 2) >= thr);
+  const coverT = terr.filter(o => (o.d.visibility === "Blocking" || o.d.visibility === "Obscuring") && polyCircle(o.P, b, b.r) <= 1);
+  const A = basePoints(a), targets = basePoints(b).filter(q => aware || inFacing(a, q));
+  res.total = targets.length;
+  if (!targets.length) { res.note = "Outside its facing"; return res; }
+  const blocked = new Set();
+  for (const q of targets) {
+    for (const p of A) {
+      let hit = null;
+      for (const o of blockT) if (polySeg(o.P, p, q) < 1e-6) { hit = o.d.name; break; }
+      if (!hit) for (const m of others) if (segPoint(m, p, q) < m.r - 1e-6) { hit = m.name; break; }
+      if (!hit) { res.seen++; res.lines.push([p, q]); break; }
+      blocked.add(hit);
+    }
+  }
+  res.los = res.seen > 0;
+  if (!res.los) { res.blockedBy = [...blocked]; return res; }
+  for (const o of coverT)
+    if (targets.some(q => A.some(p => polySeg(o.P, p, q) < 1e-6))) res.coverBy.push(o.d.name);
+  res.cover = res.coverBy.length > 0;
+  if (elev.by) res.note = `On ${elev.by}: sees over smaller models and terrain`;
+  return res;
+}
+function losText(r) {
+  if (!r.los) return r.note || (r.blockedBy.length ? `No LoS: blocked by ${r.blockedBy.slice(0, 3).join(", ")}` : "No LoS");
+  return `LoS${r.seen < r.total ? ` (${Math.round(100 * r.seen / r.total)}% of the base)` : ""}${r.cover ? ` · Cover from ${r.coverBy.join(", ")}` : " · no cover"}`;
+}
+
+/* Board overlay in LoS mode: the observer's facing line, then either the sight lines to the hovered model
+   or a ring on every enemy model it can see (dashed when the enemy has cover) */
+function losOverlay() {
+  if (tTool !== "los" || !tSel || tSel.kind !== "model") return "";
+  const [a, sa] = findModel(tSel.id); if (!a || a.where !== "table") return "";
+  const out = [];
+  if (!isAware(a, sa)) {
+    const px = Math.cos(rad(a.facing)), py = -Math.sin(rad(a.facing));
+    out.push(`<line x1="${f2(a.x - px * 40)}" y1="${f2(SY(a.y - py * 40))}" x2="${f2(a.x + px * 40)}" y2="${f2(SY(a.y + py * 40))}" class="los-face"/>`);
+  }
+  const [b, sb] = tHover && tHover !== a.id ? findModel(tHover) : [null, null];
+  if (b && b.where === "table") {
+    const r = losCheck(a, sa, b, sb);
+    if (r.los) for (const [p, q] of r.lines) out.push(`<line x1="${f2(p.x)}" y1="${f2(SY(p.y))}" x2="${f2(q.x)}" y2="${f2(SY(q.y))}" class="los-line"/>`);
+    else out.push(`<line x1="${f2(a.x)}" y1="${f2(SY(a.y))}" x2="${f2(b.x)}" y2="${f2(SY(b.y))}" class="los-no"/>`);
+    out.push(`<text x="${f2(b.x)}" y="${f2(SY(b.y) - b.r - 0.3)}" class="dlabel">${r.los ? (r.cover ? "LoS · cover" : "LoS") : "No LoS"}</text>`);
+  } else {
+    for (const [m, s] of tableModels()) {
+      if (s === sa) continue;
+      const r = losCheck(a, sa, m, s);
+      if (r.los) out.push(`<circle cx="${f2(m.x)}" cy="${f2(SY(m.y))}" r="${f2(m.r + 0.16)}" class="los-ring ${r.cover ? "cover" : ""}"/>`);
+    }
+  }
+  return out.join("");
+}
+
+/* Selected panel: which enemies this model can see, and which can see it */
+function losPanel(m, side) {
+  if (m.where !== "table") return "";
+  const foes = tableModels().filter(([, s]) => s !== side);
+  if (!foes.length) return "";
+  const row = ([o, s], r) => `<li><b>${esc(o.name)}</b> <span class="muted">${r1(Math.max(0, dist(m, o) - m.r - o.r))}"</span>${r.cover ? ` <span class="els">cover</span>` : ""}</li>`;
+  const sees = foes.map(f => [f, losCheck(m, side, f[0], f[1])]).filter(([, r]) => r.los);
+  const seenBy = foes.map(f => [f, losCheck(f[0], f[1], m, side)]).filter(([, r]) => r.los);
+  return `<div class="tlos"><h5>Can see</h5>${sees.length ? `<ul>${sees.map(([f, r]) => row(f, r)).join("")}</ul>` : `<p class="muted tsmall">No enemy models</p>`}
+    <h5>Seen by</h5>${seenBy.length ? `<ul>${seenBy.map(([f, r]) => row(f, r)).join("")}</ul>` : `<p class="muted tsmall">No enemy models (out of their LoS)</p>`}</div>`;
+}
+/* LoS-related states: Prone and Blind for any model, Aware where its cards mention it */
+function losStates(m, side) {
+  const b = (k, label, on) => `<button class="tbtn ${on ? "on" : ""}" data-tstate="${k}" data-id="${m.id}" aria-pressed="${on}">${label}</button>`;
+  return `<div class="tacts">${mentionsRe(m, side, AWARE_RE) || isAware(m, side) ? b("aware", "Aware (360° LoS)", isAware(m, side)) : ""}${b("prone", "Prone", !!m.prone)}${b("blind", "Blind", !!m.blind)}</div>`;
+}
 
 /* ---------- Library ---------- */
 const norm = BP.norm;
