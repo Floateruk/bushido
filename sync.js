@@ -62,7 +62,7 @@ const col = (fs, name) => fs.collection(db, "groups", code, name);
 
 function listen(fs) {
   unsubs.forEach(u => u()); unsubs = [];
-  for (const name of ["games", "warbands"]) {
+  for (const name of ["games", "warbands", "tests"]) {
     let first = true;
     unsubs.push(fs.onSnapshot(col(fs, name), { includeMetadataChanges: true }, snap => {
       const remoteIds = new Set();
@@ -70,14 +70,14 @@ function listen(fs) {
         if (ch.doc.metadata.hasPendingWrites) return;
         if (ch.type === "removed") return App.applyRemove(name, ch.doc.id);
         const d = ch.doc.data();
-        try { const obj = JSON.parse(d.json); name === "games" ? App.applyGame(obj) : App.applyWarband(obj); } catch (e) {}
+        try { const obj = JSON.parse(d.json); name === "games" ? App.applyGame(obj) : name === "tests" ? App.applyTest(obj) : App.applyWarband(obj); } catch (e) {}
       });
       if (first && !snap.metadata.fromCache) {
         /* On joining, send up anything this device has that the cloud doesn't (or has older) */
         first = false;
         snap.docs.forEach(d => remoteIds.add(d.id));
         const remote = Object.fromEntries(snap.docs.map(d => [d.id, d.data().updated || 0]));
-        const local = name === "games" ? App.data().GAMES : App.data().WB;
+        const local = name === "games" ? App.data().GAMES : name === "tests" ? App.data().TESTS : App.data().WB;
         Object.values(local).forEach(x => { if (!(x.id in remote) || (x.updated || 0) > remote[x.id]) write(name, x); });
       }
       if (!snap.metadata.fromCache) lastSynced = Date.now();
@@ -110,6 +110,7 @@ function pushLibraryNow() {
 window.Sync = {
   pushGame: g => debounced("g" + g.id, () => write("games", g)),
   pushWarband: w => debounced("w" + w.id, () => write("warbands", w)),
+  pushTest: t => debounced("t" + t.id, () => write("tests", t), 400),
   pushLibrary: () => debounced("lib", pushLibraryNow, 1500),
   remove: (name, id) => { if (db) fb.fs.deleteDoc(fb.fs.doc(db, "groups", code, name, id)).catch(() => {}); }
 };
@@ -125,7 +126,7 @@ function syncSheet(msg) {
   const e = App.esc;
   if (!configured) return App.sheet(`<h3>Sync</h3><p class="sub">Sync isn't set up in this copy of the app yet.</p>`);
   App.sheet(code ? `<h3>Sync</h3>
-    <p class="sub">This device shares warbands, games and the card library with every device using the same sync code. It works offline and catches up when it's back online.</p>
+    <p class="sub">This device shares warbands, games, testing lists and the card library with every device using the same sync code. It works offline and catches up when it's back online.</p>
     <p class="note">Status: <b id="syncStatus2">${e(document.getElementById("syncStatus").textContent)}</b>${lastSynced ? ` · last synced ${new Date(lastSynced).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}</p>
     <h4 class="sheet-h">Your sync code</h4>
     <div class="code-box" id="codeBox">${pretty(code)}</div>

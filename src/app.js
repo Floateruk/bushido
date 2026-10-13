@@ -339,15 +339,20 @@ function render() {
   if (VIEW === "play" && (!CUR || !GAMES[CUR] || !S)) VIEW = "home";
   if (VIEW === "play" && isOver(GAMES[CUR])) VIEW = "end:" + CUR;
   if (VIEW.startsWith("end:") && !GAMES[VIEW.slice(4)]) VIEW = "lists";
+  if (VIEW.startsWith("test:") && !findTest(VIEW.slice(5))) VIEW = "tests";
   $("homeView").hidden = VIEW !== "home" && VIEW !== "lists";
   $("endView").hidden = !VIEW.startsWith("end:");
   $("playView").hidden = VIEW !== "play";
   $("tableView").hidden = VIEW !== "table";
-  document.body.classList.toggle("table-mode", VIEW === "table");
+  const testing = VIEW === "tests" || VIEW.startsWith("test:");
+  $("testView").hidden = !testing;
+  document.body.classList.toggle("table-mode", VIEW === "table" || VIEW.startsWith("test:"));
   document.querySelector(".foot").hidden = VIEW === "table";
   if (VIEW === "home") return renderHub();
   if (VIEW === "lists") return renderHome();
   if (VIEW === "table") return renderTable();
+  if (VIEW === "tests") return renderTests();
+  if (VIEW.startsWith("test:")) return renderTest(VIEW.slice(5));
   if (VIEW !== "play") return renderEnd(GAMES[VIEW.slice(4)]);
   renderPlay();
 }
@@ -457,8 +462,8 @@ function renderHub() {
     <div class="hub">
       <button class="hub-tile" data-area="lists"><span class="hub-meta">${live ? `${live} game${live === 1 ? "" : "s"} in progress` : `${Object.keys(WB).length} warbands`}</span>
         <b>My lists</b><p>Track your own warband at the table: wounds, Ki, states, feats and card reminders.</p></button>
-      <button class="hub-tile" disabled><span class="hub-meta">Not built yet</span>
-        <b>Testing lists</b><p>Two warbands side by side, with every stat to compare.</p></button>
+      <button class="hub-tile" data-area="tests"><span class="hub-meta">${Object.keys(tests()).length ? `${Object.keys(tests()).length} test${Object.keys(tests()).length === 1 ? "" : "s"}` : "Tablet"}</span>
+        <b>Testing lists</b><p>Two warbands side by side with every stat, wounds, Ki, feats and states. Then play them on the Table.</p></button>
       <button class="hub-tile" data-area="table"><span class="hub-meta">${tbl ? "Table in progress" : "Laptop"}</span>
         <b>Table</b><p>Scenario, terrain and deployment on a 24" battlefield, with facing and measuring.</p></button>
       <button class="hub-tile" disabled><span class="hub-meta">Not built yet</span>
@@ -760,7 +765,18 @@ document.addEventListener("submit", e => {
 });
 /* ---------- Hooks used by sync (installed app only) ---------- */
 window.App = {
-  data: () => ({ WB, GAMES, LIB }),
+  data: () => ({ WB, GAMES, LIB, TESTS: tests() }),
+  applyTest(remote) {
+    const mine = tests()[remote.id];
+    if (!mine) tests()[remote.id] = remote;
+    else {
+      const [merged, mineNewer] = mergeTest(mine, remote);
+      tests()[remote.id] = merged;
+      if (mineNewer) window.Sync?.pushTest(merged);
+    }
+    saveTests();
+    if (!App.sheetOpen() && (VIEW === "tests" || VIEW.startsWith("test:") || VIEW === "table" || VIEW === "home")) render();
+  },
   sheetOpen: () => !!$("sheetHost").innerHTML,
   applyGame(g) {
     const mine = GAMES[g.id];
@@ -774,6 +790,7 @@ window.App = {
   applyRemove(kind, id) {
     if (kind === "games" && id !== CUR && GAMES[id]) { delete GAMES[id]; store(GKEY, GAMES); }
     if (kind === "warbands" && WB[id]) { delete WB[id]; store(WBKEY, WB); }
+    if (kind === "tests" && tests()[id]) { delete tests()[id]; saveTests(); if (VIEW === "tests") render(); }
   },
   mergeLibrary(lib) {
     Object.assign(LIB.cards, lib.cards || {}); Object.assign(LIB.equip, lib.equip || {}); Object.assign(LIB.glossary, lib.glossary || {});

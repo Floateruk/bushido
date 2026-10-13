@@ -28,12 +28,15 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
     models and terrain, Enhancing elevation, cover within 1"); L toggles the board overlay; Selected panel lists Can see / Seen by.
   - `play.js`: playing on the table: TBL.play {turn, sp, vp}, Next turn (2 activation counters each, pack resets of
     SP/alignment, Flank reminders, Undo), activation dots inside tokens. The table shows only position, facing, LoS, Prone/Blind and activations;
-    full cards, wounds and Ki belong to the Testing lists area (to be built: lists side by side, then sent to the table).
-    play.js keeps the wounds/Ki code (m.dmg, m.ki, m.used) for that, unused on the table.
+    a table made from a test (TBL.testId) shares its model ids: killed models leave the board, Prone/Blind are the
+    test's states, and Next turn runs Ki Generation and Last Stand removals in the test (testStartTurn).
   - `ink.js`: sumi-e drawing for the board (brushed terrain pictures per piece, ensō objectives and token rings,
     ink filters, scroll mount and seal). Seeded by piece id so pictures stay stable between redraws.
   - `table.css`: table styles, inlined into the page's `<style>`.
-- The home screen is a hub: My lists (`lists`), Table (`table`); Testing lists and Campaign are not built yet.
+- `src/tests.js`: Testing lists (`tests`, `test:<id>`): two warbands side by side with full cards, wounds, Ki, feats,
+  states and cards (step 1); the Table setup picks a test (step 2). Saved in `bushido-tests-v1` and synced as
+  `groups/{code}/tests/{id}`, merged per model by its `u` timestamp so tablet and laptop can edit at once.
+- The home screen is a hub: My lists (`lists`, for real-life games), Testing lists (`tests`), Table (`table`); Campaign is not built yet.
 - `sync.js` + `config.js`: Firebase Firestore sync (anonymous auth, `groups/{syncCode}/...`).
   The Firebase web config is public by design; access is limited by Firestore rules and the sync code.
 - `sw.js`: service worker for offline use.
@@ -47,5 +50,5 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
 
 ## Notes
 - Player data lives in localStorage (`bushido-warbands-v1`, `bushido-games-v1`, `bushido-current-v1`,
-  `bushido-library-v1`) and in Firestore. Keep these formats backward compatible.
+  `bushido-library-v1`, `bushido-tests-v1`) and in Firestore. Keep these formats backward compatible.
 - The owner plays at venues with no signal: never make startup depend on the network.

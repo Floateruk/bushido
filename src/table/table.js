@@ -146,19 +146,22 @@ function layoutTerrain() {
 }
 
 /* ---------- Building a table from the setup choices ---------- */
-function modelsFromWb(wb) {
-  return (wb ? wb.models : []).map(d => {
+function modelsFromWb(wb, ids) {
+  return (wb ? wb.models : []).map((d, i) => {
     const sb = (d.stats && d.stats.size) || "";
     const size = (sb.match(/Tiny|Small|Medium|Large|Huge/i) || ["Small"])[0];
     const sizeCap = size[0].toUpperCase() + size.slice(1).toLowerCase();
     const base = +((sb.match(/(\d+)\s*mm/i) || [])[1] || SIZE_BASE[sizeCap] || 30);
-    return { id: "m" + uid(), name: d.name, size: sizeCap, base, r: base / 25.4 / 2, x: 0, y: 0, facing: 0, where: "tray",
+    return { id: (ids && ids[i]) || "m" + uid(), name: d.name, size: sizeCap, base, r: base / 25.4 / 2, x: 0, y: 0, facing: 0, where: "tray",
       flank: /\bFlank\b/.test(d.traits || ""), ghost: GHOST_RE.test(d.traits || ""), scout: (d.traits || "").match(/Scout \(?[\d\/"”]+\)?/)?.[0] || "", vim: false };
   });
 }
 function newTable(c) {
   const s = SCN(c.scenario);
-  const you = WB[c.you], them = WB[c.them];
+  const tg = c.testId ? findTest(c.testId) : null;
+  /* From a test: its models (same ids, so wounds, Ki and states link up) */
+  const fromTest = s => ({ models: tg.sides[s].models.map(x => x.def) });
+  const you = tg ? { ...fromTest("F"), name: tg.sides.F.name } : WB[c.you], them = tg ? { ...fromTest("E"), name: tg.sides.E.name } : WB[c.them];
   TBL = {
     id: "tb" + uid(), created: Date.now(), updated: Date.now(),
     scenarioId: s.id, deployment: s.deployment || c.deployment, objSize: s.objSize === "choice" ? c.objSize : "small",
@@ -166,8 +169,9 @@ function newTable(c) {
     objectives: s.objectives.map((o, i) => ({ id: "o" + i, x: o.x, y: o.y, align: o.align })),
     zones: s.zones.map((z, i) => ({ id: "z" + i, ...z })),
     terrain: [], checks: { 3: true },
-    sides: { F: { wbId: c.you, name: you ? you.name : "Your warband", models: modelsFromWb(you) },
-             E: { wbId: c.them, name: them ? them.name : "Opponent", models: modelsFromWb(them) } }
+    testId: tg ? tg.id : null,
+    sides: { F: { wbId: tg ? tg.sides.F.wbId : c.you, name: you ? you.name : "Your warband", models: modelsFromWb(you, tg && tg.sides.F.models.map(x => x.id)) },
+             E: { wbId: tg ? tg.sides.E.wbId : c.them, name: them ? them.name : "Opponent", models: modelsFromWb(them, tg && tg.sides.E.models.map(x => x.id)) } }
   };
   tSel = tArm = tRuler = null; tTool = null; tMsg = "";
   tSave();
@@ -235,7 +239,7 @@ function isGhost(m, side) {
   }
   return m.ghost;
 }
-const tableModels = () => ["F", "E"].flatMap(s => TBL.sides[s].models.filter(m => m.where === "table").map(m => [m, s]));
+const tableModels = () => ["F", "E"].flatMap(s => TBL.sides[s].models.filter(m => m.where === "table" && !isGoneT(m)).map(m => [m, s]));
 /* What blocks m, leaving out anything it already overlaps (so a misplaced model can still be dragged clear) */
 function moveBlockers(m) {
   const models = tableModels().map(([o]) => o).filter(o => o !== m);
@@ -326,7 +330,7 @@ function boardSVG() {
   }
   /* models */
   for (const side of ["F", "E"]) for (const m of TBL.sides[side].models) {
-    if (m.where !== "table") continue;
+    if (m.where !== "table" || isGoneT(m)) continue;
     const sel = tSel && tSel.id === m.id, bad = modelProblems(m, side).length;
     const ini = m.name.split(/\s+/).map(w => w[0]).join("").slice(0, 2);
     out.push(`<g class="tok ${side} ${sel ? "sel" : ""} ${bad ? "bad" : ""} ${TBL.step === "play" && m.act === 0 ? "exh" : ""}" data-k="model" data-id="${m.id}" transform="translate(${m.x.toFixed(3)} ${SY(m.y).toFixed(3)})">
@@ -336,7 +340,7 @@ function boardSVG() {
       <line x1="0" y1="${(-m.r * 0.62).toFixed(3)}" x2="0" y2="${(-m.r - 0.08).toFixed(3)}" class="face" transform="rotate(${m.facing})"/>
       ${m.vim ? `<circle r="${m.r + 0.12}" class="vimring"/>` : ""}${actDots(m)}
       <text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text>
-      ${m.prone || m.blind || m.lastStand ? `<text y="${f2(m.r + 0.32)}" class="tstate">${[m.lastStand && "Last Stand", m.prone && "Prone", m.blind && "Blind"].filter(Boolean).join(" · ")}</text>` : ""}</g>`);
+      ${(() => { const st = [onLastStandT(m) && "Last Stand", tFlag(m, "prone") && "Prone", tFlag(m, "blind") && "Blind"].filter(Boolean); return st.length ? `<text y="${f2(m.r + 0.32)}" class="tstate">${st.join(" · ")}</text>` : ""; })()}</g>`);
     if (sel) {
       const hx = Math.sin(rad(m.facing)) * (m.r + 0.45), hy = -Math.cos(rad(m.facing)) * (m.r + 0.45);
       out.push(`<g transform="translate(${m.x} ${SY(m.y)})"><line x1="0" y1="0" x2="${hx}" y2="${hy}" class="hline"/><circle cx="${hx}" cy="${hy}" r="0.22" class="handle" data-k="rotate" data-id="${m.id}"/></g>`);
@@ -403,7 +407,7 @@ function scenarioCard(s) {
 }
 function trayHTML(side) {
   const S = TBL.sides[side], s = SCN(TBL.scenarioId);
-  const status = m => m.where === "dead" ? `<span class="warn">Killed</span>` : m.where === "table" ? (modelProblems(m, side).length ? `<span class="warn">Check</span>` : `<span class="okk">On table</span>`)
+  const status = m => isGoneT(m) ? `<span class="warn">Killed</span>` : m.where === "table" ? (modelProblems(m, side).length ? `<span class="warn">Check</span>` : `<span class="okk">On table</span>`)
     : m.where === "elsewhere" ? `<span class="els">Elsewhere${m.flankTurn ? ` · Flank T${m.flankTurn} ${esc(m.flankEdge)}` : ""}</span>` : `<span class="muted">Not deployed</span>`;
   const edgesFor = TBL.deployment === "baseline" ? ["left edge", "right edge"] : ["left edge", "top edge", "bottom edge", "right edge"];
   return `<div class="tray ${side}">
@@ -412,8 +416,8 @@ function trayHTML(side) {
       <button class="tname" data-tsel="${m.id}">${esc(m.name)} <small>${m.size} · ${m.base}mm${m.scout ? " · " + esc(m.scout) : ""}${m.flank ? " · Flank" : ""}</small></button>
       ${status(m)}
       <div class="tacts">
-        ${m.where === "dead" ? `<button class="tbtn" data-trestore="${m.id}">Return</button>` : m.where !== "table" ? `<button class="tbtn" data-tarm="${m.id}">${tArm === m.id ? "Click the table…" : "Place"}</button>` : `<button class="tbtn" data-ttray="${m.id}">Remove</button>`}
-        ${m.where === "dead" ? "" : m.where !== "elsewhere" ? `<button class="tbtn" data-telse="${m.id}">${m.flank ? "Flank" : "Elsewhere"}</button>` : `<button class="tbtn" data-ttray="${m.id}">Back</button>`}
+        ${isGoneT(m) ? "" : m.where !== "table" ? `<button class="tbtn" data-tarm="${m.id}">${tArm === m.id ? "Click the table…" : "Place"}</button>` : `<button class="tbtn" data-ttray="${m.id}">Remove</button>`}
+        ${isGoneT(m) ? "" : m.where !== "elsewhere" ? `<button class="tbtn" data-telse="${m.id}">${m.flank ? "Flank" : "Elsewhere"}</button>` : `<button class="tbtn" data-ttray="${m.id}">Back</button>`}
         ${s.vim ? `<button class="tbtn ${m.vim ? "on" : ""}" data-tvim="${m.id}" aria-pressed="${m.vim}">VIM</button>` : ""}
       </div>
       ${m.where === "elsewhere" && m.flank ? `<div class="tflank">Arrives turn <select data-tfturn="${m.id}">${[2, 3, 4].map(n => `<option ${m.flankTurn == n ? "selected" : ""}>${n}</option>`).join("")}</select>
@@ -456,13 +460,18 @@ function setupHTML() {
   const wbs = Object.values(WB).sort((a, b) => a.name.localeCompare(b.name));
   if (!tSetup) tSetup = { you: wbs[0]?.id || "", them: (wbs[1] || wbs[0])?.id || "", scenario: "sacred-idols", deployment: "baseline", objSize: "small", vim: "Open" };
   const s = SCN(tSetup.scenario);
+  const allTests = Object.values(tests()).sort((a, b) => b.updated - a.updated);
+  if (tSetup.testId === undefined && allTests.length) tSetup.testId = allTests[0].id;
+  const tg = tSetup.testId ? findTest(tSetup.testId) : null;
   const opt = (v, cur, label) => `<option value="${esc(v)}" ${v === cur ? "selected" : ""}>${esc(label)}</option>`;
   const grp = (label, list) => `<optgroup label="${label}">${list.map(x => opt(x.id, tSetup.scenario, x.name)).join("")}</optgroup>`;
   return `<div class="tsetup">
     <div class="sec-h"><h2>Set up a table</h2></div>
     <div class="tform">
+      <label>Testing lists game<select data-tset="testId">${allTests.map(t => opt(t.id, tSetup.testId || "", t.name)).join("")}${opt("", tSetup.testId || "", "None: pick warbands (no wounds or Ki)")}</select></label>
+      ${tg ? `<p class="note">Wounds, Ki and states are kept in Testing lists (on any device with your sync code); this table keeps positions, facing, activations, turn and scores.</p>` : `
       <label>Your warband<select data-tset="you">${wbs.map(w => opt(w.id, tSetup.you, w.name)).join("")}</select></label>
-      <label>Opponent<select data-tset="them">${wbs.map(w => opt(w.id, tSetup.them, w.name)).join("")}</select></label>
+      <label>Opponent<select data-tset="them">${wbs.map(w => opt(w.id, tSetup.them, w.name)).join("")}</select></label>`}
       <label>Scenario<select data-tset="scenario">
         ${grp("Tournament pack · Basic", SCENARIOS.filter(x => x.level === "Basic"))}
         ${grp("Tournament pack · Advanced", SCENARIOS.filter(x => x.level === "Advanced"))}
@@ -634,7 +643,8 @@ document.addEventListener("click", e => {
   const d = t.dataset;
   if (d.thub !== undefined) return go("home");
   if (t.id === "tCreate") {
-    if (!tSetup.you || !tSetup.them) return toast("Add a warband in My lists first.");
+    if (tSetup.testId && !findTest(tSetup.testId)) tSetup.testId = "";
+    if (!tSetup.testId && (!tSetup.you || !tSetup.them)) return toast("Start a test in Testing lists first, or add warbands in My lists.");
     newTable(tSetup); return renderTable();
   }
   if (d.troll) {
@@ -661,7 +671,7 @@ document.addEventListener("click", e => {
   if (d.tarm) { tArm = tArm === d.tarm ? null : d.tarm; tTool = null; return renderTable(); }
   if (d.ttray) { const [m] = findModel(d.ttray); m.where = "tray"; delete m.flankTurn; tSave(); return renderTable(); }
   if (d.telse) { const [m] = findModel(d.telse); m.where = "elsewhere"; if (m.flank) { m.flankTurn = 2; m.flankEdge = "left edge"; } tSave(); return renderTable(); }
-  if (d.tstate) { const [m] = findModel(d.id); m[d.tstate] = !m[d.tstate]; tSave(); return renderTable(); }
+  if (d.tstate) { const [m] = findModel(d.id); if (d.tstate === "aware") m.aware = !m.aware; else setTFlag(m, d.tstate); tSave(); return renderTable(); }
   if (d.tvim) { const [m, side] = findModel(d.tvim); const was = m.vim; TBL.sides[side].models.forEach(x => x.vim = false); m.vim = !was; if (m.vim) TBL.checks[8] = TBL.sides.F.models.some(x => x.vim) && TBL.sides.E.models.some(x => x.vim); tSave(); return renderTable(); }
   if (d.tauto) { autoDeploy(d.tauto); tSave(); return renderTable(); }
 });

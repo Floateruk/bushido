@@ -12,7 +12,7 @@ const SIZE_RANK = { Zero: 0, Tiny: 1, Small: 2, Medium: 3, Large: 4, Huge: 5 };
 const AWARE_RE = /\bAware\b/;
 const LOS_PTS = 24;   /* points sampled round each base, plus its centre */
 
-function cardOf(m, side) { const wb = WB[TBL.sides[side].wbId]; return wb ? wb.models.find(x => x.name === m.name) : null; }
+function cardOf(m, side) { const tm = linkedTM(m); if (tm) return tm.def; const wb = WB[TBL.sides[side].wbId]; return wb ? wb.models.find(x => x.name === m.name) : null; }
 function mentionsRe(m, side, re) {
   const wb = WB[TBL.sides[side].wbId];
   return re.test(JSON.stringify(cardOf(m, side) || {})) || (!!wb && re.test(JSON.stringify(wb.cards || [])));
@@ -38,13 +38,13 @@ function losCheck(a, sa, b, sb) {
   const res = { los: false, cover: false, coverBy: [], blockedBy: [], lines: [], seen: 0, total: 0, note: "" };
   const touching = dist(a, b) - a.r - b.r <= BTB_GAP;
   const sixth = /\bSixth Sense\b/.test((cardOf(a, sa) || {}).traits || "");  /* Immune [Blind] */
-  if (a.blind && !sixth && !touching) { res.note = "Blind: no LoS outside base contact"; return res; }
+  if (tFlag(a, "blind") && !sixth && !touching) { res.note = "Blind: no LoS outside base contact"; return res; }
   const aware = isAware(a, sa), elev = elevationOf(a);
   const thr = Math.max(SIZE_RANK[a.size] || 2, SIZE_RANK[b.size] || 2, elev.e);
   const terr = TBL.terrain.map(t => ({ d: TBYID[t.typeId], P: terrPoly(t) }));
   /* terrain a model stands inside doesn't hide it from itself */
   const blockT = terr.filter(o => o.d.visibility === "Blocking" && SIZE_RANK[o.d.size] >= thr && !inPoly(a, o.P) && !inPoly(b, o.P));
-  const others = tableModels().map(([m]) => m).filter(m => m !== a && m !== b && !m.prone && (SIZE_RANK[m.size] || 2) >= thr);
+  const others = tableModels().map(([m]) => m).filter(m => m !== a && m !== b && !tFlag(m, "prone") && (SIZE_RANK[m.size] || 2) >= thr);
   const coverT = terr.filter(o => (o.d.visibility === "Blocking" || o.d.visibility === "Obscuring") && polyCircle(o.P, b, b.r) <= 1);
   const A = basePoints(a), targets = basePoints(b).filter(q => aware || inFacing(a, q));
   res.total = targets.length;
@@ -112,5 +112,5 @@ function losPanel(m, side) {
 /* LoS-related states: Prone and Blind for any model, Aware where its cards mention it */
 function losStates(m, side) {
   const b = (k, label, on) => `<button class="tbtn ${on ? "on" : ""}" data-tstate="${k}" data-id="${m.id}" aria-pressed="${on}">${label}</button>`;
-  return `<div class="tacts">${mentionsRe(m, side, AWARE_RE) || isAware(m, side) ? b("aware", "Aware (360° LoS)", isAware(m, side)) : ""}${b("prone", "Prone", !!m.prone)}${b("blind", "Blind", !!m.blind)}</div>`;
+  return `<div class="tacts">${mentionsRe(m, side, AWARE_RE) || isAware(m, side) ? b("aware", "Aware (360° LoS)", isAware(m, side)) : ""}${b("prone", "Prone", tFlag(m, "prone"))}${b("blind", "Blind", tFlag(m, "blind"))}</div>`;
 }

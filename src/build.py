@@ -12,7 +12,7 @@ top = top.replace('</style>', S('table/table.css') + '\n</style>', 1)
 seed = S('seed.json').replace('</', '<\\/')
 code = (S('parser.js').replace('if (typeof module !== "undefined") module.exports = BP;', '')
         + '\nconst SEED = ' + seed + ';\n'
-        + S('table/scenarios.js') + '\n' + S('table/terrain.js') + '\n' + S('table/ink.js') + '\n' + S('table/table.js') + '\n' + S('table/los.js') + '\n' + S('table/play.js') + '\n'
+        + S('table/scenarios.js') + '\n' + S('table/terrain.js') + '\n' + S('table/ink.js') + '\n' + S('table/table.js') + '\n' + S('table/los.js') + '\n' + S('table/play.js') + '\n' + S('tests.js') + '\n'
         + S('app.js'))
 
 if '--artifact' in sys.argv:

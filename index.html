@@ -492,6 +492,23 @@ label.inline{display:inline-flex;gap:6px;align-items:center;font-size:13px}
   #tSvg{max-height:none}
 }
 
+/* ---------- Testing lists ---------- */
+#testView{padding-block:10px 0}
+.xnew{display:grid;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+.xpick{display:flex;flex-wrap:wrap;align-items:end;gap:8px}
+.xpick label:first-child{display:grid;gap:4px;font-size:13px;font-weight:700;color:var(--muted);flex:1 1 220px}
+.xpick select{font:inherit;font-size:15px;padding:8px 10px;background:var(--raised);color:var(--ink);border:1px solid var(--line);border-radius:8px}
+.xgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.xside{display:grid;gap:10px;min-width:0}
+.xside-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;padding:8px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--side-f);position:sticky;top:0;z-index:2}
+.xside.E .xside-h{border-top-color:var(--side-e)}
+.xside-h b{font-family:var(--display);font-size:20px}
+.xside-h span{color:var(--muted);font-size:13px}
+.xstat{margin:6px 0}
+.xstat b{font-size:14px}
+.xtraits{margin:6px 0 0;font-size:13px;color:var(--muted)}
+@media (max-width:900px){.xgrid{grid-template-columns:minmax(0,1fr)}}
+
 </style>
 </head>
 <body>
@@ -500,6 +517,7 @@ label.inline{display:inline-flex;gap:6px;align-items:center;font-size:13px}
 <div id="homeView" class="screen" hidden></div>
 <div id="endView" class="screen" hidden></div>
 <div id="tableView" hidden></div>
+<div id="testView" hidden></div>
 
 <div id="playView">
 <div class="bar">
@@ -1358,19 +1376,22 @@ function layoutTerrain() {
 }
 
 /* ---------- Building a table from the setup choices ---------- */
-function modelsFromWb(wb) {
-  return (wb ? wb.models : []).map(d => {
+function modelsFromWb(wb, ids) {
+  return (wb ? wb.models : []).map((d, i) => {
     const sb = (d.stats && d.stats.size) || "";
     const size = (sb.match(/Tiny|Small|Medium|Large|Huge/i) || ["Small"])[0];
     const sizeCap = size[0].toUpperCase() + size.slice(1).toLowerCase();
     const base = +((sb.match(/(\d+)\s*mm/i) || [])[1] || SIZE_BASE[sizeCap] || 30);
-    return { id: "m" + uid(), name: d.name, size: sizeCap, base, r: base / 25.4 / 2, x: 0, y: 0, facing: 0, where: "tray",
+    return { id: (ids && ids[i]) || "m" + uid(), name: d.name, size: sizeCap, base, r: base / 25.4 / 2, x: 0, y: 0, facing: 0, where: "tray",
       flank: /\bFlank\b/.test(d.traits || ""), ghost: GHOST_RE.test(d.traits || ""), scout: (d.traits || "").match(/Scout \(?[\d\/"”]+\)?/)?.[0] || "", vim: false };
   });
 }
 function newTable(c) {
   const s = SCN(c.scenario);
-  const you = WB[c.you], them = WB[c.them];
+  const tg = c.testId ? findTest(c.testId) : null;
+  /* From a test: its models (same ids, so wounds, Ki and states link up) */
+  const fromTest = s => ({ models: tg.sides[s].models.map(x => x.def) });
+  const you = tg ? { ...fromTest("F"), name: tg.sides.F.name } : WB[c.you], them = tg ? { ...fromTest("E"), name: tg.sides.E.name } : WB[c.them];
   TBL = {
     id: "tb" + uid(), created: Date.now(), updated: Date.now(),
     scenarioId: s.id, deployment: s.deployment || c.deployment, objSize: s.objSize === "choice" ? c.objSize : "small",
@@ -1378,8 +1399,9 @@ function newTable(c) {
     objectives: s.objectives.map((o, i) => ({ id: "o" + i, x: o.x, y: o.y, align: o.align })),
     zones: s.zones.map((z, i) => ({ id: "z" + i, ...z })),
     terrain: [], checks: { 3: true },
-    sides: { F: { wbId: c.you, name: you ? you.name : "Your warband", models: modelsFromWb(you) },
-             E: { wbId: c.them, name: them ? them.name : "Opponent", models: modelsFromWb(them) } }
+    testId: tg ? tg.id : null,
+    sides: { F: { wbId: tg ? tg.sides.F.wbId : c.you, name: you ? you.name : "Your warband", models: modelsFromWb(you, tg && tg.sides.F.models.map(x => x.id)) },
+             E: { wbId: tg ? tg.sides.E.wbId : c.them, name: them ? them.name : "Opponent", models: modelsFromWb(them, tg && tg.sides.E.models.map(x => x.id)) } }
   };
   tSel = tArm = tRuler = null; tTool = null; tMsg = "";
   tSave();
@@ -1447,7 +1469,7 @@ function isGhost(m, side) {
   }
   return m.ghost;
 }
-const tableModels = () => ["F", "E"].flatMap(s => TBL.sides[s].models.filter(m => m.where === "table").map(m => [m, s]));
+const tableModels = () => ["F", "E"].flatMap(s => TBL.sides[s].models.filter(m => m.where === "table" && !isGoneT(m)).map(m => [m, s]));
 /* What blocks m, leaving out anything it already overlaps (so a misplaced model can still be dragged clear) */
 function moveBlockers(m) {
   const models = tableModels().map(([o]) => o).filter(o => o !== m);
@@ -1538,7 +1560,7 @@ function boardSVG() {
   }
   /* models */
   for (const side of ["F", "E"]) for (const m of TBL.sides[side].models) {
-    if (m.where !== "table") continue;
+    if (m.where !== "table" || isGoneT(m)) continue;
     const sel = tSel && tSel.id === m.id, bad = modelProblems(m, side).length;
     const ini = m.name.split(/\s+/).map(w => w[0]).join("").slice(0, 2);
     out.push(`<g class="tok ${side} ${sel ? "sel" : ""} ${bad ? "bad" : ""} ${TBL.step === "play" && m.act === 0 ? "exh" : ""}" data-k="model" data-id="${m.id}" transform="translate(${m.x.toFixed(3)} ${SY(m.y).toFixed(3)})">
@@ -1548,7 +1570,7 @@ function boardSVG() {
       <line x1="0" y1="${(-m.r * 0.62).toFixed(3)}" x2="0" y2="${(-m.r - 0.08).toFixed(3)}" class="face" transform="rotate(${m.facing})"/>
       ${m.vim ? `<circle r="${m.r + 0.12}" class="vimring"/>` : ""}${actDots(m)}
       <text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text>
-      ${m.prone || m.blind || m.lastStand ? `<text y="${f2(m.r + 0.32)}" class="tstate">${[m.lastStand && "Last Stand", m.prone && "Prone", m.blind && "Blind"].filter(Boolean).join(" · ")}</text>` : ""}</g>`);
+      ${(() => { const st = [onLastStandT(m) && "Last Stand", tFlag(m, "prone") && "Prone", tFlag(m, "blind") && "Blind"].filter(Boolean); return st.length ? `<text y="${f2(m.r + 0.32)}" class="tstate">${st.join(" · ")}</text>` : ""; })()}</g>`);
     if (sel) {
       const hx = Math.sin(rad(m.facing)) * (m.r + 0.45), hy = -Math.cos(rad(m.facing)) * (m.r + 0.45);
       out.push(`<g transform="translate(${m.x} ${SY(m.y)})"><line x1="0" y1="0" x2="${hx}" y2="${hy}" class="hline"/><circle cx="${hx}" cy="${hy}" r="0.22" class="handle" data-k="rotate" data-id="${m.id}"/></g>`);
@@ -1615,7 +1637,7 @@ function scenarioCard(s) {
 }
 function trayHTML(side) {
   const S = TBL.sides[side], s = SCN(TBL.scenarioId);
-  const status = m => m.where === "dead" ? `<span class="warn">Killed</span>` : m.where === "table" ? (modelProblems(m, side).length ? `<span class="warn">Check</span>` : `<span class="okk">On table</span>`)
+  const status = m => isGoneT(m) ? `<span class="warn">Killed</span>` : m.where === "table" ? (modelProblems(m, side).length ? `<span class="warn">Check</span>` : `<span class="okk">On table</span>`)
     : m.where === "elsewhere" ? `<span class="els">Elsewhere${m.flankTurn ? ` · Flank T${m.flankTurn} ${esc(m.flankEdge)}` : ""}</span>` : `<span class="muted">Not deployed</span>`;
   const edgesFor = TBL.deployment === "baseline" ? ["left edge", "right edge"] : ["left edge", "top edge", "bottom edge", "right edge"];
   return `<div class="tray ${side}">
@@ -1624,8 +1646,8 @@ function trayHTML(side) {
       <button class="tname" data-tsel="${m.id}">${esc(m.name)} <small>${m.size} · ${m.base}mm${m.scout ? " · " + esc(m.scout) : ""}${m.flank ? " · Flank" : ""}</small></button>
       ${status(m)}
       <div class="tacts">
-        ${m.where === "dead" ? `<button class="tbtn" data-trestore="${m.id}">Return</button>` : m.where !== "table" ? `<button class="tbtn" data-tarm="${m.id}">${tArm === m.id ? "Click the table…" : "Place"}</button>` : `<button class="tbtn" data-ttray="${m.id}">Remove</button>`}
-        ${m.where === "dead" ? "" : m.where !== "elsewhere" ? `<button class="tbtn" data-telse="${m.id}">${m.flank ? "Flank" : "Elsewhere"}</button>` : `<button class="tbtn" data-ttray="${m.id}">Back</button>`}
+        ${isGoneT(m) ? "" : m.where !== "table" ? `<button class="tbtn" data-tarm="${m.id}">${tArm === m.id ? "Click the table…" : "Place"}</button>` : `<button class="tbtn" data-ttray="${m.id}">Remove</button>`}
+        ${isGoneT(m) ? "" : m.where !== "elsewhere" ? `<button class="tbtn" data-telse="${m.id}">${m.flank ? "Flank" : "Elsewhere"}</button>` : `<button class="tbtn" data-ttray="${m.id}">Back</button>`}
         ${s.vim ? `<button class="tbtn ${m.vim ? "on" : ""}" data-tvim="${m.id}" aria-pressed="${m.vim}">VIM</button>` : ""}
       </div>
       ${m.where === "elsewhere" && m.flank ? `<div class="tflank">Arrives turn <select data-tfturn="${m.id}">${[2, 3, 4].map(n => `<option ${m.flankTurn == n ? "selected" : ""}>${n}</option>`).join("")}</select>
@@ -1668,13 +1690,18 @@ function setupHTML() {
   const wbs = Object.values(WB).sort((a, b) => a.name.localeCompare(b.name));
   if (!tSetup) tSetup = { you: wbs[0]?.id || "", them: (wbs[1] || wbs[0])?.id || "", scenario: "sacred-idols", deployment: "baseline", objSize: "small", vim: "Open" };
   const s = SCN(tSetup.scenario);
+  const allTests = Object.values(tests()).sort((a, b) => b.updated - a.updated);
+  if (tSetup.testId === undefined && allTests.length) tSetup.testId = allTests[0].id;
+  const tg = tSetup.testId ? findTest(tSetup.testId) : null;
   const opt = (v, cur, label) => `<option value="${esc(v)}" ${v === cur ? "selected" : ""}>${esc(label)}</option>`;
   const grp = (label, list) => `<optgroup label="${label}">${list.map(x => opt(x.id, tSetup.scenario, x.name)).join("")}</optgroup>`;
   return `<div class="tsetup">
     <div class="sec-h"><h2>Set up a table</h2></div>
     <div class="tform">
+      <label>Testing lists game<select data-tset="testId">${allTests.map(t => opt(t.id, tSetup.testId || "", t.name)).join("")}${opt("", tSetup.testId || "", "None: pick warbands (no wounds or Ki)")}</select></label>
+      ${tg ? `<p class="note">Wounds, Ki and states are kept in Testing lists (on any device with your sync code); this table keeps positions, facing, activations, turn and scores.</p>` : `
       <label>Your warband<select data-tset="you">${wbs.map(w => opt(w.id, tSetup.you, w.name)).join("")}</select></label>
-      <label>Opponent<select data-tset="them">${wbs.map(w => opt(w.id, tSetup.them, w.name)).join("")}</select></label>
+      <label>Opponent<select data-tset="them">${wbs.map(w => opt(w.id, tSetup.them, w.name)).join("")}</select></label>`}
       <label>Scenario<select data-tset="scenario">
         ${grp("Tournament pack · Basic", SCENARIOS.filter(x => x.level === "Basic"))}
         ${grp("Tournament pack · Advanced", SCENARIOS.filter(x => x.level === "Advanced"))}
@@ -1846,7 +1873,8 @@ document.addEventListener("click", e => {
   const d = t.dataset;
   if (d.thub !== undefined) return go("home");
   if (t.id === "tCreate") {
-    if (!tSetup.you || !tSetup.them) return toast("Add a warband in My lists first.");
+    if (tSetup.testId && !findTest(tSetup.testId)) tSetup.testId = "";
+    if (!tSetup.testId && (!tSetup.you || !tSetup.them)) return toast("Start a test in Testing lists first, or add warbands in My lists.");
     newTable(tSetup); return renderTable();
   }
   if (d.troll) {
@@ -1873,7 +1901,7 @@ document.addEventListener("click", e => {
   if (d.tarm) { tArm = tArm === d.tarm ? null : d.tarm; tTool = null; return renderTable(); }
   if (d.ttray) { const [m] = findModel(d.ttray); m.where = "tray"; delete m.flankTurn; tSave(); return renderTable(); }
   if (d.telse) { const [m] = findModel(d.telse); m.where = "elsewhere"; if (m.flank) { m.flankTurn = 2; m.flankEdge = "left edge"; } tSave(); return renderTable(); }
-  if (d.tstate) { const [m] = findModel(d.id); m[d.tstate] = !m[d.tstate]; tSave(); return renderTable(); }
+  if (d.tstate) { const [m] = findModel(d.id); if (d.tstate === "aware") m.aware = !m.aware; else setTFlag(m, d.tstate); tSave(); return renderTable(); }
   if (d.tvim) { const [m, side] = findModel(d.tvim); const was = m.vim; TBL.sides[side].models.forEach(x => x.vim = false); m.vim = !was; if (m.vim) TBL.checks[8] = TBL.sides.F.models.some(x => x.vim) && TBL.sides.E.models.some(x => x.vim); tSave(); return renderTable(); }
   if (d.tauto) { autoDeploy(d.tauto); tSave(); return renderTable(); }
 });
@@ -1918,7 +1946,7 @@ const SIZE_RANK = { Zero: 0, Tiny: 1, Small: 2, Medium: 3, Large: 4, Huge: 5 };
 const AWARE_RE = /\bAware\b/;
 const LOS_PTS = 24;   /* points sampled round each base, plus its centre */
 
-function cardOf(m, side) { const wb = WB[TBL.sides[side].wbId]; return wb ? wb.models.find(x => x.name === m.name) : null; }
+function cardOf(m, side) { const tm = linkedTM(m); if (tm) return tm.def; const wb = WB[TBL.sides[side].wbId]; return wb ? wb.models.find(x => x.name === m.name) : null; }
 function mentionsRe(m, side, re) {
   const wb = WB[TBL.sides[side].wbId];
   return re.test(JSON.stringify(cardOf(m, side) || {})) || (!!wb && re.test(JSON.stringify(wb.cards || [])));
@@ -1944,13 +1972,13 @@ function losCheck(a, sa, b, sb) {
   const res = { los: false, cover: false, coverBy: [], blockedBy: [], lines: [], seen: 0, total: 0, note: "" };
   const touching = dist(a, b) - a.r - b.r <= BTB_GAP;
   const sixth = /\bSixth Sense\b/.test((cardOf(a, sa) || {}).traits || "");  /* Immune [Blind] */
-  if (a.blind && !sixth && !touching) { res.note = "Blind: no LoS outside base contact"; return res; }
+  if (tFlag(a, "blind") && !sixth && !touching) { res.note = "Blind: no LoS outside base contact"; return res; }
   const aware = isAware(a, sa), elev = elevationOf(a);
   const thr = Math.max(SIZE_RANK[a.size] || 2, SIZE_RANK[b.size] || 2, elev.e);
   const terr = TBL.terrain.map(t => ({ d: TBYID[t.typeId], P: terrPoly(t) }));
   /* terrain a model stands inside doesn't hide it from itself */
   const blockT = terr.filter(o => o.d.visibility === "Blocking" && SIZE_RANK[o.d.size] >= thr && !inPoly(a, o.P) && !inPoly(b, o.P));
-  const others = tableModels().map(([m]) => m).filter(m => m !== a && m !== b && !m.prone && (SIZE_RANK[m.size] || 2) >= thr);
+  const others = tableModels().map(([m]) => m).filter(m => m !== a && m !== b && !tFlag(m, "prone") && (SIZE_RANK[m.size] || 2) >= thr);
   const coverT = terr.filter(o => (o.d.visibility === "Blocking" || o.d.visibility === "Obscuring") && polyCircle(o.P, b, b.r) <= 1);
   const A = basePoints(a), targets = basePoints(b).filter(q => aware || inFacing(a, q));
   res.total = targets.length;
@@ -2018,14 +2046,15 @@ function losPanel(m, side) {
 /* LoS-related states: Prone and Blind for any model, Aware where its cards mention it */
 function losStates(m, side) {
   const b = (k, label, on) => `<button class="tbtn ${on ? "on" : ""}" data-tstate="${k}" data-id="${m.id}" aria-pressed="${on}">${label}</button>`;
-  return `<div class="tacts">${mentionsRe(m, side, AWARE_RE) || isAware(m, side) ? b("aware", "Aware (360° LoS)", isAware(m, side)) : ""}${b("prone", "Prone", !!m.prone)}${b("blind", "Blind", !!m.blind)}</div>`;
+  return `<div class="tacts">${mentionsRe(m, side, AWARE_RE) || isAware(m, side) ? b("aware", "Aware (360° LoS)", isAware(m, side)) : ""}${b("prone", "Prone", tFlag(m, "prone"))}${b("blind", "Blind", tFlag(m, "blind"))}</div>`;
 }
 
 /* ---------- Playing on the table: turns, scenario and victory points, activation counters, model cards ----------
    Rulebook p.28: in the Starting Phase every model gains 2 Activation Counters; a Simple action removes 1, a
    Complex action 2, taking part in a Melee Exchange 1. A model with none is Exhausted.
    Pack p.15: Reset Scenario Points / Reset Alignment happen in the Starting Phase of the listed turns.
-   State: TBL.play = { turn, sp: {F, E}, vp: {F, E} }; each model keeps m.act (counters left). */
+   State: TBL.play = { turn, sp: {F, E}, vp: {F, E} }; each model keeps m.act (counters left).
+   Wounds, Ki and states are in the linked Testing lists game (TBL.testId), see tests.js. */
 const ACT_PER_TURN = 2;
 let tUndo = null;          /* snapshot for the Undo on "Next turn" */
 
@@ -2052,11 +2081,12 @@ function vpTurn(text, s) {
 
 function startTurn(n) {
   const P = playState(), s = SCN(TBL.scenarioId), notes = [];
-  tUndo = JSON.stringify(TBL);
-  if (n > 1) { const gone = endPhaseRemovals(); if (gone.length) notes.push(`removed at the End Phase (Last Stand): ${gone.join(", ")}`); }
+  const tg = linkedTest();
+  tUndo = JSON.stringify({ TBL, test: tg });
   P.turn = n;
-  kiGeneration();
   for (const m of allModels()) { m.act = ACT_PER_TURN; m.blind = false; }   /* Blind markers go in the End Phase */
+  /* Wounds, Ki and states live in the linked test: Ki Generation, Last Stand removals, Run/Blind cleared there */
+  if (tg) notes.push(...testStartTurn(tg, n), "Ki generated");
   for (const r of s.rules || []) {
     if (/^Reset( Scenario Points)?\s*\(/i.test(r) && turnsIn(r, /\(([\d,\/]+)\)/).includes(n)) { P.sp = { F: 0, E: 0 }; notes.push("Scenario Points reset to 0"); }
     if (/^Reset alignment/i.test(r) && turnsIn(r, /\(([\d,\/]+)\)/).includes(n)) { TBL.objectives.forEach(o => o.align = "N"); followZones(); notes.push("objectives reset to Neutral"); }
@@ -2152,7 +2182,11 @@ document.addEventListener("click", e => {
     renderTable();
     return toast(`Turn ${n}: ${ACT_PER_TURN} activation counters each${notes.length ? "; " + notes.join("; ") : ""}.`, false, `<button data-tundoturn="">Undo</button>`);
   }
-  if (d.tundoturn !== undefined && tUndo) { TBL = JSON.parse(tUndo); tUndo = null; tSave(); $("toastHost").innerHTML = ""; return renderTable(); }
+  if (d.tundoturn !== undefined && tUndo) {
+    const u = JSON.parse(tUndo); TBL = u.TBL; tUndo = null; tSave();
+    if (u.test) { const now = Date.now(); u.test.sides.F.models.concat(u.test.sides.E.models).forEach(m => m.u = now); tests()[u.test.id] = u.test; touchTest(u.test); }
+    $("toastHost").innerHTML = ""; return renderTable();
+  }
   if (d.tlast) { const P = playState(); if (d.tlast === "yes") P.lastTurn = P.turn; else P.rolled = P.turn; tSave(); return renderTable(); }
   if (d.tturnback !== undefined) { const P = playState(); if (P.turn > 1) { if (P.lastTurn >= P.turn) delete P.lastTurn; P.turn--; tSave(); renderTable(); } }
 });
@@ -2164,89 +2198,250 @@ document.addEventListener("keydown", e => {
   else if (e.key === "+" || e.key === "=") spendAct(tSel.id, 1);
 });
 
-/* ---------- Wounds and Ki: not shown on the table (they belong to the Testing lists area, to be built);
-   kept here so Testing lists can use them. The My lists tracker is for real-life games. ----------
-   Each table model keeps m.dmg (wounds marked), m.ki (Ki tokens) and m.used (limited Ki feats used).
-   Rulebook: Ki Generation in the Starting Phase adds the first number of the Ki statistic (up to the cap);
-   a model at 0 wounds is Killed and removed, unless it has Last Stand: then it stays until the End Phase. */
-const defOf = m => { const s = findModel(m.id)[1]; return (s && cardOf(m, s)) || {}; };
-const maxW = m => +defOf(m).w || 1;
-const kiCapOf = m => +defOf(m).kiCap || 0;
-const hasLastStand = m => /\bLast Stand\b/i.test(defOf(m).traits || "");
-const woundsLeft = m => Math.max(0, maxW(m) - (m.dmg || 0));
-function kiGeneration() {
-  for (const m of allModels()) {
-    if (m.where === "dead") continue;
-    const d = defOf(m);
-    m.ki = Math.min(+d.kiCap || 0, (m.ki || 0) + (+d.kiGen || 0));
-    for (const k in m.used || {}) if (m.used[k] === "OpT") delete m.used[k];
+/* ---------- Link to the Testing lists game ----------
+   Table models made from a test share its model ids. Killed models leave the board; Prone and Blind are the
+   test's states (shown and set on both screens). A table without a test keeps Prone/Blind on its own models. */
+const linkedTest = () => (TBL && TBL.testId && typeof findTest === "function") ? findTest(TBL.testId) : null;
+function linkedTM(m) { const tg = linkedTest(); return tg ? findTM(tg, m.id)[0] : null; }
+const isGoneT = m => { const tm = linkedTM(m); return !!tm && xGone(tm); };
+const onLastStandT = m => { const tm = linkedTM(m); return !!tm && xOnLS(tm); };
+function tFlag(m, k) {           /* k: "prone" | "blind" */
+  const tm = linkedTM(m);
+  return tm ? !!tm.states[k === "prone" ? "Prone" : "Blind"] : !!m[k];
+}
+function setTFlag(m, k) {
+  const tg = linkedTest(), tm = linkedTM(m), key = k === "prone" ? "Prone" : "Blind";
+  if (tm) { if (tm.states[key]) delete tm.states[key]; else tm.states[key] = 1; touchTest(tg, tm); }
+  else m[k] = !m[k];
+}
+
+/* ---------- Testing lists: two warbands side by side with every stat, wounds, Ki, feats and states ----------
+   Step 1 of the testing flow: import or pick two lists here. Step 2: the Table picks this test in its setup,
+   and its models are linked to these (same ids). Wounds, Ki and states live here; position, facing,
+   activations, turn, SP and VP live on the table. Killed models come off the table; Prone and Blind set on
+   either screen show on both; the table's "Next turn" runs Ki Generation and End Phase removals here.
+   Saved in bushido-tests-v1 and synced (collection "tests"), merged per model so a tablet and a laptop
+   can change the same test at the same time. */
+const TESTKEY = "bushido-tests-v1";
+let TESTS = null;
+const tests = () => TESTS || (TESTS = load(TESTKEY, {}));
+const saveTests = () => store(TESTKEY, tests());
+let xForm = null;               /* new test choices {F, E} */
+let xOpen = new Set();          /* model cards opened in full */
+let xConfirm = null;
+
+const xDef = tm => tm.def || {};
+const xW = tm => +xDef(tm).w || 1;
+const xLS = tm => /\bLast Stand\b/i.test(xDef(tm).traits || "");
+/* Killed and off the table: at 0 wounds, unless on Last Stand (then removed at the End Phase) */
+const xGone = tm => (tm.dmg || 0) >= xW(tm) && (!xLS(tm) || tm.removed);
+const xOnLS = tm => (tm.dmg || 0) >= xW(tm) && xLS(tm) && !tm.removed;
+
+function touchTest(tg, tm) {
+  const now = Date.now();
+  if (tm) tm.u = now;
+  tg.updated = now;
+  saveTests();
+  window.Sync?.pushTest?.(tg);
+}
+function newTest(fId, eId) {
+  const now = Date.now();
+  const side = id => {
+    const w = WB[id];
+    return { wbId: id, name: w.name, sub: w.sub || "",
+      models: w.models.map(d => ({ id: "x" + uid() + uid(), def: clone(d), dmg: 0, ki: 0, used: {}, states: {}, u: now })),
+      cards: (w.cards || []).map(c => ({ name: c.name, type: c.type, text: c.text, done: false, u: now })) };
+  };
+  const tg = { id: "tg" + uid() + uid(), created: now, updated: now, name: `${WB[fId].name} vs ${WB[eId].name}`, sides: { F: side(fId), E: side(eId) } };
+  tests()[tg.id] = tg;
+  touchTest(tg);
+  return tg;
+}
+const findTest = id => tests()[id] || null;
+function findTM(tg, id) { for (const s of ["F", "E"]) { const m = tg.sides[s].models.find(x => x.id === id); if (m) return [m, s]; } return [null, null]; }
+
+/* Merge a copy from another device: newer model / card wins, piece by piece */
+function mergeTest(mine, theirs) {
+  const out = clone(theirs);
+  let mineNewer = false;
+  for (const s of ["F", "E"]) {
+    const a = mine.sides[s], b = out.sides[s];
+    b.models = b.models.map(bm => { const am = a.models.find(x => x.id === bm.id); if (am && (am.u || 0) > (bm.u || 0)) { mineNewer = true; return am; } return bm; });
+    b.cards = b.cards.map((bc, i) => { const ac = a.cards[i]; if (ac && (ac.u || 0) > (bc.u || 0)) { mineNewer = true; return ac; } return bc; });
   }
+  out.updated = Math.max(mine.updated || 0, theirs.updated || 0);
+  return [out, mineNewer];
 }
-/* End Phase of the turn just played: models on Last Stand are removed */
-function endPhaseRemovals() {
-  const gone = allModels().filter(m => m.where === "table" && m.lastStand);
-  gone.forEach(m => { m.where = "dead"; m.lastStand = false; });
-  return gone.map(m => m.name);
+
+/* ---------- Turn hooks called by the table ---------- */
+/* Starting Phase: Ki Generation (first number of the Ki statistic, up to the cap); once-per-turn feats reset;
+   Run and Blind markers from last turn go. End Phase of the previous turn: Last Stand models are removed. */
+function testStartTurn(tg, n) {
+  const notes = [], gone = [];
+  for (const s of ["F", "E"]) for (const tm of tg.sides[s].models) {
+    if (n > 1 && xOnLS(tm)) { tm.removed = true; gone.push(tm.def.name); }
+    if (xGone(tm)) continue;
+    const d = xDef(tm);
+    tm.ki = Math.min(+d.kiCap || 0, (tm.ki || 0) + (+d.kiGen || 0));
+    for (const k in tm.used || {}) if (tm.used[k] === "OpT") delete tm.used[k];
+    delete tm.states.Run; delete tm.states.Blind;
+    tm.u = Date.now();
+  }
+  if (gone.length) notes.push(`removed at the End Phase (Last Stand): ${gone.join(", ")}`);
+  touchTest(tg);
+  return notes;
 }
-function setWounds(m, dmg) {
-  const w = maxW(m), before = JSON.stringify(TBL);
-  m.dmg = Math.max(0, Math.min(w, dmg));
-  if (m.dmg < w) { m.lastStand = false; tSave(); return renderTable(); }
-  if (hasLastStand(m)) { m.lastStand = true; tSave(); renderTable(); return toast(`${m.name} is on Last Stand: removed at the End Phase.`); }
-  m.where = "dead"; m.lastStand = false;
-  if (tSel && tSel.id === m.id) tSel = { kind: "model", id: m.id };
-  tUndo = before; tSave(); renderTable();
-  toast(`${m.name} is killed and removed from the table.`, false, `<button data-tundoturn="">Undo</button>`);
+
+/* ---------- Screens ---------- */
+function renderTests() {
+  const v = $("testView");
+  const wbs = Object.values(WB).sort((a, b) => a.name.localeCompare(b.name));
+  if (!xForm) xForm = { F: wbs[0]?.id || "", E: (wbs[1] || wbs[0])?.id || "" };
+  const all = Object.values(tests()).sort((a, b) => b.updated - a.updated);
+  const opt = (id, cur) => `<option value="${esc(id)}" ${id === cur ? "selected" : ""}>${esc(WB[id].name)}</option>`;
+  const pick = (s, label) => `<div class="xpick ${s}"><label>${label}<select data-xform="${s}">${wbs.map(w => opt(w.id, xForm[s])).join("")}</select></label>
+    <label class="btn small file-btn" for="xPdf${s}">Import list PDF</label><input type="file" id="xPdf${s}" data-xpdf="${s}" accept="application/pdf,.pdf" hidden></div>`;
+  v.innerHTML = `<div class="thead"><button class="btn small" data-area="home">‹ Home</button><h1>Testing lists</h1></div>
+    <div class="sec-h"><h2>New test</h2></div>
+    <div class="xnew">${pick("F", "Your list")}${pick("E", "Opponent's list")}
+      <p class="note" id="xNote" role="status">Pick two warbands, or import a newrecruit.eu PDF for either side.</p>
+      <div class="row"><button class="btn primary" data-xnew ${wbs.length ? "" : "disabled"}>Start test</button></div></div>
+    <div class="sec-h"><h2>Tests</h2><span>${all.length}</span></div>
+    <div class="slots">${all.map(tg => {
+      const st = s => tg.sides[s].models.filter(m => !xGone(m)).length + "/" + tg.sides[s].models.length;
+      return `<div class="slot"><div class="slot-main"><b>${esc(tg.name)}</b><span>Standing ${st("F")} v ${st("E")} · ${esc(dayLabel(tg.updated))}${TBL && TBL.testId === tg.id ? " · on the table" : ""}</span></div>
+        <button class="btn small primary" data-xopen="${tg.id}">Open</button>
+        <button class="btn small ${xConfirm === tg.id ? "danger" : "quiet"}" data-xdel="${tg.id}">${xConfirm === tg.id ? "Delete?" : "Delete"}</button></div>`;
+    }).join("") || `<p class="empty">No tests yet.</p>`}</div>`;
 }
-function woundsHTML(m) {
-  if (m.where !== "table" && m.where !== "dead" && TBL.step !== "play") return "";
-  const w = maxW(m), dmg = m.dmg || 0, cap = kiCapOf(m), ki = m.ki || 0, d = defOf(m);
-  /* pips: wounds left are filled; click a pip to set the wounds left to it */
-  const left = w - dmg;
-  const wp = Array.from({ length: w }, (_, i) => `<button class="twp ${i < left ? "on" : ""}" data-twound="${w - (left === i + 1 ? i : i + 1)}" data-id="${m.id}" aria-label="${i + 1} wounds left"></button>`).join("");
-  const kp = Array.from({ length: cap }, (_, i) => `<button class="tkp ${i < ki ? "on" : ""}" data-tki="${i < ki && i === ki - 1 ? i : i + 1}" data-id="${m.id}" aria-label="${i + 1} Ki"></button>`).join("");
+
+function xPips(n, filled, kind, id) {
+  return pips(n, filled, kind, id).replace(/data-pip="/g, 'data-xpip="').replace(/data-m="/g, 'data-xm="');
+}
+function xChips(tm) {
+  return Object.entries(tm.states || {}).map(([k, c]) => `<button class="chip cat-${CAT[k] || "neutral"}" data-xchip="${esc(k)}" data-xm="${tm.id}"><i></i>${esc(k)}${c > 1 ? `<span class="c num">${c}</span>` : ""}</button>`).join("");
+}
+function xModelHTML(tm) {
+  const d = xDef(tm), st = d.stats || {}, gone = xGone(tm), ls = xOnLS(tm), w = xW(tm), cap = +d.kiCap || 0;
+  const weapons = (d.weapons || []).filter(x => !(!x.s && /,/.test(x.n)));
   const feats = (d.feats || []).map(f => {
-    const used = f.lim && (m.used || {})[f.n], can = m.where !== "dead" && !used && ki >= f.c;
-    return `<button class="tfeat ${used ? "used" : ""}" data-tfeat="${esc(f.n)}" data-id="${m.id}" ${can ? "" : "disabled"} title="${esc(f.d || "")}"><span>${f.c}</span>${esc(f.n)}${f.lim ? ` · ${f.lim}` : ""}</button>`;
+    const used = f.lim && (tm.used || {})[f.n], can = !gone && !used && (tm.ki || 0) >= f.c;
+    return `<button class="feat ${used ? "used" : ""}" data-xfeat="${esc(f.n)}" data-xm="${tm.id}" ${can ? "" : "disabled"} title="${esc(f.d || "")}"><span class="cost">${f.c}</span>${esc(f.n)}${f.lim ? ` · ${f.lim}` : ""}</button>`;
   }).join("");
-  return `<div class="twk">
-    <div class="twk-row"><small>Wounds</small><span class="twk-pips">${wp}</span><b class="num">${w - dmg}/${w}</b>
-      <span class="tacts"><button class="tbtn" data-twound="${dmg + 1}" data-id="${m.id}" title="Key w">−1</button><button class="tbtn" data-twound="${dmg - 1}" data-id="${m.id}" title="Shift+W">+1</button></span></div>
-    ${m.lastStand ? `<p class="warn">On Last Stand: removed at the End Phase</p>` : ""}
-    ${m.where === "dead" ? `<p class="warn">Killed <button class="tbtn" data-trestore="${m.id}">Return to the table</button></p>` : ""}
-    ${cap ? `<div class="twk-row"><small>Ki</small><span class="twk-pips">${kp}</span><b class="num">${ki}/${cap}</b>
-      <span class="tacts"><button class="tbtn" data-tki="${ki - 1}" data-id="${m.id}">−1</button><button class="tbtn" data-tki="${ki + 1}" data-id="${m.id}">+1</button></span>
-      <span class="muted tsmall kgen">Generates ${+d.kiGen || 0} Ki each Starting Phase</span></div>` : ""}
-    ${feats ? `<div class="tfeats">${feats}</div>` : ""}
-  </div>`;
+  const eqNames = [...weapons.filter(x => x.eq).map(x => x.n), ...(d.equip || []).map(e => e.n)];
+  const open = xOpen.has(tm.id);
+  return `<article class="m ${gone ? "dead" : ""} ${ls ? "on-ls" : ""}">
+    <div class="m-head"><div class="m-name">${esc(d.name)}${eqNames.length ? `<span class="m-eq">${eqNames.map(n => `<span class="eq-tag">${esc(n)}</span>`).join("")}</span>` : ""}</div>
+      ${gone ? `<span class="pill dead">Killed</span>` : ls ? `<button class="pill ls" data-rule="Last Stand">Last Stand</button>` : ""}</div>
+    <div class="statline xstat">
+      <div><small>Mel</small><b class="num">${stat(st.mp, st.mb)}</b></div><div><small>Rng</small><b class="num">${stat(st.rp, st.rb)}</b></div>
+      <div><small>Mov</small><b class="num">${stat(st.mv, st.mvb)}</b></div><div><small>Ki</small><b class="num">${d.kiGen ?? "–"}/${d.kiCap ?? "–"}</b></div>
+      <div><small>Size</small><b class="num">${esc(st.size || "–")}</b></div></div>
+    <div class="track w"><span class="track-label">Wounds</span>${xPips(w, tm.dmg || 0, "w", tm.id)}<span class="track-val num"><b>${Math.max(0, w - (tm.dmg || 0))}</b>/${w}</span></div>
+    ${cap ? `<div class="track k"><span class="track-label">Ki</span>${xPips(cap, tm.ki || 0, "k", tm.id)}<span class="track-val num"><b>${tm.ki || 0}</b> +${+d.kiGen || 0}</span></div>` : ""}
+    <div class="states">${xChips(tm)}${gone ? "" : `<button class="add-state" data-xaddstate="${tm.id}">+ State</button>`}</div>
+    ${feats ? `<div class="feats">${feats}</div>` : ""}
+    ${d.traits ? `<p class="xtraits">${ruleList(d.traits)}</p>` : ""}
+    <button class="more" data-xdetail="${tm.id}">${open ? "Hide card ▴" : "Full card ▾"}</button>
+    ${open ? `<div class="detail">
+      ${weapons.length ? `<div><h4>Weapons</h4>${weapons.map(x => `<div class="wpn"><b>${esc(x.n)} ${esc(x.s || "")}${x.range ? ` · ${esc(x.range)}"` : ""}${x.eq ? '<span class="eq">Equip</span>' : ""}</b><em>${ruleList(x.t || "")}</em></div>`).join("")}</div>` : ""}
+      ${(d.equip || []).length ? `<div><h4>Equipment</h4>${d.equip.map(e => `<p><b>${esc(e.n)}</b>: ${esc(e.d)}</p>`).join("")}</div>` : ""}
+      ${(d.feats || []).length ? `<div><h4>Ki feats</h4>${d.feats.map(f => `<p><b>${esc(f.n)}</b> (${f.c} Ki${f.tm ? ", " + esc(f.tm) : ""}${f.sub ? ", " + esc(f.sub) : ""}${f.limText ? ", " + esc(f.limText) : ""}): ${esc(f.d)}</p>`).join("")}</div>` : ""}
+      ${(d.notes || []).length ? `<div><h4>Unique effects</h4>${d.notes.map(n => `<p><b>${esc(n.n)}</b>: ${esc(n.d)}</p>`).join("")}</div>` : ""}
+      ${(d.immune || []).length ? `<div><h4>Immune to</h4><p>${d.immune.join(", ")}</p></div>` : ""}
+      ${d.rice != null ? `<p class="tap-hint">${esc(String(d.rice))} Rice · underlined rules open their definition.</p>` : ""}
+    </div>` : ""}
+  </article>`;
 }
-/* On the board: a thin vermilion arc round the token for wounds taken (none when unhurt) */
-function woundArc(m) {
-  const w = maxW(m), dmg = Math.min(m.dmg || 0, w);
-  if (!dmg) return "";
-  const R = m.r + 0.07, frac = dmg / w;
-  if (frac >= 1) return `<circle r="${f2(R)}" class="warc"/>`;
-  const a = frac * Math.PI * 2, x = Math.sin(a) * R, y = -Math.cos(a) * R;
-  return `<path d="M0 ${f2(-R)}A${f2(R)} ${f2(R)} 0 ${frac > 0.5 ? 1 : 0} 1 ${f2(x)} ${f2(y)}" class="warc"/>`;
+function renderTest(id) {
+  const v = $("testView"), tg = findTest(id);
+  if (!tg) { VIEW = "tests"; return renderTests(); }
+  const side = s => {
+    const S = tg.sides[s], up = S.models.filter(m => !xGone(m)).length, wd = S.models.reduce((a, m) => a + Math.min(m.dmg || 0, xW(m)), 0);
+    return `<section class="xside ${s}">
+      <div class="xside-h"><b>${esc(S.name)}</b><span>${up} of ${S.models.length} standing · ${wd} wounds taken</span></div>
+      ${S.models.map(xModelHTML).join("")}
+      ${S.cards.length ? `<div class="sec-h"><h2>Cards</h2></div>${S.cards.map((c, i) => `<div class="card ${c.done ? "done" : ""}"><button class="check ${c.done ? "on" : ""}" data-xcard="${s}:${i}" aria-label="Mark ${esc(c.name)} as resolved">${c.done ? "✓" : ""}</button><div><span class="card-type">${esc(c.type)}</span><b>${esc(c.name)}</b><p>${esc(c.text)}</p></div></div>`).join("")}` : ""}
+    </section>`;
+  };
+  const onTable = TBL && TBL.testId === tg.id;
+  v.innerHTML = `<div class="thead"><button class="btn small" data-area="tests">‹ Testing lists</button><h1>${esc(tg.name)}</h1><span class="spacer"></span>
+      <button class="btn small ${onTable ? "" : "primary"}" data-xtable="${tg.id}">${onTable ? "Open the table" : "Set up the table"}</button></div>
+    <p class="note">Wounds, Ki, feats and states. Turn, scores, positions and activations are on the Table${onTable ? "" : ": set it up there (on this device or another one with your sync code) and pick this test"}.</p>
+    <div class="xgrid">${side("F")}${side("E")}</div>`;
 }
-const trayStats = m => {
-  const cap = kiCapOf(m);
-  return TBL.step === "play" || m.dmg ? ` · W ${woundsLeft(m)}/${maxW(m)}${cap ? ` · Ki ${m.ki || 0}` : ""}` : "";
-};
+
+/* ---------- Changes ---------- */
+function xChange(tg, tm, fn) { fn(); touchTest(tg, tm); render(); }
+function xStateSheet(tg, tm) {
+  const imm = xDef(tm).immune || [], isImm = k => imm.includes(baseState(k)) || imm.includes(k);
+  sheet(`<h3>${esc(tm.def.name)}</h3><p class="sub">Tap a state to add it. Tap it on the card to change it.</p>
+    <div class="grid-states">${STATES.map(([k, c]) => `<button data-xpick="${esc(k)}" data-xm="${tm.id}" ${isImm(k) ? "disabled" : ""}><i style="background:var(--${c === "harm" ? "harm" : c === "fire" ? "fire" : c === "poison" ? "poison" : c === "good" ? "ki" : "muted"})"></i>${esc(k)}${isImm(k) ? "<small>Immune</small>" : tm.states[k] ? `<small>×${tm.states[k]}</small>` : ""}</button>`).join("")}</div>`);
+}
+function xChipSheet(tm, k) {
+  sheet(`<h3>${esc(k)}</h3><p class="sub">${esc(tm.def.name)}</p>
+    <div class="row"><button class="btn" data-xst="${esc(k)}" data-xm="${tm.id}" data-d="-1">−1</button><b class="num" style="font-size:20px;padding:0 10px">${tm.states[k] || 0}</b><button class="btn" data-xst="${esc(k)}" data-xm="${tm.id}" data-d="1">+1</button>
+    <button class="btn danger" data-xst="${esc(k)}" data-xm="${tm.id}" data-d="-99">Remove</button></div>`);
+}
+const curTest = () => VIEW.startsWith("test:") ? findTest(VIEW.slice(5)) : null;
 
 document.addEventListener("click", e => {
-  if (VIEW !== "table" || !TBL) return;
+  if (VIEW !== "tests" && !VIEW.startsWith("test:") && !$("sheetHost").innerHTML) return;
   const t = e.target.closest("button"); if (!t) return;
   const d = t.dataset;
-  if (d.twound !== undefined) { const [m] = findModel(d.id); return setWounds(m, +d.twound); }
-  if (d.tki !== undefined) { const [m] = findModel(d.id); m.ki = Math.max(0, Math.min(kiCapOf(m), +d.tki)); tSave(); return renderTable(); }
-  if (d.tfeat) {
-    const [m] = findModel(d.id), f = (defOf(m).feats || []).find(x => x.n === d.tfeat); if (!f) return;
-    m.ki = Math.max(0, (m.ki || 0) - f.c);
-    if (f.lim) { m.used = m.used || {}; m.used[f.n] = f.lim; }
-    tSave(); renderTable(); return toast(`${m.name}: ${f.n} (−${f.c} Ki)`);
+  if (d.xdel === undefined) xConfirm = null;
+  if (d.xnew !== undefined) {
+    if (!xForm.F || !xForm.E) return;
+    const tg = newTest(xForm.F, xForm.E); return go("test:" + tg.id);
   }
-  if (d.trestore) { const [m] = findModel(d.trestore); m.where = "table"; m.dmg = maxW(m) - 1; tSave(); return renderTable(); }
+  if (d.xopen) return go("test:" + d.xopen);
+  if (d.xdel) {
+    if (xConfirm !== d.xdel) { xConfirm = d.xdel; return renderTests(); }
+    delete tests()[d.xdel]; saveTests(); window.Sync?.remove("tests", d.xdel); xConfirm = null; return renderTests();
+  }
+  if (d.xtable) {
+    const tg = findTest(d.xtable);
+    if (!(TBL && TBL.testId === tg.id)) tSetup = { ...(tSetup || { scenario: "sacred-idols", deployment: "baseline", objSize: "small", vim: "Open" }), testId: tg.id, you: tg.sides.F.wbId, them: tg.sides.E.wbId };
+    if (TBL && TBL.testId !== tg.id) toast("A different table is set up on this device. Use New table there to start this one.");
+    return go("table");
+  }
+  const tg = curTest(); if (!tg) return;
+  const [tm] = d.xm ? findTM(tg, d.xm) : [null];
+  if (d.xpip && tm) {
+    const i = +d.i, f = d.xpip === "w" ? "dmg" : "ki", next = (tm[f] || 0) === i + 1 ? i : i + 1;
+    if (f === "dmg" && xLS(tm) && (tm.dmg || 0) >= xW(tm) && next < tm.dmg) return toast("Last Stand: wounds can't be recovered.");
+    return xChange(tg, tm, () => { tm[f] = next; if (f === "dmg" && next < xW(tm)) tm.removed = false; });
+  }
+  if (d.xfeat && tm) {
+    const f = (tm.def.feats || []).find(x => x.n === d.xfeat); if (!f) return;
+    xChange(tg, tm, () => { tm.ki = Math.max(0, (tm.ki || 0) - f.c); if (f.lim) { tm.used = tm.used || {}; tm.used[f.n] = f.lim; } });
+    return toast(`${tm.def.name}: ${f.n} (−${f.c} Ki)`);
+  }
+  if (d.xaddstate && tm) return xStateSheet(tg, findTM(tg, d.xaddstate)[0]);
+  if (d.xaddstate) return xStateSheet(tg, findTM(tg, d.xaddstate)[0]);
+  if (d.xpick && tm) { closeSheet(); return xChange(tg, tm, () => { tm.states[d.xpick] = (tm.states[d.xpick] || 0) + 1; }); }
+  if (d.xchip && tm) return xChipSheet(tm, d.xchip);
+  if (d.xst && tm) {
+    xChange(tg, tm, () => { const n = (tm.states[d.xst] || 0) + +d.d; if (n <= 0) delete tm.states[d.xst]; else tm.states[d.xst] = n; });
+    return tm.states[d.xst] ? xChipSheet(tm, d.xst) : closeSheet();
+  }
+  if (d.xdetail) { xOpen.has(d.xdetail) ? xOpen.delete(d.xdetail) : xOpen.add(d.xdetail); return render(); }
+  if (d.xcard) { const [s, i] = d.xcard.split(":"), c = tg.sides[s].cards[+i]; c.done = !c.done; c.u = Date.now(); touchTest(tg); return render(); }
+});
+document.addEventListener("change", async e => {
+  const d = e.target.dataset;
+  if (d.xform) { xForm[d.xform] = e.target.value; return; }
+  if (d.xpdf && e.target.files[0]) {
+    const note = $("xNote"); note.textContent = "Reading PDF…";
+    try {
+      const p = await readPdf(e.target.files[0]), g = gameFromPdf(p);
+      if (!g.models.length) { note.textContent = "No profile cards found. Is this a newrecruit.eu list PDF?"; return; }
+      addToLibrary(p);
+      const wb = addWarband(wbFromGame(g));
+      xForm[d.xpdf] = wb.id; renderTests();
+      $("xNote").textContent = `Imported ${wb.name}: ${g.models.length} models.`;
+    } catch (err) { note.textContent = `Couldn't read that PDF (${err.message}).`; }
+  }
 });
 
 /* ---------- Library ---------- */
@@ -2590,15 +2785,20 @@ function render() {
   if (VIEW === "play" && (!CUR || !GAMES[CUR] || !S)) VIEW = "home";
   if (VIEW === "play" && isOver(GAMES[CUR])) VIEW = "end:" + CUR;
   if (VIEW.startsWith("end:") && !GAMES[VIEW.slice(4)]) VIEW = "lists";
+  if (VIEW.startsWith("test:") && !findTest(VIEW.slice(5))) VIEW = "tests";
   $("homeView").hidden = VIEW !== "home" && VIEW !== "lists";
   $("endView").hidden = !VIEW.startsWith("end:");
   $("playView").hidden = VIEW !== "play";
   $("tableView").hidden = VIEW !== "table";
-  document.body.classList.toggle("table-mode", VIEW === "table");
+  const testing = VIEW === "tests" || VIEW.startsWith("test:");
+  $("testView").hidden = !testing;
+  document.body.classList.toggle("table-mode", VIEW === "table" || VIEW.startsWith("test:"));
   document.querySelector(".foot").hidden = VIEW === "table";
   if (VIEW === "home") return renderHub();
   if (VIEW === "lists") return renderHome();
   if (VIEW === "table") return renderTable();
+  if (VIEW === "tests") return renderTests();
+  if (VIEW.startsWith("test:")) return renderTest(VIEW.slice(5));
   if (VIEW !== "play") return renderEnd(GAMES[VIEW.slice(4)]);
   renderPlay();
 }
@@ -2708,8 +2908,8 @@ function renderHub() {
     <div class="hub">
       <button class="hub-tile" data-area="lists"><span class="hub-meta">${live ? `${live} game${live === 1 ? "" : "s"} in progress` : `${Object.keys(WB).length} warbands`}</span>
         <b>My lists</b><p>Track your own warband at the table: wounds, Ki, states, feats and card reminders.</p></button>
-      <button class="hub-tile" disabled><span class="hub-meta">Not built yet</span>
-        <b>Testing lists</b><p>Two warbands side by side, with every stat to compare.</p></button>
+      <button class="hub-tile" data-area="tests"><span class="hub-meta">${Object.keys(tests()).length ? `${Object.keys(tests()).length} test${Object.keys(tests()).length === 1 ? "" : "s"}` : "Tablet"}</span>
+        <b>Testing lists</b><p>Two warbands side by side with every stat, wounds, Ki, feats and states. Then play them on the Table.</p></button>
       <button class="hub-tile" data-area="table"><span class="hub-meta">${tbl ? "Table in progress" : "Laptop"}</span>
         <b>Table</b><p>Scenario, terrain and deployment on a 24" battlefield, with facing and measuring.</p></button>
       <button class="hub-tile" disabled><span class="hub-meta">Not built yet</span>
@@ -3011,7 +3211,18 @@ document.addEventListener("submit", e => {
 });
 /* ---------- Hooks used by sync (installed app only) ---------- */
 window.App = {
-  data: () => ({ WB, GAMES, LIB }),
+  data: () => ({ WB, GAMES, LIB, TESTS: tests() }),
+  applyTest(remote) {
+    const mine = tests()[remote.id];
+    if (!mine) tests()[remote.id] = remote;
+    else {
+      const [merged, mineNewer] = mergeTest(mine, remote);
+      tests()[remote.id] = merged;
+      if (mineNewer) window.Sync?.pushTest(merged);
+    }
+    saveTests();
+    if (!App.sheetOpen() && (VIEW === "tests" || VIEW.startsWith("test:") || VIEW === "table" || VIEW === "home")) render();
+  },
   sheetOpen: () => !!$("sheetHost").innerHTML,
   applyGame(g) {
     const mine = GAMES[g.id];
@@ -3025,6 +3236,7 @@ window.App = {
   applyRemove(kind, id) {
     if (kind === "games" && id !== CUR && GAMES[id]) { delete GAMES[id]; store(GKEY, GAMES); }
     if (kind === "warbands" && WB[id]) { delete WB[id]; store(WBKEY, WB); }
+    if (kind === "tests" && tests()[id]) { delete tests()[id]; saveTests(); if (VIEW === "tests") render(); }
   },
   mergeLibrary(lib) {
     Object.assign(LIB.cards, lib.cards || {}); Object.assign(LIB.equip, lib.equip || {}); Object.assign(LIB.glossary, lib.glossary || {});
