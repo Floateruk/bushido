@@ -178,11 +178,12 @@ function swapZones() {
   for (const t of TBL.terrain) { Object.assign(t, mirror(t)); t.rot = (t.rot + 180) % 360; }
   tMsg = "Deployment zones swapped: the terrain and objectives have turned around.";
 }
+/* A model put on the table for the first time faces straight across it: down if placed in the top half, up if in the bottom half */
+const startFacing = p => p.y >= 12 ? 180 : 0;
 function autoDeploy(side) {
   const list = TBL.sides[side].models.filter(m => m.where === "tray" && !m.scout);
   const placedOthers = () => tableModels().map(([o]) => o);
   const free = (p, r) => placedOthers().every(o => dist(o, p) >= o.r + r + 0.15) && TBL.terrain.every(t => TBYID[t.typeId].passage !== "Impassable" || polyCircle(terrPoly(t), p, r) > 0.05);
-  const face = TBL.deployment === "baseline" ? 0 : 45;
   for (const m of list) {
     let spot = null;
     const cands = [];
@@ -190,7 +191,7 @@ function autoDeploy(side) {
     else if (TBL.deployment === "cornerEdge") { for (let s = 8; s >= m.r; s -= 0.25) { cands.push({ x: s, y: m.r }); cands.push({ x: m.r, y: s }); } }
     else { for (let k = 0; k <= 24; k += 0.25) { cands.push({ x: 12 + k, y: m.r }); cands.push({ x: 12 - k, y: m.r }); } }
     for (const c0 of cands) { const c = side === "F" ? c0 : mirror(c0); if (c.x - m.r >= 0 && c.x + m.r <= 24 && free(c, m.r)) { spot = c; break; } }
-    if (spot) Object.assign(m, spot, { where: "table", facing: side === "F" ? face : (face + 180) % 360 });
+    if (spot) Object.assign(m, spot, { where: "table", facing: startFacing(spot) });
   }
 }
 
@@ -554,7 +555,7 @@ function bindBoard() {
     if (tTool === "ruler") { tRuler = { a: p, b: p }; tDrag = { mode: "ruler" }; return redrawBoard(); }
     if (tArm) {
       const [m, side] = findModel(tArm);
-      Object.assign(m, { x: p.x, y: p.y, where: "table", facing: side === "F" ? (TBL.deployment === "baseline" ? 0 : 45) : (TBL.deployment === "baseline" ? 180 : 225) });
+      Object.assign(m, { x: p.x, y: p.y, where: "table", facing: startFacing(p) });
       snapEdges(m); Object.assign(m, freeSpot(m, m)); tSel = { kind: "model", id: m.id }; tArm = null; tSave(); return renderTable();
     }
     if (!el) { tSel = null; return renderTable(); }
