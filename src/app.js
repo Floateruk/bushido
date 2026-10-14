@@ -765,8 +765,21 @@ document.addEventListener("submit", e => {
   }
 });
 /* ---------- Hooks used by sync (installed app only) ---------- */
+function currentTables() {
+  try { if (TBL === undefined) TBL = load(TBLKEY, null); } catch (e) {}
+  if (!TBL) return {};
+  TBL.id = "current"; return { current: TBL };
+}
 window.App = {
-  data: () => ({ WB, GAMES, LIB, TESTS: tests() }),
+  data: () => ({ WB, GAMES, LIB, TESTS: tests(), TABLES: currentTables() }),
+  /* The table on the battlefield: one per sync code; the most recently changed copy wins */
+  applyTable(remote) {
+    if (TBL === undefined) TBL = load(TBLKEY, null);
+    if (TBL && (TBL.updated || 0) >= (remote.updated || 0)) return;
+    TBL = remote; TBL.id = "current"; store(TBLKEY, TBL); tHistReset();
+    if (tSel && !itemOf(tSel.kind, tSel.id)) tSel = null;
+    if (VIEW === "table" && !tDrag && !App.sheetOpen()) renderTable(); else if (VIEW === "home") render();
+  },
   applyTest(remote) {
     const mine = tests()[remote.id];
     if (!mine) tests()[remote.id] = remote;
@@ -791,6 +804,7 @@ window.App = {
   applyRemove(kind, id) {
     if (kind === "games" && id !== CUR && GAMES[id]) { delete GAMES[id]; store(GKEY, GAMES); }
     if (kind === "warbands" && WB[id]) { delete WB[id]; store(WBKEY, WB); }
+    if (kind === "table" && TBL) { TBL = null; tHistReset(); store(TBLKEY, null); if (VIEW === "table") renderTable(); else if (VIEW === "home") render(); }
     if (kind === "tests" && tests()[id]) { delete tests()[id]; saveTests(); if (VIEW === "tests") render(); }
   },
   mergeLibrary(lib) {

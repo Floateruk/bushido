@@ -1280,14 +1280,14 @@ function tSave() {
   const cur = tSnap();
   if (tLast !== null && cur !== tLast) { tHist.push(tLast); if (tHist.length > 100) tHist.shift(); }
   tLast = cur;
-  TBL.updated = Date.now(); store(TBLKEY, TBL);
+  TBL.id = "current"; TBL.updated = Date.now(); store(TBLKEY, TBL); window.Sync?.pushTable?.(TBL);
 }
 function tHistReset() { tHist = []; tLast = null; }
 function tUndoStep() {
   if (!tHist.length) return;
   TBL = JSON.parse(tHist.pop()); tLast = tSnap();
   tSel = tSel && itemOf(tSel.kind, tSel.id) ? tSel : null; tArm = tRuler = null;
-  TBL.updated = Date.now(); store(TBLKEY, TBL); renderTable();
+  TBL.id = "current"; TBL.updated = Date.now(); store(TBLKEY, TBL); window.Sync?.pushTable?.(TBL); renderTable();
 }
 
 /* ---------- Geometry ---------- */
@@ -1929,7 +1929,7 @@ document.addEventListener("click", e => {
     return renderTable();
   }
   if (!TBL) return;
-  if (d.tnew !== undefined) { if (tConfirm !== "tnew") { tConfirm = "tnew"; return renderTable(); } tConfirm = null; TBL = null; tHistReset(); store(TBLKEY, null); return renderTable(); }
+  if (d.tnew !== undefined) { if (tConfirm !== "tnew") { tConfirm = "tnew"; return renderTable(); } tConfirm = null; TBL = null; tHistReset(); store(TBLKEY, null); window.Sync?.remove?.("table", "current"); return renderTable(); }
   if (tConfirm) { tConfirm = null; renderTable(); }
   if (d.ttool) { tTool = tTool === d.ttool ? null : d.ttool; tRuler = null; return renderTable(); }
   if (d.tundo !== undefined) return tUndoStep();
@@ -3263,8 +3263,21 @@ document.addEventListener("submit", e => {
   }
 });
 /* ---------- Hooks used by sync (installed app only) ---------- */
+function currentTables() {
+  try { if (TBL === undefined) TBL = load(TBLKEY, null); } catch (e) {}
+  if (!TBL) return {};
+  TBL.id = "current"; return { current: TBL };
+}
 window.App = {
-  data: () => ({ WB, GAMES, LIB, TESTS: tests() }),
+  data: () => ({ WB, GAMES, LIB, TESTS: tests(), TABLES: currentTables() }),
+  /* The table on the battlefield: one per sync code; the most recently changed copy wins */
+  applyTable(remote) {
+    if (TBL === undefined) TBL = load(TBLKEY, null);
+    if (TBL && (TBL.updated || 0) >= (remote.updated || 0)) return;
+    TBL = remote; TBL.id = "current"; store(TBLKEY, TBL); tHistReset();
+    if (tSel && !itemOf(tSel.kind, tSel.id)) tSel = null;
+    if (VIEW === "table" && !tDrag && !App.sheetOpen()) renderTable(); else if (VIEW === "home") render();
+  },
   applyTest(remote) {
     const mine = tests()[remote.id];
     if (!mine) tests()[remote.id] = remote;
@@ -3289,6 +3302,7 @@ window.App = {
   applyRemove(kind, id) {
     if (kind === "games" && id !== CUR && GAMES[id]) { delete GAMES[id]; store(GKEY, GAMES); }
     if (kind === "warbands" && WB[id]) { delete WB[id]; store(WBKEY, WB); }
+    if (kind === "table" && TBL) { TBL = null; tHistReset(); store(TBLKEY, null); if (VIEW === "table") renderTable(); else if (VIEW === "home") render(); }
     if (kind === "tests" && tests()[id]) { delete tests()[id]; saveTests(); if (VIEW === "tests") render(); }
   },
   mergeLibrary(lib) {

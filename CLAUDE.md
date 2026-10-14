@@ -23,7 +23,7 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
   - `table.js`: setup, terrain generator (follows pack p.19 placement rules), tokens with facing
     (size and base read from the card's "Size & Base"), Elsewhere/Flank, deployment checks, ruler. Movement: bases stop at other bases and Impassable
     terrain (Cloudwalk/Intangible pass through but can't end overlapping), exact contact (no snapping), base-to-base marks. Saved in
-    `bushido-table-v1` (this device only for now).
+    `bushido-table-v1` and synced as `groups/{code}/table/current` (one table per sync code; whole-table, the most recently changed copy wins; "New table" deletes it everywhere). Undo (button, Ctrl+Z) keeps up to 100 steps in memory on this device only.
   - `los.js`: line of sight and cover from the rulebook (facing, Aware, Blind/Sixth Sense, Prone, Size rules for
     models and terrain, Enhancing elevation, cover within 1"); L toggles the board overlay; Selected panel lists Can see / Seen by.
   - `play.js`: playing on the table: TBL.play {turn, sp, vp}, Next turn (2 activation counters each, pack resets of

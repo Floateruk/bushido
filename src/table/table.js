@@ -21,14 +21,14 @@ function tSave() {
   const cur = tSnap();
   if (tLast !== null && cur !== tLast) { tHist.push(tLast); if (tHist.length > 100) tHist.shift(); }
   tLast = cur;
-  TBL.updated = Date.now(); store(TBLKEY, TBL);
+  TBL.id = "current"; TBL.updated = Date.now(); store(TBLKEY, TBL); window.Sync?.pushTable?.(TBL);
 }
 function tHistReset() { tHist = []; tLast = null; }
 function tUndoStep() {
   if (!tHist.length) return;
   TBL = JSON.parse(tHist.pop()); tLast = tSnap();
   tSel = tSel && itemOf(tSel.kind, tSel.id) ? tSel : null; tArm = tRuler = null;
-  TBL.updated = Date.now(); store(TBLKEY, TBL); renderTable();
+  TBL.id = "current"; TBL.updated = Date.now(); store(TBLKEY, TBL); window.Sync?.pushTable?.(TBL); renderTable();
 }
 
 /* ---------- Geometry ---------- */
@@ -670,7 +670,7 @@ document.addEventListener("click", e => {
     return renderTable();
   }
   if (!TBL) return;
-  if (d.tnew !== undefined) { if (tConfirm !== "tnew") { tConfirm = "tnew"; return renderTable(); } tConfirm = null; TBL = null; tHistReset(); store(TBLKEY, null); return renderTable(); }
+  if (d.tnew !== undefined) { if (tConfirm !== "tnew") { tConfirm = "tnew"; return renderTable(); } tConfirm = null; TBL = null; tHistReset(); store(TBLKEY, null); window.Sync?.remove?.("table", "current"); return renderTable(); }
   if (tConfirm) { tConfirm = null; renderTable(); }
   if (d.ttool) { tTool = tTool === d.ttool ? null : d.ttool; tRuler = null; return renderTable(); }
   if (d.tundo !== undefined) return tUndoStep();
