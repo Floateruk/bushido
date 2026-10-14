@@ -276,3 +276,7 @@ body.test-mode .xside{height:100%;overflow-y:auto;overscroll-behavior:contain;al
 .tflist{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px}
 .tflist li{display:flex;gap:6px;align-items:center;justify-content:space-between}
 .tflist li>span{min-width:0;font-size:13px}
+#tSvg .tname{font:700 .35px var(--body);fill:var(--sumi);text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-width:.1;stroke-linejoin:round}
+#tSvg .tok.E .tname{fill:var(--side-e)}
+#tSvg .tok.F .tname{fill:var(--side-f)}
+#tSvg .tok.exh .tname{opacity:.6}

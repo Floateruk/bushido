@@ -364,7 +364,9 @@ function boardSVG() {
       <line x1="0" y1="${(-m.r * 0.62).toFixed(3)}" x2="0" y2="${(-m.r - 0.08).toFixed(3)}" class="face" transform="rotate(${m.facing})"/>
       ${m.vim ? `<circle r="${m.r + 0.12}" class="vimring"/>` : ""}${actDots(m)}
       <text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text>
-      ${(() => { const st = [onLastStandT(m) && "Last Stand", tFlag(m, "prone") && "Prone", tFlag(m, "blind") && "Blind"].filter(Boolean); return st.length ? `<text y="${f2(m.r + 0.32)}" class="tstate">${st.join(" · ")}</text>` : ""; })()}</g>`);
+      ${(() => { if (!namesOn()) return ""; const L = nameLines(m.name), up = nameAbove(m, L.length);
+        return `<text class="tname">${L.map((l, i) => `<tspan x="0" y="${f2(up ? -(m.r + 0.16) - (L.length - 1 - i) * 0.38 : m.r + 0.3 + i * 0.34)}">${esc(l)}</tspan>`).join("")}</text>`; })()}
+      ${(() => { const nl = namesOn() && !nameAbove(m, nameLines(m.name).length) ? nameLines(m.name).length : 0; const st = [onLastStandT(m) && "Last Stand", tFlag(m, "prone") && "Prone", tFlag(m, "blind") && "Blind"].filter(Boolean); return st.length ? `<text y="${f2(m.r + 0.32 + nl * 0.38)}" class="tstate">${st.join(" · ")}</text>` : ""; })()}</g>`);
     if (sel) {
       const hx = Math.sin(rad(m.facing)) * (m.r + 0.45), hy = -Math.cos(rad(m.facing)) * (m.r + 0.45);
       out.push(`<g transform="translate(${m.x} ${SY(m.y)})"><line x1="0" y1="0" x2="${hx}" y2="${hy}" class="hline"/><circle cx="${hx}" cy="${hy}" r="0.22" class="handle" data-k="rotate" data-id="${m.id}"/></g>`);
@@ -513,6 +515,19 @@ function setupHTML() {
   </div>`;
 }
 
+/* Model names under the tokens: wrapped onto up to three short lines so the whole name shows */
+let tNames;   /* read on first use: load() is defined later in the page */
+const namesOn = () => (tNames === undefined && (tNames = load("bushido-names-v1", true)), tNames);
+function nameLines(name) {
+  const out = []; let cur = "";
+  for (const w of name.split(/\s+/)) {
+    if (cur && (cur + " " + w).length > 9) { out.push(cur); cur = w; } else cur = cur ? cur + " " + w : w;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+/* Name goes under the token, or above it when it would run off the bottom of the table */
+const nameAbove = (m, n) => m.y - m.r - 0.3 - n * 0.38 < -0.4;
 function factionOptions() {
   const by = {}; customList().forEach(d => (by[d.faction || "Faction terrain"] = by[d.faction || "Faction terrain"] || []).push(d));
   return Object.entries(by).map(([f, ds]) => `<optgroup label="${esc(f)} (faction)">${ds.map(d => `<option value="${d.id}">${esc(d.name)} [${d.passage}, ${d.visibility}, ${d.size}]</option>`).join("")}</optgroup>`).join("");
@@ -556,6 +571,7 @@ function renderTable() {
       <span class="muted">${esc(TBL.sides.F.name)} vs ${esc(TBL.sides.E.name)}</span>
       <span class="spacer"></span>
       <button class="btn small" data-tundo title="Ctrl+Z" ${tHist.length ? "" : "disabled"}>↶ Undo</button>
+      <button class="btn small ${namesOn() ? "primary" : ""}" data-tnames title="N" aria-pressed="${namesOn()}">Names</button>
       <button class="btn small ${tTool === "ruler" ? "primary" : ""}" data-ttool="ruler" title="M">Ruler</button>
       <button class="btn small ${tTool === "los" ? "primary" : ""}" data-ttool="los" title="L">Line of sight</button>
       <button class="btn small" data-tswap>Swap deployment zones</button>
@@ -712,6 +728,7 @@ document.addEventListener("click", e => {
   if (tConfirm) { tConfirm = null; renderTable(); }
   if (d.ttool) { tTool = tTool === d.ttool ? null : d.ttool; tRuler = null; return renderTable(); }
   if (d.tundo !== undefined) return tUndoStep();
+  if (d.tnames !== undefined) { tNames = !namesOn(); store("bushido-names-v1", tNames); return renderTable(); }
   if (d.tswap !== undefined) { swapZones(); TBL.checks[6] = true; tSave(); return renderTable(); }
   if (d.tstep !== undefined) {
     TBL.step = TBL.step === "play" ? "setup" : "play";
@@ -755,6 +772,7 @@ document.addEventListener("keydown", e => {
   const k = e.key.toLowerCase();
   if (k === "z" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); tUndoStep(); return; }
   if (k === "q" || k === "e") { e.preventDefault(); rotateSel((k === "e" ? 1 : -1) * (e.shiftKey ? 5 : 15)); }
+  else if (k === "n") { tNames = !namesOn(); store("bushido-names-v1", tNames); renderTable(); }
   else if (k === "m") { tTool = tTool === "ruler" ? null : "ruler"; tRuler = null; renderTable(); }
   else if (k === "l") { tTool = tTool === "los" ? null : "los"; tRuler = null; renderTable(); }
   else if (k === "escape") { tSel = null; tArm = null; tTool = null; tRuler = null; renderTable(); }
