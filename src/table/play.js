@@ -42,7 +42,7 @@ function startTurn(n) {
   }
   const flank = allModels().filter(m => m.where === "elsewhere" && m.flank && m.flankTurn === n).map(m => m.name);
   if (flank.length) notes.push(`Flank arrivals: ${flank.join(", ")}`);
-  tSave();
+  tSave(); tHistReset(); tLast = tSnap();
   return notes;
 }
 
@@ -132,7 +132,7 @@ document.addEventListener("click", e => {
     return toast(`Turn ${n}: ${ACT_PER_TURN} activation counters each${notes.length ? "; " + notes.join("; ") : ""}.`, false, `<button data-tundoturn="">Undo</button>`);
   }
   if (d.tundoturn !== undefined && tUndo) {
-    const u = JSON.parse(tUndo); TBL = u.TBL; tUndo = null; tSave();
+    const u = JSON.parse(tUndo); TBL = u.TBL; tUndo = null; tHistReset(); tSave();
     if (u.test) { const now = Date.now(); u.test.sides.F.models.concat(u.test.sides.E.models).forEach(m => m.u = now); tests()[u.test.id] = u.test; touchTest(u.test); }
     $("toastHost").innerHTML = ""; return renderTable();
   }

@@ -1272,7 +1272,23 @@ const SIZE_BASE = { Tiny: 30, Small: 30, Medium: 40, Large: 50, Huge: 60 };
 const rad = d => d * Math.PI / 180;
 const r1 = n => Math.round(n * 10) / 10;
 const pick = a => a[Math.floor(Math.random() * a.length)];
-function tSave() { if (TBL) { TBL.updated = Date.now(); store(TBLKEY, TBL); } }
+/* Undo: every save that changed the table keeps the state before it (this device, until the page is closed) */
+let tHist = [], tLast = null;
+const tSnap = () => JSON.stringify(TBL, (k, v) => k === "updated" ? undefined : v);
+function tSave() {
+  if (!TBL) return;
+  const cur = tSnap();
+  if (tLast !== null && cur !== tLast) { tHist.push(tLast); if (tHist.length > 100) tHist.shift(); }
+  tLast = cur;
+  TBL.updated = Date.now(); store(TBLKEY, TBL);
+}
+function tHistReset() { tHist = []; tLast = null; }
+function tUndoStep() {
+  if (!tHist.length) return;
+  TBL = JSON.parse(tHist.pop()); tLast = tSnap();
+  tSel = tSel && itemOf(tSel.kind, tSel.id) ? tSel : null; tArm = tRuler = null;
+  TBL.updated = Date.now(); store(TBLKEY, TBL); renderTable();
+}
 
 /* ---------- Geometry ---------- */
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -1433,7 +1449,7 @@ function newTable(c) {
              E: { wbId: tg ? tg.sides.E.wbId : c.them, name: them ? them.name : "Opponent", models: modelsFromWb(them, tg && tg.sides.E.models.map(x => x.id)) } }
   };
   tSel = tArm = tRuler = null; tTool = null; tMsg = "";
-  tSave();
+  tHistReset(); tSave();
 }
 function swapZones() {
   /* Player 2 chose the other deployment zone: turn the battlefield around (scenario layouts are symmetric) */
@@ -1749,7 +1765,7 @@ function setupHTML() {
 }
 
 function renderTable() {
-  if (TBL === undefined) TBL = load(TBLKEY, null);
+  if (TBL === undefined) { TBL = load(TBLKEY, null); tHistReset(); }
   const v = $("tableView");
   if (!TBL) {
     v.innerHTML = `<div class="thead"><button class="btn small" data-thub>‹ Home</button><h1>Table</h1></div>${setupHTML()}`;
@@ -1761,6 +1777,7 @@ function renderTable() {
     <div class="thead"><button class="btn small" data-thub>‹ Home</button><h1>${esc(s.name)}</h1>
       <span class="muted">${esc(TBL.sides.F.name)} vs ${esc(TBL.sides.E.name)}</span>
       <span class="spacer"></span>
+      <button class="btn small" data-tundo title="Ctrl+Z" ${tHist.length ? "" : "disabled"}>↶ Undo</button>
       <button class="btn small ${tTool === "ruler" ? "primary" : ""}" data-ttool="ruler" title="M">Ruler</button>
       <button class="btn small ${tTool === "los" ? "primary" : ""}" data-ttool="los" title="L">Line of sight</button>
       <button class="btn small" data-tswap>Swap deployment zones</button>
@@ -1912,9 +1929,10 @@ document.addEventListener("click", e => {
     return renderTable();
   }
   if (!TBL) return;
-  if (d.tnew !== undefined) { if (tConfirm !== "tnew") { tConfirm = "tnew"; return renderTable(); } tConfirm = null; TBL = null; store(TBLKEY, null); return renderTable(); }
+  if (d.tnew !== undefined) { if (tConfirm !== "tnew") { tConfirm = "tnew"; return renderTable(); } tConfirm = null; TBL = null; tHistReset(); store(TBLKEY, null); return renderTable(); }
   if (tConfirm) { tConfirm = null; renderTable(); }
   if (d.ttool) { tTool = tTool === d.ttool ? null : d.ttool; tRuler = null; return renderTable(); }
+  if (d.tundo !== undefined) return tUndoStep();
   if (d.tswap !== undefined) { swapZones(); TBL.checks[6] = true; tSave(); return renderTable(); }
   if (d.tstep !== undefined) {
     TBL.step = TBL.step === "play" ? "setup" : "play";
@@ -1949,6 +1967,7 @@ document.addEventListener("change", e => {
 document.addEventListener("keydown", e => {
   if (VIEW !== "table" || !TBL || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || "")) return;
   const k = e.key.toLowerCase();
+  if (k === "z" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); tUndoStep(); return; }
   if (k === "q" || k === "e") { e.preventDefault(); rotateSel((k === "e" ? 1 : -1) * (e.shiftKey ? 5 : 15)); }
   else if (k === "m") { tTool = tTool === "ruler" ? null : "ruler"; tRuler = null; renderTable(); }
   else if (k === "l") { tTool = tTool === "los" ? null : "los"; tRuler = null; renderTable(); }
@@ -2122,7 +2141,7 @@ function startTurn(n) {
   }
   const flank = allModels().filter(m => m.where === "elsewhere" && m.flank && m.flankTurn === n).map(m => m.name);
   if (flank.length) notes.push(`Flank arrivals: ${flank.join(", ")}`);
-  tSave();
+  tSave(); tHistReset(); tLast = tSnap();
   return notes;
 }
 
@@ -2212,7 +2231,7 @@ document.addEventListener("click", e => {
     return toast(`Turn ${n}: ${ACT_PER_TURN} activation counters each${notes.length ? "; " + notes.join("; ") : ""}.`, false, `<button data-tundoturn="">Undo</button>`);
   }
   if (d.tundoturn !== undefined && tUndo) {
-    const u = JSON.parse(tUndo); TBL = u.TBL; tUndo = null; tSave();
+    const u = JSON.parse(tUndo); TBL = u.TBL; tUndo = null; tHistReset(); tSave();
     if (u.test) { const now = Date.now(); u.test.sides.F.models.concat(u.test.sides.E.models).forEach(m => m.u = now); tests()[u.test.id] = u.test; touchTest(u.test); }
     $("toastHost").innerHTML = ""; return renderTable();
   }
