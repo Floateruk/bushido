@@ -19,6 +19,7 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
 - `src/table/`: the Table area (laptop-first), built into `index.html` before `app.js`.
   - `scenarios.js`: the 12 Tournament Pack 2510.1 scenarios and 3 rulebook ones; positions in inches from the
     bottom-left of the 24" table, your side (F) along the bottom. Deployment types and their neutral edges.
+  - Faction terrain: user-made pieces (name, faction, Passage, Visibility, Size), always 3.5" x 2.5"; kept in `bushido-terrain-v1`, and a table carries the definitions of the ones placed (`TBL.customTerrain`).
   - `terrain.js`: 40 themed terrain pieces with [Passage, Visibility, Size]; footprints no bigger than a playing card (3.5" x 2.5").
   - `table.js`: setup, terrain generator (follows pack p.19 placement rules), tokens with facing
     (size and base read from the card's "Size & Base"), Elsewhere/Flank, deployment checks, ruler. Movement: bases stop at other bases and Impassable

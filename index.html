@@ -540,6 +540,14 @@ body.test-mode .xside{height:100%;overflow-y:auto;overscroll-behavior:contain;al
 .pill.xwhere{color:var(--muted);margin-right:6px}
 .pill.xwhere.table{color:var(--ok,var(--ink))}
 .xstrip{margin:6px 0}
+.tfaction{margin-top:8px}
+.tfform{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tfform input,.tfform select{min-width:0;width:100%}
+.tfform label{display:flex;flex-direction:column;font-size:11px;gap:2px}
+.tfform .btn{grid-column:1/-1}
+.tflist{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px}
+.tflist li{display:flex;gap:6px;align-items:center;justify-content:space-between}
+.tflist li>span{min-width:0;font-size:13px}
 
 </style>
 </head>
@@ -1270,6 +1278,14 @@ let lastSelShown = null;                         /* current table, loaded on fir
 let tSetup = null;               /* setup form choices */
 let tSel = null, tArm = null, tTool = null, tRuler = null, tDrag = null, tHover = null, tMsg = "", tConfirm = null;
 const TBYID = Object.fromEntries(TERRAIN.map(t => [t.id, t]));
+/* Faction terrain: pieces you make yourself, always exactly a playing card (3.5" x 2.5"). Kept in
+   bushido-terrain-v1 on this device; a table carries the definitions of the ones placed, so they also show on other devices. */
+const FACTION_KEY = "bushido-terrain-v1";
+let customLib = null, tfOpen = false;
+document.addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("tfaction")) tfOpen = e.target.open; }, true);
+const customList = () => customLib || (customLib = load(FACTION_KEY, []));
+function regCustom(d) { TBYID[d.id] = { note: "", ...d, theme: "faction", shape: "rect", w: 3.5, h: 2.5, restricted: d.passage === "Impassable" }; }
+function regAllCustom() { customList().forEach(regCustom); ((TBL && TBL.customTerrain) || []).forEach(regCustom); }
 const SCN = id => SCENARIOS.find(s => s.id === id);
 const SIZE_BASE = { Tiny: 30, Small: 30, Medium: 40, Large: 50, Huge: 60 };
 const rad = d => d * Math.PI / 180;
@@ -1724,7 +1740,7 @@ function selectedHTML() {
   if (tSel.kind === "terrain") {
     const t = TBL.terrain.find(x => x.id === tSel.id); if (!t) return "";
     const d = TBYID[t.typeId], probs = terrainProblems(t, TBL.terrain);
-    return `<div class="tinfo"><b>${esc(d.name)}</b> <span class="muted">${esc(TERRAIN_THEMES[d.theme])}</span>
+    return `<div class="tinfo"><b>${esc(d.name)}</b> <span class="muted">${esc(d.theme === "faction" ? (d.faction || "Faction terrain") : TERRAIN_THEMES[d.theme])}</span>
       <p>[${d.passage}, ${d.visibility}, ${d.size}] · ${d.w}" × ${d.h}"${d.restricted ? " · restricted" : ""}</p>
       <p class="muted">${esc(d.note)}</p>${probs.map(p => `<p class="warn">⚠ ${esc(p)}</p>`).join("")}
       <div class="row"><button class="btn small danger" data-tdelterr="${t.id}">Remove piece</button></div></div>`;
@@ -1767,8 +1783,37 @@ function setupHTML() {
   </div>`;
 }
 
+function factionOptions() {
+  const by = {}; customList().forEach(d => (by[d.faction || "Faction terrain"] = by[d.faction || "Faction terrain"] || []).push(d));
+  return Object.entries(by).map(([f, ds]) => `<optgroup label="${esc(f)} (faction)">${ds.map(d => `<option value="${d.id}">${esc(d.name)} [${d.passage}, ${d.visibility}, ${d.size}]</option>`).join("")}</optgroup>`).join("");
+}
+function factionPanel() {
+  const L = customList(), sel = (id, opts, v) => `<select id="${id}">${opts.map(o => `<option ${o === v ? "selected" : ""}>${o}</option>`).join("")}</select>`;
+  return `<details class="tfold tfaction" ${tfOpen ? "open" : ""}><summary>Faction terrain (${L.length})</summary>
+    <p class="muted tsmall">Always a playing card, 3.5" × 2.5". Save a piece once, then add as many copies as you need.</p>
+    <div class="tfform"><input id="tfFaction" list="tfFactions" placeholder="Faction" aria-label="Faction"><datalist id="tfFactions">${[...new Set(L.map(d => d.faction).filter(Boolean))].map(f => `<option value="${esc(f)}">`).join("")}</datalist>
+      <input id="tfName" placeholder="Piece name" aria-label="Piece name">
+      <label>Passage ${sel("tfPassage", ["Normal", "Difficult", "Impassable", "Ideal"], "Normal")}</label>
+      <label>Visibility ${sel("tfVis", ["Clear", "Obscuring", "Blocking", "Enhancing"], "Clear")}</label>
+      <label>Size ${sel("tfSize", ["Zero", "Tiny", "Small", "Medium", "Large", "Huge"], "Small")}</label>
+      <button class="btn small primary" data-tfsave>Save piece</button></div>
+    ${L.length ? `<ul class="tflist">${L.map(d => `<li><span><b>${esc(d.name)}</b> <span class="muted">${esc(d.faction || "")} · [${d.passage}, ${d.visibility}, ${d.size}]</span></span>
+      <button class="btn small" data-tfadd="${d.id}">Add</button><button class="btn small quiet" data-tfdel="${d.id}" aria-label="Delete ${esc(d.name)} from the list">✕</button></li>`).join("")}</ul>` : ""}</details>`;
+}
+/* A free spot for a new piece, so copies added one after another don't pile up */
+function freeTerrainSpot() {
+  const cands = [[12, 12]]; for (let r = 4; r <= 20; r += 4) for (let a = 0; a < 360; a += 30) cands.push([12 + Math.cos(rad(a)) * r * 0.55, 12 + Math.sin(rad(a)) * r * 0.55]);
+  return cands.find(([x, y]) => TBL.terrain.every(t => Math.hypot(t.x - x, t.y - y) > 3.2)) || [12, 12];
+}
+function addTerrain(typeId) {
+  const d = TBYID[typeId]; if (!d) return;
+  if (d.theme === "faction") { TBL.customTerrain = TBL.customTerrain || []; if (!TBL.customTerrain.some(x => x.id === d.id)) TBL.customTerrain.push({ id: d.id, name: d.name, faction: d.faction, passage: d.passage, visibility: d.visibility, size: d.size, note: d.note || "" }); }
+  const [x, y] = freeTerrainSpot(), nt = { id: "t" + uid(), typeId, x, y, rot: 0 };
+  TBL.terrain.push(nt); tSel = { kind: "terrain", id: nt.id }; tSave(); renderTable();
+}
 function renderTable() {
   if (TBL === undefined) { TBL = load(TBLKEY, null); tHistReset(); }
+  regAllCustom();
   const v = $("tableView");
   if (!TBL) {
     v.innerHTML = `<div class="thead"><button class="btn small" data-thub>‹ Home</button><h1>Table</h1></div>${setupHTML()}`;
@@ -1801,8 +1846,9 @@ function renderTable() {
           <div class="tthemes">${Object.entries(TERRAIN_THEMES).map(([k, n]) => `<label><input type="checkbox" data-ttheme="${k}" ${TBL.themes.includes(k) ? "checked" : ""}> ${esc(n)}</label>`).join("")}</div>
           <div class="row"><label class="inline">Pieces <select data-tcount>${[6, 7, 8, 9, 10, 11, 12].map(n => `<option ${TBL.count === n ? "selected" : ""}>${n}</option>`).join("")}</select></label>
             <button class="btn small primary" data-tgen>Generate terrain</button><button class="btn small" data-tclear>Clear</button></div>
-          <div class="row"><select id="tAddSel" aria-label="Terrain piece">${Object.entries(TERRAIN_THEMES).map(([k, n]) => `<optgroup label="${esc(n)}">${TERRAIN.filter(t => t.theme === k).map(t => `<option value="${t.id}">${esc(t.name)} [${t.passage}, ${t.visibility}, ${t.size}]</option>`).join("")}</optgroup>`).join("")}</select>
+          <div class="row"><select id="tAddSel" aria-label="Terrain piece">${Object.entries(TERRAIN_THEMES).map(([k, n]) => `<optgroup label="${esc(n)}">${TERRAIN.filter(t => t.theme === k).map(t => `<option value="${t.id}">${esc(t.name)} [${t.passage}, ${t.visibility}, ${t.size}]</option>`).join("")}</optgroup>`).join("")}${factionOptions()}</select>
             <button class="btn small" data-tadd>Add</button></div>
+          ${factionPanel()}
           <ul class="tlegend"><li><i style="background:var(--t-stone)"></i>Blocking</li><li><i style="background:var(--t-low)"></i>Blocking, Tiny (see over)</li><li><i style="background:var(--t-wood)"></i>Obscuring</li><li><i style="background:var(--t-water)"></i>Clear, Difficult</li><li><i style="background:var(--t-road)"></i>Ideal</li><li><i style="background:var(--t-hill)"></i>Enhancing</li></ul>
         </div>
       </aside>
@@ -1944,7 +1990,14 @@ document.addEventListener("click", e => {
   }
   if (d.tgen !== undefined) { generateTerrain(); TBL.checks[5] = true; tSel = null; tSave(); return renderTable(); }
   if (d.tclear !== undefined) { TBL.terrain = []; tSel = null; tMsg = ""; tSave(); return renderTable(); }
-  if (d.tadd !== undefined) { const id = $("tAddSel").value; const nt = { id: "t" + uid(), typeId: id, x: 12, y: 12, rot: 0 }; TBL.terrain.push(nt); tSel = { kind: "terrain", id: nt.id }; tSave(); return renderTable(); }
+  if (d.tadd !== undefined) return addTerrain($("tAddSel").value);
+  if (d.tfadd) return addTerrain(d.tfadd);
+  if (d.tfsave !== undefined) {
+    const name = $("tfName").value.trim(); if (!name) { tMsg = "Give the piece a name."; return renderTable(); }
+    const nd = { id: "f" + uid(), name, faction: $("tfFaction").value.trim(), passage: $("tfPassage").value, visibility: $("tfVis").value, size: $("tfSize").value, note: "" };
+    customList().push(nd); store(FACTION_KEY, customLib); regCustom(nd); tMsg = `Saved ${name}. Add as many copies as you need.`; return renderTable();
+  }
+  if (d.tfdel) { customLib = customList().filter(x => x.id !== d.tfdel); store(FACTION_KEY, customLib); return renderTable(); }
   if (d.tdelterr) { TBL.terrain = TBL.terrain.filter(x => x.id !== d.tdelterr); tSel = null; tSave(); return renderTable(); }
   if (d.talign) { const o = itemOf(tSel.kind, tSel.id); o.align = d.talign; followZones(); tSave(); return renderTable(); }
   if (d.tsel) { tSel = { kind: "model", id: d.tsel }; return renderTable(); }
@@ -3326,7 +3379,7 @@ window.App = {
   applyTable(remote) {
     if (TBL === undefined) TBL = load(TBLKEY, null);
     if (TBL && (TBL.updated || 0) >= (remote.updated || 0)) return;
-    TBL = remote; TBL.id = "current"; store(TBLKEY, TBL); tHistReset();
+    TBL = remote; TBL.id = "current"; store(TBLKEY, TBL); tHistReset(); regAllCustom();
     if (tSel && !itemOf(tSel.kind, tSel.id)) tSel = null;
     if (VIEW === "table" && !tDrag && !App.sheetOpen()) renderTable(); else if (VIEW === "home" || VIEW === "tests" || VIEW.startsWith("test:")) { if (!App.sheetOpen()) render(); }
   },

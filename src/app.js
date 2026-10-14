@@ -776,7 +776,7 @@ window.App = {
   applyTable(remote) {
     if (TBL === undefined) TBL = load(TBLKEY, null);
     if (TBL && (TBL.updated || 0) >= (remote.updated || 0)) return;
-    TBL = remote; TBL.id = "current"; store(TBLKEY, TBL); tHistReset();
+    TBL = remote; TBL.id = "current"; store(TBLKEY, TBL); tHistReset(); regAllCustom();
     if (tSel && !itemOf(tSel.kind, tSel.id)) tSel = null;
     if (VIEW === "table" && !tDrag && !App.sheetOpen()) renderTable(); else if (VIEW === "home" || VIEW === "tests" || VIEW.startsWith("test:")) { if (!App.sheetOpen()) render(); }
   },
