@@ -362,7 +362,7 @@ function boardSVG() {
       out.push(`<g transform="translate(${t.x} ${SY(t.y)})"><line x1="0" y1="0" x2="${hx}" y2="${hy}" class="hline"/><circle cx="${hx}" cy="${hy}" r="0.24" class="handle" data-k="rotate" data-id="${t.id}"/></g>`); }
   }
   /* a line from the selected model to the hovered one */
-  if (tSel && tSel.kind === "model" && tHover && tHover !== tSel.id && tTool !== "los") {
+  if (tSel && tSel.kind === "model" && tHover && tHover !== tSel.id && tTool === "ruler") {
     const [a] = findModel(tSel.id), [b] = findModel(tHover);
     if (a && b && a.where === "table" && b.where === "table") out.push(`<line x1="${a.x}" y1="${SY(a.y)}" x2="${b.x}" y2="${SY(b.y)}" class="rel"/>`);
   }
@@ -440,7 +440,7 @@ function selectedHTML() {
       ${btb.length ? `<p><b>Base to base</b> with ${btb.map(([o, s]) => `<span class="${s === side ? "" : "btb-foe"}">${esc(o.name)}</span>`).join(", ")}</p>` : ""}${rel}
       ${ghostRelevant(m, side) ? `<label class="inline tsmall"><input type="checkbox" data-tghost="${m.id}" ${isGhost(m, side) ? "checked" : ""}> Moves through models and terrain (Cloudwalk, Intangible)</label>` : ""}
       ${losStates(m, side)}
-      <p class="muted tsmall">Hover another model to measure to it${tTool === "los" ? " and see the sight lines" : ""}.</p>
+      <p class="muted tsmall">Hover another model to see the distance${tTool === "los" ? " and the sight lines" : tTool === "ruler" ? " (a line is drawn)" : ""}.</p>
       <details class="tfold" open><summary>Line of sight</summary>${losPanel(m, side) || `<p class="muted tsmall">Place the model on the table to check its line of sight.</p>`}</details></div>`;
   }
   if (tSel.kind === "terrain") {
