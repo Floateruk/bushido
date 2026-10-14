@@ -778,7 +778,7 @@ window.App = {
     if (TBL && (TBL.updated || 0) >= (remote.updated || 0)) return;
     TBL = remote; TBL.id = "current"; store(TBLKEY, TBL); tHistReset();
     if (tSel && !itemOf(tSel.kind, tSel.id)) tSel = null;
-    if (VIEW === "table" && !tDrag && !App.sheetOpen()) renderTable(); else if (VIEW === "home") render();
+    if (VIEW === "table" && !tDrag && !App.sheetOpen()) renderTable(); else if (VIEW === "home" || VIEW === "tests" || VIEW.startsWith("test:")) { if (!App.sheetOpen()) render(); }
   },
   applyTest(remote) {
     const mine = tests()[remote.id];

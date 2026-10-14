@@ -537,6 +537,9 @@ body.test-mode .xside{height:100%;overflow-y:auto;overscroll-behavior:contain;al
   #testView .feat{font-size:12px}
   #testView .xtraits{font-size:12px}
 }
+.pill.xwhere{color:var(--muted);margin-right:6px}
+.pill.xwhere.table{color:var(--ok,var(--ink))}
+.xstrip{margin:6px 0}
 
 </style>
 </head>
@@ -2285,6 +2288,12 @@ const xLS = tm => /\bLast Stand\b/i.test(xDef(tm).traits || "");
 const xGone = tm => (tm.dmg || 0) >= xW(tm) && (!xLS(tm) || tm.removed);
 const xOnLS = tm => (tm.dmg || 0) >= xW(tm) && xLS(tm) && !tm.removed;
 
+/* The table, loaded on demand (it is only read from storage when first needed) */
+function tbl() { if (TBL === undefined) { try { TBL = load(TBLKEY, null); } catch (e) { TBL = null; } } return TBL; }
+const tableModel = id => { const t = tbl(); return t && t.testId ? [...t.sides.F.models, ...t.sides.E.models].find(m => m.id === id) : null; };
+const WHERE = { table: "On the table", tray: "Not placed yet", elsewhere: "Elsewhere" };
+
+let xKiUndo = null;
 function touchTest(tg, tm) {
   const now = Date.now();
   if (tm) tm.u = now;
@@ -2340,6 +2349,33 @@ function testStartTurn(tg, n) {
   return notes;
 }
 
+/* What the table is showing, read from the shared table */
+function xTableStrip() {
+  const t = TBL, P = t.play || { turn: 0, sp: { F: 0, E: 0 }, vp: { F: 0, E: 0 } };
+  const cnt = k => ["F", "E"].map(sd => t.sides[sd].models.filter(m => m.where === k).length).join(" v ");
+  return `<p class="note xstrip"><b>On the table</b> · ${P.turn ? `Turn ${P.turn}` : "setting up"} · SP ${P.sp.F}–${P.sp.E} · VP ${P.vp.F}–${P.vp.E} · placed ${cnt("table")}${t.updated ? ` · updated ${new Date(t.updated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}</p>`;
+}
+/* An existing table can be linked to a test when the same models are on both (matched by name) */
+function xMatch(tg) {
+  const t = tbl(); if (!t) return null;
+  const pairs = [];
+  for (const sd of ["F", "E"]) {
+    const used = new Set(), tm = tg.sides[sd].models;
+    if (tm.length !== t.sides[sd].models.length) return null;
+    for (const m of t.sides[sd].models) {
+      const x = tm.find(y => !used.has(y.id) && y.def.name === m.name); if (!x) return null;
+      used.add(x.id); pairs.push([m, x.id]);
+    }
+  }
+  return pairs;
+}
+const xCanLink = tg => !!xMatch(tg);
+function xLinkTable(tg) {
+  const pairs = xMatch(tg); if (!pairs) return toast("The models on that table don't match this test.");
+  pairs.forEach(([m, id]) => { m.id = id; });
+  TBL.testId = tg.id; tSave(); render(); toast("Table linked to this test.");
+}
+
 /* ---------- Screens ---------- */
 function renderTests() {
   const v = $("testView");
@@ -2357,7 +2393,7 @@ function renderTests() {
     <div class="sec-h"><h2>Tests</h2><span>${all.length}</span></div>
     <div class="slots">${all.map(tg => {
       const st = s => tg.sides[s].models.filter(m => !xGone(m)).length + "/" + tg.sides[s].models.length;
-      return `<div class="slot"><div class="slot-main"><b>${esc(tg.name)}</b><span>Standing ${st("F")} v ${st("E")} · ${esc(dayLabel(tg.updated))}${TBL && TBL.testId === tg.id ? " · on the table" : ""}</span></div>
+      return `<div class="slot"><div class="slot-main"><b>${esc(tg.name)}</b><span>Standing ${st("F")} v ${st("E")} · ${esc(dayLabel(tg.updated))}${tbl() && TBL.testId === tg.id ? " · on the table" : ""}</span></div>
         <button class="btn small primary" data-xopen="${tg.id}">Open</button>
         <button class="btn small ${xConfirm === tg.id ? "danger" : "quiet"}" data-xdel="${tg.id}">${xConfirm === tg.id ? "Delete?" : "Delete"}</button></div>`;
     }).join("") || `<p class="empty">No tests yet.</p>`}</div>`;
@@ -2380,13 +2416,14 @@ function xModelHTML(tm) {
   const open = xOpen.has(tm.id);
   return `<article class="m ${gone ? "dead" : ""} ${ls ? "on-ls" : ""}">
     <div class="m-head"><div class="m-name">${esc(d.name)}${eqNames.length ? `<span class="m-eq">${eqNames.map(n => `<span class="eq-tag">${esc(n)}</span>`).join("")}</span>` : ""}</div>
+      ${(() => { const q = tableModel(tm.id); return q && !gone ? `<span class="pill xwhere ${q.where}">${WHERE[q.where] || ""}${q.where === "table" && q.act !== undefined ? ` · ${q.act} act` : ""}</span>` : ""; })()}
       ${gone ? `<span class="pill dead">Killed</span>` : ls ? `<button class="pill ls" data-rule="Last Stand">Last Stand</button>` : ""}</div>
     <div class="statline xstat">
       <div><small>Mel</small><b class="num">${stat(st.mp, st.mb)}</b></div><div><small>Rng</small><b class="num">${stat(st.rp, st.rb)}</b></div>
       <div><small>Mov</small><b class="num">${stat(st.mv, st.mvb)}</b></div><div><small>Ki</small><b class="num">${d.kiGen ?? "–"}/${d.kiCap ?? "–"}</b></div>
       <div><small>Size</small><b class="num">${esc(st.size || "–")}</b></div></div>
     <div class="track w"><span class="track-label">Wounds</span>${xPips(w, tm.dmg || 0, "w", tm.id)}<span class="track-val num"><b>${Math.max(0, w - (tm.dmg || 0))}</b>/${w}</span></div>
-    ${cap ? `<div class="track k"><span class="track-label">Ki</span>${xPips(cap, tm.ki || 0, "k", tm.id)}<span class="track-val num"><b>${tm.ki || 0}</b> +${+d.kiGen || 0}</span></div>` : ""}
+    ${cap ? `<div class="track k"><span class="track-label">Ki</span>${xPips(cap, tm.ki || 0, "k", tm.id)}<span class="track-val num"><b>${tm.ki || 0}</b> <span class="muted">+${+d.kiGen || 0} each turn</span></span></div>` : ""}
     <div class="states">${xChips(tm)}${gone ? "" : `<button class="add-state" data-xaddstate="${tm.id}">+ State</button>`}</div>
     ${feats ? `<div class="feats">${feats}</div>` : ""}
     ${d.traits ? `<p class="xtraits">${ruleList(d.traits)}</p>` : ""}
@@ -2412,13 +2449,14 @@ function renderTest(id) {
       ${S.cards.length ? `<div class="sec-h"><h2>Cards</h2></div>${S.cards.map((c, i) => `<div class="card ${c.done ? "done" : ""}"><button class="check ${c.done ? "on" : ""}" data-xcard="${s}:${i}" aria-label="Mark ${esc(c.name)} as resolved">${c.done ? "✓" : ""}</button><div><span class="card-type">${esc(c.type)}</span><b>${esc(c.name)}</b><p>${esc(c.text)}</p></div></div>`).join("")}` : ""}
     </section>`;
   };
-  const onTable = TBL && TBL.testId === tg.id;
+  const onTable = !!(tbl() && TBL.testId === tg.id), other = !!tbl() && !onTable, canLink = other && xCanLink(tg);
   /* each side scrolls on its own: keep where each was when the screen redraws */
   const keep = [...v.querySelectorAll(".xside")].map(el => el.scrollTop), keepId = v.dataset.test;
   v.dataset.test = tg.id;
   v.innerHTML = `<div class="thead"><button class="btn small" data-area="tests">‹ Testing lists</button><h1>${esc(tg.name)}</h1><span class="spacer"></span>
+      <button class="btn small" data-xki="${tg.id}" title="Ki Generation for every standing model, as at the start of a turn">Generate Ki</button>
       <button class="btn small ${onTable ? "" : "primary"}" data-xtable="${tg.id}">${onTable ? "Open the table" : "Set up the table"}</button></div>
-    <p class="note">Wounds, Ki, feats and states. Turn, scores, positions and activations are on the Table${onTable ? "" : ": set it up there (on this device or another one with your sync code) and pick this test"}.</p>
+    ${onTable ? xTableStrip() : `<p class="note">Wounds, Ki, feats and states. Turn, scores, positions and activations are on the Table: ${other ? "the table that is set up isn't linked to this test." : "set it up there (this device or another one with your sync code) and pick this test."}${canLink ? ` <button class="btn small" data-xlink="${tg.id}">Link that table to this test</button>` : ""}</p>`}
     <div class="xgrid">${side("F")}${side("E")}</div>`;
   if (keepId === tg.id) v.querySelectorAll(".xside").forEach((el, i) => el.scrollTop = keep[i] || 0);
 }
@@ -2451,10 +2489,24 @@ document.addEventListener("click", e => {
     if (xConfirm !== d.xdel) { xConfirm = d.xdel; return renderTests(); }
     delete tests()[d.xdel]; saveTests(); window.Sync?.remove("tests", d.xdel); xConfirm = null; return renderTests();
   }
+  if (d.xlink) return xLinkTable(findTest(d.xlink));
+  if (d.xki) {
+    const tg = findTest(d.xki), before = {}; let gained = 0;
+    for (const sd of ["F", "E"]) for (const tm of tg.sides[sd].models) {
+      before[tm.id] = tm.ki || 0; if (xGone(tm)) continue;
+      const b = tm.ki || 0; tm.ki = Math.min(+xDef(tm).kiCap || 0, b + (+xDef(tm).kiGen || 0)); gained += tm.ki - b; tm.u = Date.now();
+    }
+    xKiUndo = { id: tg.id, before }; touchTest(tg); render();
+    return toast(`+${gained} Ki generated`, false, `<button data-xkiundo="1">Undo</button>`);
+  }
+  if (d.xkiundo && xKiUndo) {
+    const tg = findTest(xKiUndo.id); if (tg) { for (const sd of ["F", "E"]) for (const tm of tg.sides[sd].models) if (tm.id in xKiUndo.before) { tm.ki = xKiUndo.before[tm.id]; tm.u = Date.now(); } touchTest(tg); }
+    xKiUndo = null; $("toastHost").innerHTML = ""; return render();
+  }
   if (d.xtable) {
     const tg = findTest(d.xtable);
-    if (!(TBL && TBL.testId === tg.id)) tSetup = { ...(tSetup || { scenario: "sacred-idols", deployment: "baseline", objSize: "small", vim: "Open" }), testId: tg.id, you: tg.sides.F.wbId, them: tg.sides.E.wbId };
-    if (TBL && TBL.testId !== tg.id) toast("A different table is set up on this device. Use New table there to start this one.");
+    if (!(tbl() && TBL.testId === tg.id)) tSetup = { ...(tSetup || { scenario: "sacred-idols", deployment: "baseline", objSize: "small", vim: "Open" }), testId: tg.id, you: tg.sides.F.wbId, them: tg.sides.E.wbId };
+    if (tbl() && TBL.testId !== tg.id) toast("A different table is set up on this device. Use New table there to start this one.");
     return go("table");
   }
   const tg = curTest(); if (!tg) return;
@@ -3276,7 +3328,7 @@ window.App = {
     if (TBL && (TBL.updated || 0) >= (remote.updated || 0)) return;
     TBL = remote; TBL.id = "current"; store(TBLKEY, TBL); tHistReset();
     if (tSel && !itemOf(tSel.kind, tSel.id)) tSel = null;
-    if (VIEW === "table" && !tDrag && !App.sheetOpen()) renderTable(); else if (VIEW === "home") render();
+    if (VIEW === "table" && !tDrag && !App.sheetOpen()) renderTable(); else if (VIEW === "home" || VIEW === "tests" || VIEW.startsWith("test:")) { if (!App.sheetOpen()) render(); }
   },
   applyTest(remote) {
     const mine = tests()[remote.id];

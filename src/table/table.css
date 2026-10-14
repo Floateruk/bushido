@@ -265,3 +265,6 @@ body.test-mode .xside{height:100%;overflow-y:auto;overscroll-behavior:contain;al
   #testView .feat{font-size:12px}
   #testView .xtraits{font-size:12px}
 }
+.pill.xwhere{color:var(--muted);margin-right:6px}
+.pill.xwhere.table{color:var(--ok,var(--ink))}
+.xstrip{margin:6px 0}

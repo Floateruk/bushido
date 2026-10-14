@@ -34,7 +34,7 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
     ink filters, scroll mount and seal). Seeded by piece id so pictures stay stable between redraws.
   - `table.css`: table styles, inlined into the page's `<style>`.
 - `src/tests.js`: Testing lists (`tests`, `test:<id>`): two warbands side by side with full cards, wounds, Ki, feats,
-  states and cards (step 1); the Table setup picks a test (step 2). Saved in `bushido-tests-v1` and synced as
+  states and cards (step 1); the Table setup picks a test (step 2). A test shows the table's turn, SP, VP and where each model is; "Generate Ki" runs Ki Generation by hand; an unlinked table with the same models can be linked (matched by name). Saved in `bushido-tests-v1` and synced as
   `groups/{code}/tests/{id}`, merged per model by its `u` timestamp so tablet and laptop can edit at once.
 - The home screen is a hub: My lists (`lists`, for real-life games), Testing lists (`tests`), Table (`table`); Campaign is not built yet.
 - `sync.js` + `config.js`: Firebase Firestore sync (anonymous auth, `groups/{syncCode}/...`).
