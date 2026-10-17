@@ -570,6 +570,7 @@ function renderTable() {
     <div class="thead"><button class="btn small" data-thub>‹ Home</button><h1>${esc(s.name)}</h1>
       <span class="muted">${esc(TBL.sides.F.name)} vs ${esc(TBL.sides.E.name)}</span>
       <span class="spacer"></span>
+      <button class="btn small" data-dice title="D">⚀ Dice</button>
       <button class="btn small" data-tundo title="Ctrl+Z" ${tHist.length ? "" : "disabled"}>↶ Undo</button>
       <button class="btn small ${namesOn() ? "primary" : ""}" data-tnames title="N" aria-pressed="${namesOn()}">Names</button>
       <button class="btn small ${tTool === "ruler" ? "primary" : ""}" data-ttool="ruler" title="M">Ruler</button>

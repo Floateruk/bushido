@@ -280,3 +280,53 @@ body.test-mode .xside{height:100%;overflow-y:auto;overscroll-behavior:contain;al
 #tSvg .tok.E .tname{fill:var(--side-e)}
 #tSvg .tok.F .tname{fill:var(--side-f)}
 #tSvg .tok.exh .tname{opacity:.6}
+
+/* ---------- Opposed dice tool ---------- */
+#diceHost{position:fixed;top:70px;right:16px;z-index:60;width:min(440px,calc(100vw - 16px));max-height:calc(100vh - 90px);display:flex;flex-direction:column;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+#diceHost[hidden]{display:none}
+#diceHost .dhead{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:grab;border-bottom:1px solid var(--line);touch-action:none;user-select:none}
+#diceHost .spacer{flex:1}
+#diceHost .dbody{overflow:auto;padding:10px 12px}
+#diceHost .dbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+#diceHost .dseg{display:inline-flex;align-items:center;gap:4px}
+#diceHost .dseg small{color:var(--muted)}
+#diceHost .dseg button{border:1px solid var(--line);background:var(--raised);color:var(--ink);padding:4px 8px;font:inherit;font-size:.8rem;cursor:pointer}
+#diceHost .dseg button:first-of-type{border-radius:6px 0 0 6px}
+#diceHost .dseg button:last-of-type{border-radius:0 6px 6px 0}
+#diceHost .dseg button.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+#diceHost .dcols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#diceHost .dside{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--raised)}
+#diceHost .dside.F{border-top:3px solid var(--side-f)}
+#diceHost .dside.E{border-top:3px solid var(--side-e)}
+#diceHost .dside h4{margin:0 0 6px;font-size:.9rem}
+#diceHost .dtag{font-size:.65rem;padding:1px 6px}
+#diceHost .dpool{margin-bottom:8px}
+#diceHost .dpool-h{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:.8rem}
+#diceHost .dstep{display:inline-flex;align-items:center;gap:2px}
+#diceHost .dstep small{color:var(--muted);margin-right:2px}
+#diceHost .dstep button,#diceHost .dsmall{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;min-width:26px;height:26px;font:inherit;font-size:.8rem;cursor:pointer;padding:0 6px}
+#diceHost .dstep .num{min-width:1.4em;text-align:center}
+#diceHost .dice{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;min-height:44px;align-items:center}
+#diceHost .diewrap{position:relative;display:inline-block}
+#diceHost .die{width:42px;height:42px;border-radius:9px;border:2px solid var(--line);background:#f6f1e4;color:#1b1b1b;font:700 1.35rem/1 inherit;cursor:pointer}
+#diceHost .die.blank{background:var(--surface);color:var(--muted);border-style:dashed}
+#diceHost .die.one{opacity:.4}
+#diceHost .die.off{opacity:.3;text-decoration:line-through}
+#diceHost .die.hi{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+#diceHost .die.sup{border-color:var(--ki)}
+#diceHost .die.again::after{content:"↻";position:absolute;left:3px;bottom:1px;font-size:.6rem;color:#555}
+#diceHost .diex{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:.7rem;line-height:1;padding:0;cursor:pointer}
+#diceHost .diex.on{background:var(--harm);color:#fff}
+#diceHost .die.roll{animation:dieroll .35s ease-out}
+@keyframes dieroll{0%{transform:rotate(-40deg) scale(.7)}60%{transform:rotate(15deg) scale(1.12)}100%{transform:none}}
+#diceHost .dres{font-size:.78rem;color:var(--muted)}
+#diceHost .dres.zero{opacity:.7}
+#diceHost .dnone{font-size:.8rem}
+#diceHost .dresult{margin-top:10px;border-top:1px solid var(--line);padding-top:8px;font-size:.85rem}
+#diceHost .dresult h4{margin:0 0 4px}
+#diceHost .dresult p{margin:0 0 6px}
+#diceHost .dhit{color:var(--harm)}
+#diceHost .dheld{color:var(--ki)}
+#diceHost .dnote{font-size:.72rem}
+@media (max-width:520px){#diceHost .dcols{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){#diceHost .die.roll{animation:none}}

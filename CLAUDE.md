@@ -31,6 +31,7 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
     SP/alignment, Flank reminders, Undo), activation dots inside tokens. The table shows only position, facing, LoS, Prone/Blind and activations;
     a table made from a test (TBL.testId) shares its model ids: killed models leave the board, Prone/Blind are the
     test's states, and Next turn runs Ki Generation and Last Stand removals in the test (testStartTurn).
+  - `dice.js`: opposed dice tool (Dice button or D key): floating panel with Attack and Defence d6 pools for each side, tap a die to re-roll it, × removes it from the result, modifiers, Melee Exchange result (highest + up to 2 supporting, 1s ignored, ties by dice above 1 then Active player). Unbiased `crypto.getRandomValues` d6. In memory only, not synced.
   - `ink.js`: sumi-e drawing for the board (brushed terrain pictures per piece, ensō objectives and token rings,
     ink filters, scroll mount and seal). Seeded by piece id so pictures stay stable between redraws.
   - `table.css`: table styles, inlined into the page's `<style>`.
