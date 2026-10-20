@@ -1382,6 +1382,10 @@ const TBYID = Object.fromEntries(TERRAIN.map(t => [t.id, t]));
 const FACTION_KEY = "bushido-terrain-v1";
 let customLib = null, tfOpen = false;
 document.addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("tfaction")) tfOpen = e.target.open; }, true);
+/* Panels the player opens or shuts stay that way when the table redraws (keyed by data-fold) */
+const tFold = {};
+const foldOpen = (k, dflt) => (k in tFold ? tFold[k] : dflt) ? "open" : "";
+document.addEventListener("toggle", e => { const k = e.target.dataset && e.target.dataset.fold; if (k) tFold[k] = e.target.open; }, true);
 const customList = () => customLib || (customLib = load(FACTION_KEY, []));
 function regCustom(d) { TBYID[d.id] = { note: "", ...d, theme: "faction", shape: "rect", w: 3.5, h: 2.5, restricted: d.passage === "Impassable" }; }
 function regAllCustom() { customList().forEach(regCustom); ((TBL && TBL.customTerrain) || []).forEach(regCustom); }
@@ -1837,7 +1841,7 @@ function selectedHTML() {
       ${ghostRelevant(m, side) ? `<label class="inline tsmall"><input type="checkbox" data-tghost="${m.id}" ${isGhost(m, side) ? "checked" : ""}> Moves through models and terrain (Cloudwalk, Intangible)</label>` : ""}
       ${losStates(m, side)}
       <p class="muted tsmall">Hover another model to see the distance${tTool === "los" ? " and the sight lines" : tTool === "ruler" ? " (a line is drawn)" : ""}.</p>
-      <details class="tfold" open><summary>Line of sight</summary>${losPanel(m, side) || `<p class="muted tsmall">Place the model on the table to check its line of sight.</p>`}</details></div>`;
+      <details class="tfold" data-fold="los" ${foldOpen("los", true)}><summary>Line of sight</summary>${losPanel(m, side) || `<p class="muted tsmall">Place the model on the table to check its line of sight.</p>`}</details></div>`;
   }
   if (tSel.kind === "terrain") {
     const t = TBL.terrain.find(x => x.id === tSel.id); if (!t) return "";
@@ -1968,7 +1972,7 @@ function renderTable() {
       <button class="btn small quiet" data-tnew>${tConfirm === "tnew" ? "Clear table?" : "New table"}</button></div>
     <div class="tgrid">
       <aside class="tside left">${gameCardHTML()}${scenarioCard(s)}
-        <details class="tcard tfold" ${TBL.step === "play" ? "" : "open"}><summary>Game setup</summary><ol class="tsteps">${STEPS.map((t, i) => `<li><label><input type="checkbox" data-tcheck="${i + 1}" ${TBL.checks[i + 1] ? "checked" : ""}> ${esc(t)}</label></li>`).join("")}</ol></details>
+        <details class="tcard tfold" data-fold="setup" ${foldOpen("setup", TBL.step !== "play")}><summary>Game setup</summary><ol class="tsteps">${STEPS.map((t, i) => `<li><label><input type="checkbox" data-tcheck="${i + 1}" ${TBL.checks[i + 1] ? "checked" : ""}> ${esc(t)}</label></li>`).join("")}</ol></details>
       </aside>
       <div class="tboard">
         <svg id="tSvg" viewBox="-0.7 -0.7 25.4 25.4" class="${tTool === "ruler" || tArm ? "crosshair" : ""}" role="img" aria-label="Battlefield">${boardSVG()}</svg>
