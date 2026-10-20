@@ -42,6 +42,8 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
 - `src/tests.js`: Testing lists (`tests`, `test:<id>`): two warbands side by side with full cards, wounds, Ki, feats,
   states and cards (step 1); the Table setup picks a test (step 2). A test shows the table's turn, SP, VP and where each model is; "Generate Ki" runs Ki Generation by hand; an unlinked table with the same models can be linked (matched by name). Saved in `bushido-tests-v1` and synced as
   `groups/{code}/tests/{id}`, merged per model by its `u` timestamp so tablet and laptop can edit at once.
+  Undo on a test page (button, Ctrl+Z): snapshots of both sides in memory (`xHist`, 100 steps), restarted by another device's changes and by the table's Next turn; deleting a test has an Undo toast.
+  My lists has Undo on the game screen (`undoStack`) and, on the lists screen, for deleting a game or list and adding a list (`listUndo`).
 - The home screen is a hub: My lists (`lists`, for real-life games), Testing lists (`tests`), Table (`table`); Campaign is not built yet.
 - `sync.js` + `config.js`: Firebase Firestore sync (anonymous auth, `groups/{syncCode}/...`).
   The Firebase web config is public by design; access is limited by Firestore rules and the sync code.

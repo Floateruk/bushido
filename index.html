@@ -57,6 +57,7 @@ button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outl
 .icon-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center}
 .icon-btn:disabled{opacity:.35}
 .icon-btn.armed{width:auto;padding:0 10px;color:var(--harm);border-color:var(--harm);font-weight:700;font-size:13px}
+.icon-btn.undo-btn{width:auto;display:inline-flex;align-items:center;gap:6px;padding:0 12px;font-weight:700;font-size:14px;color:var(--ink)}
 .icon-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* Reminders */
@@ -636,7 +637,7 @@ body.test-mode .xside{height:100%;overflow-y:auto;overscroll-behavior:contain;al
     <div class="score"><b>VP</b><button class="step" data-score="vp" data-d="-1" aria-label="Remove VP">−</button><span class="v num" id="vp">0</span><button class="step" data-score="vp" data-d="1" aria-label="Add VP">+</button></div>
     <div class="score"><b>SP</b><button class="step" data-score="sp" data-d="-1" aria-label="Remove SP">−</button><span class="v num" id="sp">0</span><button class="step" data-score="sp" data-d="1" aria-label="Add SP">+</button></div>
     <button class="icon-btn" id="restart" aria-label="Restart at Deployment"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg></button>
-    <button class="icon-btn" id="undo" aria-label="Undo"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+    <button class="icon-btn undo-btn" id="undo" aria-label="Undo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>Undo</span></button>
   </div>
   <div class="bar-foot">
     <div class="phases" id="phases"></div>
@@ -2465,7 +2466,7 @@ document.addEventListener("click", e => {
   }
   if (d.tundoturn !== undefined && tUndo) {
     const u = JSON.parse(tUndo); TBL = u.TBL; tUndo = null; tHistReset(); tSave();
-    if (u.test) { const now = Date.now(); u.test.sides.F.models.concat(u.test.sides.E.models).forEach(m => m.u = now); tests()[u.test.id] = u.test; touchTest(u.test); }
+    if (u.test) { const now = Date.now(); u.test.sides.F.models.concat(u.test.sides.E.models).forEach(m => m.u = now); tests()[u.test.id] = u.test; touchTest(u.test); xHistReset(u.test); }
     $("toastHost").innerHTML = ""; return renderTable();
   }
   if (d.tlast) { const P = playState(); if (d.tlast === "yes") P.lastTurn = P.turn; else P.rolled = P.turn; tSave(); return renderTable(); }
@@ -2669,7 +2670,7 @@ const tests = () => TESTS || (TESTS = load(TESTKEY, {}));
 const saveTests = () => store(TESTKEY, tests());
 let xForm = null;               /* new test choices {F, E} */
 let xOpen = new Set();          /* model cards opened in full */
-let xConfirm = null;
+let xConfirm = null, xDeleted = null;
 
 const xDef = tm => tm.def || {};
 const xW = tm => +xDef(tm).w || 1;
@@ -2690,6 +2691,30 @@ function touchTest(tg, tm) {
   tg.updated = now;
   saveTests();
   window.Sync?.pushTest?.(tg);
+  xRecord(tg);
+}
+/* Undo for a test: a snapshot of both sides after each change (up to 100, in memory on this device).
+   Another device's changes, and the table's Next turn, start the history again. */
+const xHist = {};
+const xSnap = tg => JSON.stringify(tg.sides);
+function xHistReset(tg) { xHist[tg.id] = { last: xSnap(tg), stack: [] }; }
+function xRecord(tg) {
+  const h = xHist[tg.id]; if (!h) return xHistReset(tg);
+  const cur = xSnap(tg);
+  if (h.last !== cur) { h.stack.push(h.last); if (h.stack.length > 100) h.stack.shift(); h.last = cur; }
+}
+function xUndo(tg) {
+  const h = xHist[tg.id]; if (!h || !h.stack.length) return false;
+  const prev = JSON.parse(h.stack.pop()), now = Date.now(), same = (a, b) => JSON.stringify({ ...a, u: 0 }) === JSON.stringify({ ...b, u: 0 });
+  for (const sd of ["F", "E"]) {
+    const cur = tg.sides[sd];
+    /* what changed gets a new timestamp, so the other device takes the undone version when it merges */
+    cur.models = prev[sd].models.map(pm => { const c = cur.models.find(m => m.id === pm.id); return c && same(c, pm) ? c : { ...pm, u: now }; });
+    cur.cards = prev[sd].cards.map((pc, i) => { const c = cur.cards[i]; return c && same(c, pc) ? c : { ...pc, u: now }; });
+  }
+  tg.updated = now; saveTests(); window.Sync?.pushTest?.(tg);
+  h.last = xSnap(tg);
+  return true;
 }
 function newTest(fId, eId) {
   const now = Date.now();
@@ -2735,7 +2760,7 @@ function testStartTurn(tg, n) {
     tm.u = Date.now();
   }
   if (gone.length) notes.push(`removed at the End Phase (Last Stand): ${gone.join(", ")}`);
-  touchTest(tg);
+  touchTest(tg); xHistReset(tg);
   return notes;
 }
 
@@ -2843,7 +2868,9 @@ function renderTest(id) {
   /* each side scrolls on its own: keep where each was when the screen redraws */
   const keep = [...v.querySelectorAll(".xside")].map(el => el.scrollTop), keepId = v.dataset.test;
   v.dataset.test = tg.id;
+  if (!xHist[tg.id]) xHistReset(tg);
   v.innerHTML = `<div class="thead"><button class="btn small" data-area="tests">‹ Testing lists</button><h1>${esc(tg.name)}</h1><span class="spacer"></span>
+      <button class="btn small" data-xundo="${tg.id}" title="Undo the last change (Ctrl+Z)" ${xHist[tg.id].stack.length ? "" : "disabled"}>↶ Undo</button>
       <button class="btn small" data-xki="${tg.id}" title="Ki Generation for every standing model, as at the start of a turn">Generate Ki</button>
       <button class="btn small ${onTable ? "" : "primary"}" data-xtable="${tg.id}">${onTable ? "Open the table" : "Set up the table"}</button></div>
     ${onTable ? xTableStrip() : `<p class="note">Wounds, Ki, feats and states. Turn, scores, positions and activations are on the Table: ${other ? "the table that is set up isn't linked to this test." : "set it up there (this device or another one with your sync code) and pick this test."}${canLink ? ` <button class="btn small" data-xlink="${tg.id}">Link that table to this test</button>` : ""}</p>`}
@@ -2877,7 +2904,16 @@ document.addEventListener("click", e => {
   if (d.xopen) return go("test:" + d.xopen);
   if (d.xdel) {
     if (xConfirm !== d.xdel) { xConfirm = d.xdel; return renderTests(); }
-    delete tests()[d.xdel]; saveTests(); window.Sync?.remove("tests", d.xdel); xConfirm = null; return renderTests();
+    const gone = tests()[d.xdel]; delete tests()[d.xdel]; saveTests(); window.Sync?.remove("tests", d.xdel); xConfirm = null; xDeleted = gone; renderTests();
+    return toast(`Deleted ${gone.name}`, false, `<button data-xundel="1">Undo</button>`);
+  }
+  if (d.xundel !== undefined && xDeleted) {
+    const tg = xDeleted; xDeleted = null; tests()[tg.id] = tg; tg.updated = Date.now(); saveTests(); window.Sync?.pushTest?.(tg);
+    $("toastHost").innerHTML = ""; return VIEW === "tests" ? renderTests() : render();
+  }
+  if (d.xundo) {
+    const tg = findTest(d.xundo); if (tg && xUndo(tg)) { render(); toast("Undone"); }
+    return;
   }
   if (d.xlink) return xLinkTable(findTest(d.xlink));
   if (d.xki) {
@@ -2936,6 +2972,12 @@ document.addEventListener("change", async e => {
       $("xNote").textContent = `Imported ${wb.name}: ${g.models.length} models.`;
     } catch (err) { note.textContent = `Couldn't read that PDF (${err.message}).`; }
   }
+});
+
+/* Ctrl+Z on a test page */
+document.addEventListener("keydown", e => {
+  if (!VIEW.startsWith("test:") || !(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z" || e.shiftKey || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || "")) return;
+  const tg = curTest(); if (tg && xUndo(tg)) { e.preventDefault(); render(); toast("Undone"); }
 });
 
 /* ---------- Library ---------- */
@@ -3145,6 +3187,13 @@ function go(view) {
   clearTimeout(toastTimer); $("toastHost").innerHTML = "";
   render();
   try { window.scrollTo(0, 0); } catch (e) {}
+}
+/* My lists screen: undo for deleting a game or list and for adding a list (in memory on this device) */
+const listUndo = [];
+function pushListUndo(label, fn) { listUndo.push({ label, fn }); if (listUndo.length > 20) listUndo.shift(); }
+function doListUndo() {
+  const u = listUndo.pop(); if (!u) return;
+  u.fn(); saveAll(); homeMsg = ""; render(); toast(`Undone: ${u.label}`);
 }
 function save() { if (!CUR || !GAMES[CUR]) return; GAMES[CUR].state = S; GAMES[CUR].updated = Date.now(); store(GKEY, GAMES); store(CURKEY, CUR); window.Sync?.pushGame(GAMES[CUR]); }
 function mutate(fn) { undoStack.push(JSON.stringify(S)); if (undoStack.length > 60) undoStack.shift(); fn(); save(); render(); }
@@ -3418,7 +3467,7 @@ function renderHome() {
   const wbs = Object.values(WB).sort((a, b) => a.name.localeCompare(b.name));
   const libCount = Object.values(LIB.cards).filter(c => c.kind === "profile").length;
   $("homeView").innerHTML = `
-    <div class="thead"><button class="btn small" data-area="home">‹ Home</button><h1>My lists</h1></div>
+    <div class="thead"><button class="btn small" data-area="home">‹ Home</button><h1>My lists</h1><span class="spacer"></span><button class="btn small" data-lundo title="Undo the last change to your lists (Ctrl+Z)" ${listUndo.length ? "" : "disabled"}>↶ Undo${listUndo.length ? ": " + esc(listUndo[listUndo.length - 1].label) : ""}</button></div>
     ${homeMsg ? `<p class="note" role="status">${esc(homeMsg)}</p>` : ""}
 
     ${live.length ? `<div class="sec-h"><h2>Games in progress</h2></div>
@@ -3548,6 +3597,7 @@ document.addEventListener("change", async e => {
     if (!g.models.length) { note.textContent = "No profile cards found. Is this a newrecruit.eu list PDF?"; return; }
     addToLibrary(p);
     const wb = addWarband(wbFromGame(g));
+    pushListUndo(`added ${wb.name}`, () => { delete WB[wb.id]; window.Sync?.remove("warbands", wb.id); });
     freshWb = wb.id; homeMsg = "";
     go("lists");
     toast(`Saved ${wb.name}: ${g.models.length} models, ${g.cards.length} cards. Tap Play to start.`);
@@ -3562,6 +3612,7 @@ document.addEventListener("click", e => {
   if (ds.close && e.target === t) return closeSheet();
   if (t.id === "next") return nextPhase();
   if (t.id === "undo" || ds.undo) return undo();
+  if (ds.lundo !== undefined) return doListUndo();
   if (!ds.sdel) sheetConfirm = null;
   if (t.id !== "endGame") disarmEnd();
   if (t.id !== "abandonGame") disarmAbandon();
@@ -3577,7 +3628,8 @@ document.addEventListener("click", e => {
   if (ds.sdel) {
     if (sheetConfirm !== ds.sdel) { sheetConfirm = ds.sdel; return render(); }
     const [kind, id] = ds.sdel.split(":"); sheetConfirm = null;
-    if (kind === "g") { delete GAMES[id]; if (id === CUR) { CUR = null; S = null; } } else delete WB[id];
+    if (kind === "g") { const g = GAMES[id]; delete GAMES[id]; if (id === CUR) { CUR = null; S = null; } pushListUndo(`deleted ${g.name}`, () => { GAMES[g.id] = g; window.Sync?.pushGame(g); }); }
+    else { const w = WB[id]; delete WB[id]; pushListUndo(`deleted ${w.name}`, () => { WB[w.id] = w; window.Sync?.pushWarband?.(w); }); }
     saveAll(); window.Sync?.remove(kind === "g" ? "games" : "warbands", id);
     homeMsg = kind === "g" ? "" : "Warband deleted. Games already played with it are kept.";
     return render();
@@ -3627,6 +3679,7 @@ document.addEventListener("click", e => {
     const g = gameFromText($("listText").value);
     if (!g.models.length) { $("importNote").textContent = g.unknown.length ? `None of these are in your library yet: ${g.unknown.join(", ")}. Load the PDF instead.` : "No models found. Check the list has ## section headings."; return; }
     const wb = addWarband(wbFromGame(g)); freshWb = wb.id; homeMsg = ""; go("lists");
+    pushListUndo(`added ${wb.name}`, () => { delete WB[wb.id]; window.Sync?.remove("warbands", wb.id); });
     return toast(g.unknown.length ? `Saved ${wb.name}. Not in library: ${g.unknown.join(", ")}` : `Saved ${wb.name}. Tap Play to start.`);
   }
   if (ds.score) return mutate(() => { S[ds.score] = Math.max(0, S[ds.score] + +ds.d); });
@@ -3723,6 +3776,7 @@ window.App = {
   },
   applyTest(remote) {
     const mine = tests()[remote.id];
+    delete xHist[remote.id];   /* the other device's changes can't be undone from here */
     if (!mine) tests()[remote.id] = remote;
     else {
       const [merged, mineNewer] = mergeTest(mine, remote);
@@ -3757,6 +3811,13 @@ window.App = {
 };
 try { const th = localStorage.getItem(KEY + "-theme"); if (th) document.documentElement.dataset.theme = th; } catch (e) {}
 render();
+
+/* Ctrl+Z: undo on the game screen, and on the My lists screen */
+document.addEventListener("keydown", e => {
+  if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z" || e.shiftKey || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || "")) return;
+  if (VIEW === "play" && undoStack.length) { e.preventDefault(); undo(); }
+  else if (VIEW === "lists" && listUndo.length) { e.preventDefault(); doListUndo(); }
+});
 
 </script>
 <script type="module" src="sync.js"></script>

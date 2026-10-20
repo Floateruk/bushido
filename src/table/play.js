@@ -133,7 +133,7 @@ document.addEventListener("click", e => {
   }
   if (d.tundoturn !== undefined && tUndo) {
     const u = JSON.parse(tUndo); TBL = u.TBL; tUndo = null; tHistReset(); tSave();
-    if (u.test) { const now = Date.now(); u.test.sides.F.models.concat(u.test.sides.E.models).forEach(m => m.u = now); tests()[u.test.id] = u.test; touchTest(u.test); }
+    if (u.test) { const now = Date.now(); u.test.sides.F.models.concat(u.test.sides.E.models).forEach(m => m.u = now); tests()[u.test.id] = u.test; touchTest(u.test); xHistReset(u.test); }
     $("toastHost").innerHTML = ""; return renderTable();
   }
   if (d.tlast) { const P = playState(); if (d.tlast === "yes") P.lastTurn = P.turn; else P.rolled = P.turn; tSave(); return renderTable(); }

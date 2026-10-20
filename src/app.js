@@ -206,6 +206,13 @@ function go(view) {
   render();
   try { window.scrollTo(0, 0); } catch (e) {}
 }
+/* My lists screen: undo for deleting a game or list and for adding a list (in memory on this device) */
+const listUndo = [];
+function pushListUndo(label, fn) { listUndo.push({ label, fn }); if (listUndo.length > 20) listUndo.shift(); }
+function doListUndo() {
+  const u = listUndo.pop(); if (!u) return;
+  u.fn(); saveAll(); homeMsg = ""; render(); toast(`Undone: ${u.label}`);
+}
 function save() { if (!CUR || !GAMES[CUR]) return; GAMES[CUR].state = S; GAMES[CUR].updated = Date.now(); store(GKEY, GAMES); store(CURKEY, CUR); window.Sync?.pushGame(GAMES[CUR]); }
 function mutate(fn) { undoStack.push(JSON.stringify(S)); if (undoStack.length > 60) undoStack.shift(); fn(); save(); render(); }
 function undo() { if (!undoStack.length) return; S = JSON.parse(undoStack.pop()); save(); render(); toast("Undone"); }
@@ -478,7 +485,7 @@ function renderHome() {
   const wbs = Object.values(WB).sort((a, b) => a.name.localeCompare(b.name));
   const libCount = Object.values(LIB.cards).filter(c => c.kind === "profile").length;
   $("homeView").innerHTML = `
-    <div class="thead"><button class="btn small" data-area="home">‹ Home</button><h1>My lists</h1></div>
+    <div class="thead"><button class="btn small" data-area="home">‹ Home</button><h1>My lists</h1><span class="spacer"></span><button class="btn small" data-lundo title="Undo the last change to your lists (Ctrl+Z)" ${listUndo.length ? "" : "disabled"}>↶ Undo${listUndo.length ? ": " + esc(listUndo[listUndo.length - 1].label) : ""}</button></div>
     ${homeMsg ? `<p class="note" role="status">${esc(homeMsg)}</p>` : ""}
 
     ${live.length ? `<div class="sec-h"><h2>Games in progress</h2></div>
@@ -608,6 +615,7 @@ document.addEventListener("change", async e => {
     if (!g.models.length) { note.textContent = "No profile cards found. Is this a newrecruit.eu list PDF?"; return; }
     addToLibrary(p);
     const wb = addWarband(wbFromGame(g));
+    pushListUndo(`added ${wb.name}`, () => { delete WB[wb.id]; window.Sync?.remove("warbands", wb.id); });
     freshWb = wb.id; homeMsg = "";
     go("lists");
     toast(`Saved ${wb.name}: ${g.models.length} models, ${g.cards.length} cards. Tap Play to start.`);
@@ -622,6 +630,7 @@ document.addEventListener("click", e => {
   if (ds.close && e.target === t) return closeSheet();
   if (t.id === "next") return nextPhase();
   if (t.id === "undo" || ds.undo) return undo();
+  if (ds.lundo !== undefined) return doListUndo();
   if (!ds.sdel) sheetConfirm = null;
   if (t.id !== "endGame") disarmEnd();
   if (t.id !== "abandonGame") disarmAbandon();
@@ -637,7 +646,8 @@ document.addEventListener("click", e => {
   if (ds.sdel) {
     if (sheetConfirm !== ds.sdel) { sheetConfirm = ds.sdel; return render(); }
     const [kind, id] = ds.sdel.split(":"); sheetConfirm = null;
-    if (kind === "g") { delete GAMES[id]; if (id === CUR) { CUR = null; S = null; } } else delete WB[id];
+    if (kind === "g") { const g = GAMES[id]; delete GAMES[id]; if (id === CUR) { CUR = null; S = null; } pushListUndo(`deleted ${g.name}`, () => { GAMES[g.id] = g; window.Sync?.pushGame(g); }); }
+    else { const w = WB[id]; delete WB[id]; pushListUndo(`deleted ${w.name}`, () => { WB[w.id] = w; window.Sync?.pushWarband?.(w); }); }
     saveAll(); window.Sync?.remove(kind === "g" ? "games" : "warbands", id);
     homeMsg = kind === "g" ? "" : "Warband deleted. Games already played with it are kept.";
     return render();
@@ -687,6 +697,7 @@ document.addEventListener("click", e => {
     const g = gameFromText($("listText").value);
     if (!g.models.length) { $("importNote").textContent = g.unknown.length ? `None of these are in your library yet: ${g.unknown.join(", ")}. Load the PDF instead.` : "No models found. Check the list has ## section headings."; return; }
     const wb = addWarband(wbFromGame(g)); freshWb = wb.id; homeMsg = ""; go("lists");
+    pushListUndo(`added ${wb.name}`, () => { delete WB[wb.id]; window.Sync?.remove("warbands", wb.id); });
     return toast(g.unknown.length ? `Saved ${wb.name}. Not in library: ${g.unknown.join(", ")}` : `Saved ${wb.name}. Tap Play to start.`);
   }
   if (ds.score) return mutate(() => { S[ds.score] = Math.max(0, S[ds.score] + +ds.d); });
@@ -783,6 +794,7 @@ window.App = {
   },
   applyTest(remote) {
     const mine = tests()[remote.id];
+    delete xHist[remote.id];   /* the other device's changes can't be undone from here */
     if (!mine) tests()[remote.id] = remote;
     else {
       const [merged, mineNewer] = mergeTest(mine, remote);
@@ -817,3 +829,10 @@ window.App = {
 };
 try { const th = localStorage.getItem(KEY + "-theme"); if (th) document.documentElement.dataset.theme = th; } catch (e) {}
 render();
+
+/* Ctrl+Z: undo on the game screen, and on the My lists screen */
+document.addEventListener("keydown", e => {
+  if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z" || e.shiftKey || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || "")) return;
+  if (VIEW === "play" && undoStack.length) { e.preventDefault(); undo(); }
+  else if (VIEW === "lists" && listUndo.length) { e.preventDefault(); doListUndo(); }
+});

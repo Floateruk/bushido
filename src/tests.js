@@ -11,7 +11,7 @@ const tests = () => TESTS || (TESTS = load(TESTKEY, {}));
 const saveTests = () => store(TESTKEY, tests());
 let xForm = null;               /* new test choices {F, E} */
 let xOpen = new Set();          /* model cards opened in full */
-let xConfirm = null;
+let xConfirm = null, xDeleted = null;
 
 const xDef = tm => tm.def || {};
 const xW = tm => +xDef(tm).w || 1;
@@ -32,6 +32,30 @@ function touchTest(tg, tm) {
   tg.updated = now;
   saveTests();
   window.Sync?.pushTest?.(tg);
+  xRecord(tg);
+}
+/* Undo for a test: a snapshot of both sides after each change (up to 100, in memory on this device).
+   Another device's changes, and the table's Next turn, start the history again. */
+const xHist = {};
+const xSnap = tg => JSON.stringify(tg.sides);
+function xHistReset(tg) { xHist[tg.id] = { last: xSnap(tg), stack: [] }; }
+function xRecord(tg) {
+  const h = xHist[tg.id]; if (!h) return xHistReset(tg);
+  const cur = xSnap(tg);
+  if (h.last !== cur) { h.stack.push(h.last); if (h.stack.length > 100) h.stack.shift(); h.last = cur; }
+}
+function xUndo(tg) {
+  const h = xHist[tg.id]; if (!h || !h.stack.length) return false;
+  const prev = JSON.parse(h.stack.pop()), now = Date.now(), same = (a, b) => JSON.stringify({ ...a, u: 0 }) === JSON.stringify({ ...b, u: 0 });
+  for (const sd of ["F", "E"]) {
+    const cur = tg.sides[sd];
+    /* what changed gets a new timestamp, so the other device takes the undone version when it merges */
+    cur.models = prev[sd].models.map(pm => { const c = cur.models.find(m => m.id === pm.id); return c && same(c, pm) ? c : { ...pm, u: now }; });
+    cur.cards = prev[sd].cards.map((pc, i) => { const c = cur.cards[i]; return c && same(c, pc) ? c : { ...pc, u: now }; });
+  }
+  tg.updated = now; saveTests(); window.Sync?.pushTest?.(tg);
+  h.last = xSnap(tg);
+  return true;
 }
 function newTest(fId, eId) {
   const now = Date.now();
@@ -77,7 +101,7 @@ function testStartTurn(tg, n) {
     tm.u = Date.now();
   }
   if (gone.length) notes.push(`removed at the End Phase (Last Stand): ${gone.join(", ")}`);
-  touchTest(tg);
+  touchTest(tg); xHistReset(tg);
   return notes;
 }
 
@@ -185,7 +209,9 @@ function renderTest(id) {
   /* each side scrolls on its own: keep where each was when the screen redraws */
   const keep = [...v.querySelectorAll(".xside")].map(el => el.scrollTop), keepId = v.dataset.test;
   v.dataset.test = tg.id;
+  if (!xHist[tg.id]) xHistReset(tg);
   v.innerHTML = `<div class="thead"><button class="btn small" data-area="tests">‹ Testing lists</button><h1>${esc(tg.name)}</h1><span class="spacer"></span>
+      <button class="btn small" data-xundo="${tg.id}" title="Undo the last change (Ctrl+Z)" ${xHist[tg.id].stack.length ? "" : "disabled"}>↶ Undo</button>
       <button class="btn small" data-xki="${tg.id}" title="Ki Generation for every standing model, as at the start of a turn">Generate Ki</button>
       <button class="btn small ${onTable ? "" : "primary"}" data-xtable="${tg.id}">${onTable ? "Open the table" : "Set up the table"}</button></div>
     ${onTable ? xTableStrip() : `<p class="note">Wounds, Ki, feats and states. Turn, scores, positions and activations are on the Table: ${other ? "the table that is set up isn't linked to this test." : "set it up there (this device or another one with your sync code) and pick this test."}${canLink ? ` <button class="btn small" data-xlink="${tg.id}">Link that table to this test</button>` : ""}</p>`}
@@ -219,7 +245,16 @@ document.addEventListener("click", e => {
   if (d.xopen) return go("test:" + d.xopen);
   if (d.xdel) {
     if (xConfirm !== d.xdel) { xConfirm = d.xdel; return renderTests(); }
-    delete tests()[d.xdel]; saveTests(); window.Sync?.remove("tests", d.xdel); xConfirm = null; return renderTests();
+    const gone = tests()[d.xdel]; delete tests()[d.xdel]; saveTests(); window.Sync?.remove("tests", d.xdel); xConfirm = null; xDeleted = gone; renderTests();
+    return toast(`Deleted ${gone.name}`, false, `<button data-xundel="1">Undo</button>`);
+  }
+  if (d.xundel !== undefined && xDeleted) {
+    const tg = xDeleted; xDeleted = null; tests()[tg.id] = tg; tg.updated = Date.now(); saveTests(); window.Sync?.pushTest?.(tg);
+    $("toastHost").innerHTML = ""; return VIEW === "tests" ? renderTests() : render();
+  }
+  if (d.xundo) {
+    const tg = findTest(d.xundo); if (tg && xUndo(tg)) { render(); toast("Undone"); }
+    return;
   }
   if (d.xlink) return xLinkTable(findTest(d.xlink));
   if (d.xki) {
@@ -278,4 +313,10 @@ document.addEventListener("change", async e => {
       $("xNote").textContent = `Imported ${wb.name}: ${g.models.length} models.`;
     } catch (err) { note.textContent = `Couldn't read that PDF (${err.message}).`; }
   }
+});
+
+/* Ctrl+Z on a test page */
+document.addEventListener("keydown", e => {
+  if (!VIEW.startsWith("test:") || !(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z" || e.shiftKey || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || "")) return;
+  const tg = curTest(); if (tg && xUndo(tg)) { e.preventDefault(); render(); toast("Undone"); }
 });
