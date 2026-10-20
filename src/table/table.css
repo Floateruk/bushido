@@ -339,7 +339,7 @@ body.test-mode .xside{height:100%;overflow-y:auto;overscroll-behavior:contain;al
 
 /* State markers on tokens */
 #tSvg .sbadge{pointer-events:none}
-#tSvg .sbadge circle{fill:var(--paper-hi);stroke-width:.05}
-#tSvg .sbadge text{font:800 .12px var(--body);fill:var(--sumi);text-anchor:middle}
+#tSvg .sbadge circle{fill:var(--paper-hi);stroke-width:.1}
+#tSvg .sbadge text{font:800 .24px var(--body);fill:var(--sumi);text-anchor:middle}
 #tSvg .sbadge .scount circle{fill:var(--sumi);stroke:none}
-#tSvg .sbadge .scount text{font-size:.1px;fill:var(--paper-hi)}
+#tSvg .sbadge .scount text{font-size:.19px;fill:var(--paper-hi)}

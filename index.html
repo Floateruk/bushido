@@ -611,10 +611,10 @@ body.test-mode .xside{height:100%;overflow-y:auto;overscroll-behavior:contain;al
 
 /* State markers on tokens */
 #tSvg .sbadge{pointer-events:none}
-#tSvg .sbadge circle{fill:var(--paper-hi);stroke-width:.05}
-#tSvg .sbadge text{font:800 .12px var(--body);fill:var(--sumi);text-anchor:middle}
+#tSvg .sbadge circle{fill:var(--paper-hi);stroke-width:.1}
+#tSvg .sbadge text{font:800 .24px var(--body);fill:var(--sumi);text-anchor:middle}
 #tSvg .sbadge .scount circle{fill:var(--sumi);stroke:none}
-#tSvg .sbadge .scount text{font-size:.1px;fill:var(--paper-hi)}
+#tSvg .sbadge .scount text{font-size:.19px;fill:var(--paper-hi)}
 
 </style>
 </head>
@@ -1733,6 +1733,7 @@ function boardSVG() {
       ${inkObjective(o, or, ALIGN[o.align], ang)}</g>`);
   }
   /* models */
+  const badgeLayer = [];   /* state badges are drawn after every token so no neighbour covers them */
   for (const side of ["F", "E"]) for (const m of TBL.sides[side].models) {
     if (m.where !== "table" || isGoneT(m)) continue;
     const sel = tSel && tSel.id === m.id, bad = modelProblems(m, side).length;
@@ -1747,7 +1748,8 @@ function boardSVG() {
       ${art ? "" : `<text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text>`}
       ${(() => { if (!namesOn()) return ""; const L = nameLines(m.name), up = nameAbove(m, L.length);
         return `<text class="tname">${L.map((l, i) => `<tspan x="0" y="${f2(up ? -(m.r + 0.16) - (L.length - 1 - i) * 0.38 : m.r + 0.3 + i * 0.34)}">${esc(l)}</tspan>`).join("")}</text>`; })()}
-      ${(() => { const nl = namesOn() && !nameAbove(m, nameLines(m.name).length) ? nameLines(m.name).length : 0; const st = [onLastStandT(m) && "Last Stand"].filter(Boolean); return st.length ? `<text y="${f2(m.r + 0.32 + nl * 0.38)}" class="tstate">${st.join(" · ")}</text>` : ""; })()}${stateBadges(m)}</g>`);
+      ${(() => { const nl = namesOn() && !nameAbove(m, nameLines(m.name).length) ? nameLines(m.name).length : 0; const st = [onLastStandT(m) && "Last Stand"].filter(Boolean); return st.length ? `<text y="${f2(m.r + 0.32 + nl * 0.38)}" class="tstate">${st.join(" · ")}</text>` : ""; })()}</g>`);
+    badgeLayer.push(stateBadges(m));
     if (sel) {
       const hx = Math.sin(rad(m.facing)) * (m.r + 0.45), hy = -Math.cos(rad(m.facing)) * (m.r + 0.45);
       out.push(`<g transform="translate(${m.x} ${SY(m.y)})"><line x1="0" y1="0" x2="${hx}" y2="${hy}" class="hline"/><circle cx="${hx}" cy="${hy}" r="0.22" class="handle" data-k="rotate" data-id="${m.id}"/></g>`);
@@ -1773,6 +1775,7 @@ function boardSVG() {
     const [a] = findModel(tSel.id), [b] = findModel(tHover);
     if (a && b && a.where === "table" && b.where === "table") out.push(`<line x1="${a.x}" y1="${SY(a.y)}" x2="${b.x}" y2="${SY(b.y)}" class="rel"/>`);
   }
+  out.push(...badgeLayer);
   if (tDrag && tDrag.mode === "move" && tDrag.kind === "model") {
     const [m] = findModel(tDrag.id);
     out.push(`<line x1="${tDrag.start.x}" y1="${SY(tDrag.start.y)}" x2="${m.x}" y2="${SY(m.y)}" class="trail"/><text x="${m.x}" y="${SY(m.y) - m.r - 0.35}" class="dlabel">${r1(dist(tDrag.start, m))}"</text>`);
@@ -1917,12 +1920,17 @@ function modelStates(m) {   /* [[state, count], ...] from the linked test, else 
 }
 function stateBadges(m) {
   const list = modelStates(m); if (!list.length) return "";
-  const rb = 0.15, step = 30, out = [];
-  list.slice(0, 8).forEach(([k, c], i) => {
-    const side = i % 2 ? -1 : 1, a = rad(40 + Math.floor(i / 2) * step), x = side * Math.sin(a) * (m.r + 0.02), y = Math.cos(a) * (m.r + 0.02);
+  /* a column down the side of the base (the left side near the table's right edge), three to a column and then another column;
+     kept inside the board */
+  const rb = 0.3, gap = 0.62, per = 3, dir = m.x > 20 ? -1 : 1, cy = SY(m.y), out = [];
+  list.slice(0, 9).forEach(([k, c], i) => {
+    const col = Math.floor(i / per), row = i % per, n = Math.min(per, list.length - col * per);
+    const x = m.x + dir * (m.r + rb + 0.06 + col * (rb * 2 + 0.06));
+    const mid = Math.max(rb + 0.1 + (n - 1) * gap / 2, Math.min(24 - rb - 0.1 - (n - 1) * gap / 2, cy));
+    const y = mid + (row - (n - 1) / 2) * gap;
     const base = baseState(k), v = (k.match(/ (\d)$/) || [])[1], cat = CAT[k] || "neutral";
-    const col = cat === "harm" ? "var(--harm)" : cat === "fire" ? "var(--fire)" : cat === "poison" ? "var(--poison)" : cat === "good" ? "var(--ki)" : "var(--muted)";
-    out.push(`<g class="sbadge" transform="translate(${f2(x)} ${f2(y)})"><title>${esc(k)}${c > 1 ? " ×" + c : ""}</title><circle r="${rb}" style="stroke:${col}"/><text y="0.048">${esc((STATE_ABBR[base] || base.slice(0, 2)) + (v || ""))}</text>${c > 1 ? `<g class="scount"><circle cx="0.12" cy="-0.12" r="0.07"/><text x="0.12" y="-0.09">${c}</text></g>` : ""}</g>`);
+    const colr = cat === "harm" ? "var(--harm)" : cat === "fire" ? "var(--fire)" : cat === "poison" ? "var(--poison)" : cat === "good" ? "var(--ki)" : "var(--muted)";
+    out.push(`<g class="sbadge" transform="translate(${f2(x)} ${f2(y)})"><title>${esc(k)}${c > 1 ? " ×" + c : ""}</title><circle r="${rb}" style="stroke:${colr}"/><text y="0.09">${esc((STATE_ABBR[base] || base.slice(0, 2)) + (v || ""))}</text>${c > 1 ? `<g class="scount"><circle cx="0.24" cy="-0.24" r="0.14"/><text x="0.24" y="-0.19">${c}</text></g>` : ""}</g>`);
   });
   return out.join("");
 }
