@@ -423,6 +423,42 @@ const STEPS = [
   "The player who deployed warband terrain first deploys their whole warband, then the other player (Scout and Flank are exceptions)",
   "The first turn begins"
 ];
+/* ---------- Scoring and turn-by-turn description of a scenario ---------- */
+const SP_BY_ALIGN = "Friendly 1 · Neutral 2 · Enemy 3";
+function scoringLines(s) {
+  const out = [], inter = (s.interactions || []).join(" ");
+  if (/Influence/i.test(inter)) out.push(`<b>Influence</b> (${/Complex/i.test(inter.match(/Influence \((\w+)\)/i)?.[0] || "") ? "Complex" : "Simple"} action): in base contact with an objective, move its alignment one step: Enemy → Neutral → Friendly. A model can take a Scenario Action once per objective each turn. Insignificant and Aloof models can't.`);
+  const pr = inter.match(/Prayer \((\d+)\)/i);
+  if (pr) out.push(`<b>Prayer</b>: each player starts with ${pr[1]} Prayer Tokens. A Prayer action in base contact with an objective spends one token and scores Scenario Points (SP) by its alignment: ${SP_BY_ALIGN}.`);
+  if ((s.zones || []).length) out.push(`<b>Zones</b>: you control a zone when you have more models and a higher total Rice cost completely inside it. Controlling it in the End Phase scores SP by its alignment: ${SP_BY_ALIGN}.`);
+  if (s.vim) out.push(`<b>VIM</b>: each player has a Very Important Model (${esc(TBL.vimType || "see setup")}). It must be Unique and not Insignificant. A VIM that leaves play and returns is no longer a VIM.`);
+  if ((s.rules || []).some(r => /^Decreasing Scorer/i.test(r))) out.push(`<b>Decreasing</b>: after VPs are scored in the End Phase, remove an objective that is Friendly to the player who scored. Their opponent chooses which if there is more than one.`);
+  else if ((s.rules || []).some(r => /^Decreasing/i.test(r))) out.push(`<b>Decreasing</b>: after VPs are scored in the End Phase, if a VP was scored, the player who did not score removes one objective of their choice.`);
+  out.push(`Only 3 VPs exist: the player with more VPs at the end wins. End Phase scoring order: Influence (with Decreasing), then SP (with Decreasing), then VIMs.`);
+  return out;
+}
+const vpShort = v => { const t = v.replace(/^Player (with|whose)\s*/i, "").replace(/,\s*End Phase.*$/i, ""); return t[0].toUpperCase() + t.slice(1); };
+/* One row for each turn where something happens: Starting Phase resets and the roll for a variable game, End Phase VPs */
+function scenarioTimeline(s) {
+  const L = gameLength(s), maxT = L.kind === "Fixed" ? L.n : 7, now = TBL.step === "play" ? playState().turn : 0, rows = [], lastRow = [];
+  for (let t = 1; t <= maxT; t++) {
+    const start = [], end = [];
+    if (L.kind === "Variable" && t >= L.n) start.push(t === 7 ? "the game ends after this turn" : "roll a D6: 4+ makes it the last turn");
+    for (const r of s.rules || []) {
+      if (/^Reset( Scenario Points)?\s*\(/i.test(r) && turnsIn(r, /\(([\d,\/]+)\)/).includes(t)) start.push("Scenario Points reset to 0");
+      if (/^Reset alignment/i.test(r) && turnsIn(r, /\(([\d,\/]+)\)/).includes(t)) start.push("objectives reset to Neutral");
+    }
+    (s.victory || []).forEach((v, i) => {
+      const m = v.match(/turn (\d+)/i), last = /last|final/i.test(v);
+      if (m && +m[1] === t) end.push(`VP ${i + 1}: ${esc(vpShort(v))}`);
+      else if (last && L.kind === "Fixed" && L.n === t) end.push(`VP ${i + 1}: ${esc(vpShort(v))}`);
+      else if (last && L.kind === "Variable" && t === maxT) lastRow.push(`VP ${i + 1}: ${esc(vpShort(v))}`);
+    });
+    if (start.length || end.length) rows.push(`<li class="${t === now ? "now" : now && t < now ? "past" : ""}"><b>Turn ${t}</b>${start.length ? `<span><i>Start</i> ${start.join("; ")}</span>` : ""}${end.length ? `<span><i>End</i> ${end.join("; ")}</span>` : ""}</li>`);
+  }
+  if (lastRow.length) rows.push(`<li><b>Last turn</b><span><i>End</i> ${lastRow.join("; ")}</span></li>`);
+  return rows.join("");
+}
 function scenarioCard(s) {
   return `<div class="tcard">
     <div class="tcard-h"><b>${esc(s.name)}</b><span>${s.level ? esc(s.level) + " · " : ""}${esc(s.type)}</span></div>
@@ -434,8 +470,9 @@ function scenarioCard(s) {
       ${s.interactions.length ? `<dt>Interaction</dt><dd>${s.interactions.map(esc).join("<br>")}</dd>` : ""}
     </dl>
     ${TBL.step === "play" ? "" : `<h4>Victory points</h4><ol class="tvp">${s.victory.map(v => `<li>${esc(v)}</li>`).join("")}</ol>`}
-    ${s.rules.length ? `<p class="trules">${s.rules.map(esc).join(" · ")}</p>` : ""}
-    ${s.special ? `<p class="trules"><b>Special:</b> ${esc(s.special)}</p>` : ""}
+    <details class="tfold" data-fold="turns" ${foldOpen("turns", true)}><summary>Turn by turn</summary><ul class="tturns">${scenarioTimeline(s)}</ul></details>
+    <details class="tfold" data-fold="scoring" ${foldOpen("scoring", true)}><summary>How it scores</summary><ul class="tscoring">${scoringLines(s).map(l => `<li>${l}</li>`).join("")}</ul>
+      ${s.special ? `<p class="trules"><b>Special:</b> ${esc(s.special)}</p>` : ""}</details>
     <p class="tsrc">${s.source === "rulebook" ? "Rulebook R2" : "Tournament & Scenario Pack 2510.1"}</p>
   </div>`;
 }

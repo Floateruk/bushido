@@ -343,3 +343,15 @@ body.test-mode .xside{height:100%;overflow-y:auto;overscroll-behavior:contain;al
 #tSvg .sbadge text{font:800 .24px var(--body);fill:var(--sumi);text-anchor:middle}
 #tSvg .sbadge .scount circle{fill:var(--sumi);stroke:none}
 #tSvg .sbadge .scount text{font-size:.19px;fill:var(--paper-hi)}
+
+/* Scenario: turn by turn and how it scores */
+.tturns,.tscoring{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:13px}
+.tturns li{display:grid;grid-template-columns:4.2em 1fr;gap:1px 8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.tturns li:last-child{border-bottom:0;padding-bottom:0}
+.tturns li b{grid-row:span 2}
+.tturns li span{display:block}
+.tturns li i{font-style:normal;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.tturns li.now{color:var(--accent)}
+.tturns li.now b{color:var(--accent)}
+.tturns li.past{color:var(--muted)}
+.tscoring li{line-height:1.4}

@@ -17,6 +17,7 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
     `node src/build_seed.js` merges them into `seed.json`; bump `SEED_REV` there when card data changes,
     and installed apps apply it once on next open (library, matching warband, and games in progress).
 - `src/table/`: the Table area (laptop-first), built into `index.html` before `app.js`.
+  - Scenario panel (`scenarioCard` in table.js): "Turn by turn" (`scenarioTimeline`: Start-phase resets and variable-length roll, End-phase VPs, current turn highlighted in play) and "How it scores" (`scoringLines`: Influence, Prayer, Zones, VIM, Decreasing), both foldable.
   - `scenarios.js`: the 12 Tournament Pack 2510.1 scenarios and 3 rulebook ones; positions in inches from the
     bottom-left of the 24" table, your side (F) along the bottom. Deployment types and their neutral edges.
   - Faction terrain: user-made pieces (name, faction, Passage, Visibility, Size), always 3.5" x 2.5"; kept in `bushido-terrain-v1`, and a table carries the definitions of the ones placed (`TBL.customTerrain`).
