@@ -28,7 +28,7 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
   - `los.js`: line of sight and cover from the rulebook (facing, Aware, Blind/Sixth Sense, Prone, Size rules for
     models and terrain, Enhancing elevation, cover within 1"); L toggles the board overlay; Selected panel lists Can see / Seen by.
   - `play.js`: playing on the table: TBL.play {turn, sp, vp}, Next turn (2 activation counters each, pack resets of
-    SP/alignment, Flank reminders, Undo), activation dots inside tokens. The table shows only position, facing, LoS, Prone/Blind and activations;
+    SP/alignment, Flank reminders, Undo), activation dots inside tokens, and state badges on the base (`stateBadges`: from the linked test's states, else the table's own Prone/Blind; two letters, value, count). The table shows only position, facing, LoS, Prone/Blind and activations;
     a table made from a test (TBL.testId) shares its model ids: killed models leave the board, Prone/Blind are the
     test's states, and Next turn runs Ki Generation and Last Stand removals in the test (testStartTurn).
   - `dice.js`: opposed dice tool (Dice button or D key): floating panel with Attack and Defence d6 pools for each side, tap a die to re-roll it, × removes it from the result, modifiers, Melee Exchange result (highest + up to 2 supporting, 1s ignored, ties by dice above 1 then Active player). Unbiased `crypto.getRandomValues` d6. In memory only, not synced.

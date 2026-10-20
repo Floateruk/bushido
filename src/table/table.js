@@ -371,7 +371,7 @@ function boardSVG() {
       ${art ? "" : `<text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text>`}
       ${(() => { if (!namesOn()) return ""; const L = nameLines(m.name), up = nameAbove(m, L.length);
         return `<text class="tname">${L.map((l, i) => `<tspan x="0" y="${f2(up ? -(m.r + 0.16) - (L.length - 1 - i) * 0.38 : m.r + 0.3 + i * 0.34)}">${esc(l)}</tspan>`).join("")}</text>`; })()}
-      ${(() => { const nl = namesOn() && !nameAbove(m, nameLines(m.name).length) ? nameLines(m.name).length : 0; const st = [onLastStandT(m) && "Last Stand", tFlag(m, "prone") && "Prone", tFlag(m, "blind") && "Blind"].filter(Boolean); return st.length ? `<text y="${f2(m.r + 0.32 + nl * 0.38)}" class="tstate">${st.join(" · ")}</text>` : ""; })()}</g>`);
+      ${(() => { const nl = namesOn() && !nameAbove(m, nameLines(m.name).length) ? nameLines(m.name).length : 0; const st = [onLastStandT(m) && "Last Stand"].filter(Boolean); return st.length ? `<text y="${f2(m.r + 0.32 + nl * 0.38)}" class="tstate">${st.join(" · ")}</text>` : ""; })()}${stateBadges(m)}</g>`);
     if (sel) {
       const hx = Math.sin(rad(m.facing)) * (m.r + 0.45), hy = -Math.cos(rad(m.facing)) * (m.r + 0.45);
       out.push(`<g transform="translate(${m.x} ${SY(m.y)})"><line x1="0" y1="0" x2="${hx}" y2="${hy}" class="hline"/><circle cx="${hx}" cy="${hy}" r="0.22" class="handle" data-k="rotate" data-id="${m.id}"/></g>`);
@@ -468,6 +468,7 @@ function selectedHTML() {
       <p>${m.size} · ${m.base}mm base · facing ${Math.round(m.facing)}°${m.where === "table" ? ` · at (${r1(m.x)}, ${r1(m.y)})` : ""}</p>
       ${probs.map(p => `<p class="warn">⚠ ${esc(p)}</p>`).join("")}
       ${actHTML(m)}
+      ${modelStates(m).length ? `<p class="tsmall"><b>States</b> ${modelStates(m).map(([k, c]) => esc(k) + (c > 1 ? " ×" + c : "")).join(", ")}</p>` : ""}
       ${btb.length ? `<p><b>Base to base</b> with ${btb.map(([o, s]) => `<span class="${s === side ? "" : "btb-foe"}">${esc(o.name)}</span>`).join(", ")}</p>` : ""}${rel}
       ${ghostRelevant(m, side) ? `<label class="inline tsmall"><input type="checkbox" data-tghost="${m.id}" ${isGhost(m, side) ? "checked" : ""}> Moves through models and terrain (Cloudwalk, Intangible)</label>` : ""}
       ${losStates(m, side)}
@@ -529,6 +530,26 @@ const artFor = n => {
   const s = [artSlug(n), artSlug(String(n || "").split(/[,(]/)[0])].find(x => x && ART_SLUGS.includes(x));
   return s ? "art/" + s + ".webp" : "";
 };
+/* State markers on tokens: small round badges on the base's side (two letters, the marker value, a count when there is more than one) */
+const STATE_ABBR = { Aggressive: "Ag", Berserk: "Bz", Bleed: "Bl", Blind: "Bd", Controlled: "Co", Cowardly: "Cw", "Death Sentence": "DS", Diseased: "Di", Disguised: "Dg",
+  Frightened: "Fr", Held: "He", Immobilised: "Im", Impetuous: "Ip", "Oni Rage": "OR", "On Fire": "Fi", Poisoned: "Po", Prone: "Pr", Reloading: "Rl", Run: "Ru",
+  "Spirit Block": "SB", Stunned: "St", Virtue: "Vi", Special: "Sp" };
+function modelStates(m) {   /* [[state, count], ...] from the linked test, else the table's own Prone / Blind flags */
+  const tm = linkedTM(m);
+  if (tm) return Object.entries(tm.states || {}).filter(([k]) => k !== "Last Stand");
+  return [["Prone", m.prone ? 1 : 0], ["Blind", m.blind ? 1 : 0]].filter(([, c]) => c);
+}
+function stateBadges(m) {
+  const list = modelStates(m); if (!list.length) return "";
+  const rb = 0.15, step = 30, out = [];
+  list.slice(0, 8).forEach(([k, c], i) => {
+    const side = i % 2 ? -1 : 1, a = rad(40 + Math.floor(i / 2) * step), x = side * Math.sin(a) * (m.r + 0.02), y = Math.cos(a) * (m.r + 0.02);
+    const base = baseState(k), v = (k.match(/ (\d)$/) || [])[1], cat = CAT[k] || "neutral";
+    const col = cat === "harm" ? "var(--harm)" : cat === "fire" ? "var(--fire)" : cat === "poison" ? "var(--poison)" : cat === "good" ? "var(--ki)" : "var(--muted)";
+    out.push(`<g class="sbadge" transform="translate(${f2(x)} ${f2(y)})"><title>${esc(k)}${c > 1 ? " ×" + c : ""}</title><circle r="${rb}" style="stroke:${col}"/><text y="0.048">${esc((STATE_ABBR[base] || base.slice(0, 2)) + (v || ""))}</text>${c > 1 ? `<g class="scount"><circle cx="0.12" cy="-0.12" r="0.07"/><text x="0.12" y="-0.09">${c}</text></g>` : ""}</g>`);
+  });
+  return out.join("");
+}
 /* A model's portrait: by its own name, else by the name of its profile card (models sharing a card share the picture) */
 function artOf(m, side) {
   const a = artFor(m.name); if (a) return a;

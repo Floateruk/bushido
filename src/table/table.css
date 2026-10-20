@@ -336,3 +336,10 @@ body.test-mode .xside{height:100%;overflow-y:auto;overscroll-behavior:contain;al
 #tSvg .tok.exh .portrait{opacity:.5;filter:grayscale(.7)}
 .tav{width:1.9em;height:1.9em;border-radius:50%;vertical-align:middle;margin-right:.45em;object-fit:cover}
 .tinfo .tav.big{width:3.2em;height:3.2em;float:left;margin:0 .7em .2em 0}
+
+/* State markers on tokens */
+#tSvg .sbadge{pointer-events:none}
+#tSvg .sbadge circle{fill:var(--paper-hi);stroke-width:.05}
+#tSvg .sbadge text{font:800 .12px var(--body);fill:var(--sumi);text-anchor:middle}
+#tSvg .sbadge .scount circle{fill:var(--sumi);stroke:none}
+#tSvg .sbadge .scount text{font-size:.1px;fill:var(--paper-hi)}
