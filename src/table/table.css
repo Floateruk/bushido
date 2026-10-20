@@ -330,3 +330,9 @@ body.test-mode .xside{height:100%;overflow-y:auto;overscroll-behavior:contain;al
 #diceHost .dnote{font-size:.72rem}
 @media (max-width:520px){#diceHost .dcols{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){#diceHost .die.roll{animation:none}}
+
+/* Card portraits on tokens and in the lists */
+#tSvg .tok .portrait{pointer-events:none}
+#tSvg .tok.exh .portrait{opacity:.5;filter:grayscale(.7)}
+.tav{width:1.9em;height:1.9em;border-radius:50%;vertical-align:middle;margin-right:.45em;object-fit:cover}
+.tinfo .tav.big{width:3.2em;height:3.2em;float:left;margin:0 .7em .2em 0}

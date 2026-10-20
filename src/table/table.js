@@ -356,14 +356,15 @@ function boardSVG() {
   for (const side of ["F", "E"]) for (const m of TBL.sides[side].models) {
     if (m.where !== "table" || isGoneT(m)) continue;
     const sel = tSel && tSel.id === m.id, bad = modelProblems(m, side).length;
-    const ini = m.name.split(/\s+/).map(w => w[0]).join("").slice(0, 2);
+    const ini = m.name.split(/\s+/).map(w => w[0]).join("").slice(0, 2), art = artFor(m.name);
     out.push(`<g class="tok ${side} ${sel ? "sel" : ""} ${bad ? "bad" : ""} ${TBL.step === "play" && m.act === 0 ? "exh" : ""}" data-k="model" data-id="${m.id}" transform="translate(${m.x.toFixed(3)} ${SY(m.y).toFixed(3)})">
       <circle r="${m.r}" class="base"/>
+      ${art ? `<image href="${art}" x="${-m.r}" y="${-m.r}" width="${2 * m.r}" height="${2 * m.r}" class="portrait"/>` : ""}
       <path d="M ${-m.r} 0 A ${m.r} ${m.r} 0 0 1 ${m.r} 0 Z" class="arc" transform="rotate(${m.facing})"/>
       <path d="${ensoPath(0, 0, m.r - 0.02, Math.max(0.09, m.r * 0.18), m.facing - 60, 330)}" class="ring"/>
       <line x1="0" y1="${(-m.r * 0.62).toFixed(3)}" x2="0" y2="${(-m.r - 0.08).toFixed(3)}" class="face" transform="rotate(${m.facing})"/>
       ${m.vim ? `<circle r="${m.r + 0.12}" class="vimring"/>` : ""}${actDots(m)}
-      <text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text>
+      ${art ? "" : `<text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text>`}
       ${(() => { if (!namesOn()) return ""; const L = nameLines(m.name), up = nameAbove(m, L.length);
         return `<text class="tname">${L.map((l, i) => `<tspan x="0" y="${f2(up ? -(m.r + 0.16) - (L.length - 1 - i) * 0.38 : m.r + 0.3 + i * 0.34)}">${esc(l)}</tspan>`).join("")}</text>`; })()}
       ${(() => { const nl = namesOn() && !nameAbove(m, nameLines(m.name).length) ? nameLines(m.name).length : 0; const st = [onLastStandT(m) && "Last Stand", tFlag(m, "prone") && "Prone", tFlag(m, "blind") && "Blind"].filter(Boolean); return st.length ? `<text y="${f2(m.r + 0.32 + nl * 0.38)}" class="tstate">${st.join(" · ")}</text>` : ""; })()}</g>`);
@@ -439,7 +440,7 @@ function trayHTML(side) {
   return `<div class="tray ${side}">
     <div class="tray-h"><b>${side === "F" ? "Your warband" : "Opponent"}</b><span>${esc(S.name)}</span></div>
     ${S.models.map(m => `<div class="trow ${tSel && tSel.id === m.id ? "sel" : ""} ${tArm === m.id ? "armed" : ""}">
-      <button class="tname" data-tsel="${m.id}">${esc(m.name)} <small>${m.size} · ${m.base}mm${m.scout ? " · " + esc(m.scout) : ""}${m.flank ? " · Flank" : ""}</small></button>
+      <button class="tname" data-tsel="${m.id}">${artFor(m.name) ? `<img class="tav" src="${artFor(m.name)}" alt="">` : ""}${esc(m.name)} <small>${m.size} · ${m.base}mm${m.scout ? " · " + esc(m.scout) : ""}${m.flank ? " · Flank" : ""}</small></button>
       ${status(m)}
       <div class="tacts">
         ${isGoneT(m) ? "" : m.where !== "table" ? `<button class="tbtn" data-tarm="${m.id}">${tArm === m.id ? "Click the table…" : "Place"}</button>` : `<button class="tbtn" data-ttray="${m.id}">Remove</button>`}
@@ -459,7 +460,7 @@ function selectedHTML() {
     const probs = m.where === "table" ? modelProblems(m, side) : [], btb = m.where === "table" ? btbWith(m) : [];
     let rel = "";
     if (tHover && tHover !== m.id) { const [b] = findModel(tHover); if (b && b.where === "table" && m.where === "table") { const r = relation(m, b); rel = `<p>To <b>${esc(b.name)}</b>: ${r.edge <= BTB_GAP ? "base to base" : r1(r.edge) + '" edge to edge'} · ${r.inArc ? "in front arc" : "behind (outside front arc)"}</p><p>${esc(losText(losCheck(m, side, b, findModel(tHover)[1])))}</p>`; } }
-    return `<div class="tinfo"><b>${esc(m.name)}</b> <span class="muted">${side === "F" ? "Yours" : "Opponent"}</span>
+    return `<div class="tinfo">${artFor(m.name) ? `<img class="tav big" src="${artFor(m.name)}" alt="">` : ""}<b>${esc(m.name)}</b> <span class="muted">${side === "F" ? "Yours" : "Opponent"}</span>
       <p>${m.size} · ${m.base}mm base · facing ${Math.round(m.facing)}°${m.where === "table" ? ` · at (${r1(m.x)}, ${r1(m.y)})` : ""}</p>
       ${probs.map(p => `<p class="warn">⚠ ${esc(p)}</p>`).join("")}
       ${actHTML(m)}
@@ -516,6 +517,9 @@ function setupHTML() {
 }
 
 /* Model names under the tokens: wrapped onto up to three short lines so the whole name shows */
+/* Card portraits: art/<name>.webp for every model in ART_SLUGS (list written by build.py from art/manifest.json) */
+const artSlug = n => String(n || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+const artFor = n => { const s = artSlug(n); return typeof ART_SLUGS !== "undefined" && ART_SLUGS.includes(s) ? "art/" + s + ".webp" : ""; };
 let tNames;   /* read on first use: load() is defined later in the page */
 const namesOn = () => (tNames === undefined && (tNames = load("bushido-names-v1", true)), tNames);
 function nameLines(name) {

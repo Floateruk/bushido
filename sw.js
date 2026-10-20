@@ -1,6 +1,6 @@
 /* Offline support: the app and its PDF reader are stored on the device,
    so the tracker opens and works with no connection. */
-const VERSION = "bt-2026-10-17-1";
+const VERSION = "bt-2026-10-20-1";
 const CORE = [
   "./", "./index.html", "./manifest.webmanifest", "./sync.js", "./config.js",
   "./icon-192.png", "./icon-512.png", "./icon-maskable.png",
@@ -15,6 +15,11 @@ self.addEventListener("install", e => {
     /* cache: "reload" skips the browser's HTTP cache, so an update never stores stale files */
     await c.addAll(CORE.map(u => new Request(u, { cache: "reload" })));
     await Promise.allSettled(FIREBASE.map(u => c.add(u)));
+    /* card portraits: every file listed in art/manifest.json, stored for the venues with no signal */
+    try {
+      const mr = await fetch(new Request("./art/manifest.json", { cache: "reload" }));
+      if (mr.ok) { await c.put("./art/manifest.json", mr.clone()); const list = await mr.json(); await Promise.allSettled(list.map(s => c.add(new Request("./art/" + s + ".webp", { cache: "reload" })))); }
+    } catch (_) {}
     self.skipWaiting();
   })());
 });
