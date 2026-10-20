@@ -519,7 +519,12 @@ function setupHTML() {
 /* Model names under the tokens: wrapped onto up to three short lines so the whole name shows */
 /* Card portraits: art/<name>.webp for every model in ART_SLUGS (list written by build.py from art/manifest.json) */
 const artSlug = n => String(n || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-const artFor = n => { const s = artSlug(n); return typeof ART_SLUGS !== "undefined" && ART_SLUGS.includes(s) ? "art/" + s + ".webp" : ""; };
+/* exact name first, then the part before a comma or bracket ("Shiho Hiroto, The Black Eagle" -> "Shiho Hiroto") */
+const artFor = n => {
+  if (typeof ART_SLUGS === "undefined") return "";
+  const s = [artSlug(n), artSlug(String(n || "").split(/[,(]/)[0])].find(x => x && ART_SLUGS.includes(x));
+  return s ? "art/" + s + ".webp" : "";
+};
 let tNames;   /* read on first use: load() is defined later in the page */
 const namesOn = () => (tNames === undefined && (tNames = load("bushido-names-v1", true)), tNames);
 function nameLines(name) {

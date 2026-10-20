@@ -1,6 +1,8 @@
 """Cut the round portraits out of card images and store them in art/ for the table tokens.
 
-   python3 src/build_art.py CARDS.pdf --names "Inoue Kikuko|Oiwa Yoshitaka|..."
+   python3 src/build_art.py CARDS.pdf --names "Inoue Kikuko|Oiwa Yoshitaka|..." [--r 132]
+   A name can list more names for the same portrait with "/", e.g. "Tanaka Kazuo & Heir/Tanaka Kazuo".
+   --r is the radius cut from the card (default 140; use less when the card border is wide).
 
    CARDS.pdf is a PDF of card images (like the app's cards export). Front cards (the ones with the
    green name banner) are taken in order, one name per front card. Each portrait is saved as
@@ -11,7 +13,7 @@ from PIL import Image, ImageDraw
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ART = os.path.join(ROOT, 'art')
-CX, CY, R = 382, 292, 140          # portrait circle on a 780 x 1063 card image, inside the rope border
+CX, CY, R0 = 382, 292, 140         # portrait circle on a 780 x 1063 card image, inside the rope border
 OUT = 192                          # pixels across
 
 def slug(name):
@@ -29,6 +31,7 @@ def main():
         sys.exit(__doc__)
     pdf = args[0]
     names = [n.strip() for n in args[args.index('--names') + 1].split('|') if n.strip()]
+    R = int(args[args.index('--r') + 1]) if '--r' in args else R0
     os.makedirs(ART, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         subprocess.run(['pdfimages', '-j', pdf, os.path.join(tmp, 'c')], check=True)
@@ -43,10 +46,11 @@ def main():
         mask = Image.new('L', (OUT * 4, OUT * 4), 0)
         ImageDraw.Draw(mask).ellipse((0, 0, OUT * 4 - 1, OUT * 4 - 1), fill=255)
         out = c.convert('RGBA'); out.putalpha(mask.resize((OUT, OUT), Image.LANCZOS))
-        s = slug(name)
-        out.save(os.path.join(ART, s + '.webp'), 'WEBP', quality=82, method=6)
-        if s not in have: have.append(s)
-        print(name, '->', s, os.path.getsize(os.path.join(ART, s + '.webp')) // 1024, 'KB')
+        for nm in name.split('/'):
+            s = slug(nm)
+            out.save(os.path.join(ART, s + '.webp'), 'WEBP', quality=82, method=6)
+            if s not in have: have.append(s)
+            print(nm, '->', s, os.path.getsize(os.path.join(ART, s + '.webp')) // 1024, 'KB')
     json.dump(sorted(have), open(mf, 'w'), indent=0)
 
 main()
