@@ -10,7 +10,7 @@
    The board is flat, so heights are the Size categories, exactly as the rules use them. */
 const SIZE_RANK = { Zero: 0, Tiny: 1, Small: 2, Medium: 3, Large: 4, Huge: 5 };
 const AWARE_RE = /\bAware\b/;
-const LOS_PTS = 24;   /* points sampled round each base rim */
+const LOS_PTS = 36;   /* points sampled round each base rim */
 
 function cardOf(m, side) { const tm = linkedTM(m); if (tm) return tm.def; const wb = WB[TBL.sides[side].wbId]; return wb ? wb.models.find(x => x.name === m.name) : null; }
 function mentionsRe(m, side, re) {
@@ -46,12 +46,17 @@ function losCheck(a, sa, b, sb) {
   const blockT = terr.filter(o => o.d.visibility === "Blocking" && SIZE_RANK[o.d.size] >= thr && !inPoly(a, o.P) && !inPoly(b, o.P));
   const others = tableModels().map(([m]) => m).filter(m => m !== a && m !== b && !tFlag(m, "prone") && (SIZE_RANK[m.size] || 2) >= thr);
   const coverT = terr.filter(o => (o.d.visibility === "Blocking" || o.d.visibility === "Obscuring") && polyCircle(o.P, b, b.r) <= 1);
+  /* every rim point of the observer may draw a line (all round when Aware, otherwise the target must be in its facing),
+     but a line never crosses the observer's own base or the target's: it leaves the near side and lands on the near side */
   const A = basePoints(a), targets = basePoints(b).filter(q => aware || inFacing(a, q));
-  res.total = targets.length;
-  if (!targets.length) { res.note = "Outside its facing"; return res; }
+  const outward = (m, p, q) => (q.x - p.x) * (p.x - m.x) + (q.y - p.y) * (p.y - m.y) >= -1e-9;     /* heading away from m's centre */
+  const arrives = (m, p, q) => (p.x - q.x) * (q.x - m.x) + (p.y - q.y) * (q.y - m.y) >= -1e-9;     /* q on the near side of m as seen from p */
   const blocked = new Set();
   for (const q of targets) {
-    for (const p of A) {
+    const cand = A.filter(p => outward(a, p, q) && arrives(b, p, q)).sort((u, v) => Math.hypot(u.x - q.x, u.y - q.y) - Math.hypot(v.x - q.x, v.y - q.y));
+    if (!cand.length) continue;
+    res.total++;
+    for (const p of cand) {
       let hit = null;
       for (const o of blockT) if (polySeg(o.P, p, q) < 1e-6) { hit = o.d.name; break; }
       if (!hit) for (const m of others) if (segPoint(m, p, q) < m.r - 1e-6) { hit = m.name; break; }
@@ -59,6 +64,7 @@ function losCheck(a, sa, b, sb) {
       blocked.add(hit);
     }
   }
+  if (!res.total) { res.note = "Outside its facing"; return res; }
   res.los = res.seen > 0;
   if (!res.los) { res.blockedBy = [...blocked]; return res; }
   for (const o of coverT)
