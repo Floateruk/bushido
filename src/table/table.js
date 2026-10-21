@@ -239,6 +239,14 @@ function modelProblems(m, side) {
   return out;
 }
 const findModel = id => { for (const s of ["F", "E"]) { const m = TBL.sides[s].models.find(x => x.id === id); if (m) return [m, s]; } return [null, null]; };
+/* Ruler ends: a point inside a model's base snaps to that model's centre and the line stops at the base edge (edge to edge, not middle to middle) */
+function rulerEnds(a, b) {
+  const at = p => { const t = tableModels().map(x => x[0]).find(m => dist(m, p) <= m.r); return t ? { x: t.x, y: t.y, r: t.r } : { x: p.x, y: p.y, r: 0 }; };
+  const A = at(a), B = at(b), d = dist(A, B), len = Math.max(0, d - A.r - B.r);
+  if (!d) return { a: A, b: B, len: 0 };
+  const ux = (B.x - A.x) / d, uy = (B.y - A.y) / d;
+  return len ? { a: { x: A.x + ux * A.r, y: A.y + uy * A.r }, b: { x: B.x - ux * B.r, y: B.y - uy * B.r }, len } : { a: A, b: B, len: 0 };
+}
 /* Edge-to-edge distance, and whether b is in a's front arc (centre of b within 90° of a's facing) */
 function relation(a, b) {
   const edge = Math.max(0, dist(a, b) - a.r - b.r);
@@ -397,14 +405,18 @@ function boardSVG() {
   /* a line from the selected model to the hovered one */
   if (tSel && tSel.kind === "model" && tHover && tHover !== tSel.id && tTool === "ruler") {
     const [a] = findModel(tSel.id), [b] = findModel(tHover);
-    if (a && b && a.where === "table" && b.where === "table") out.push(`<line x1="${a.x}" y1="${SY(a.y)}" x2="${b.x}" y2="${SY(b.y)}" class="rel"/>`);
+    if (a && b && a.where === "table" && b.where === "table") {
+      const e = rulerEnds(a, b);
+      out.push(`<line x1="${f2(e.a.x)}" y1="${f2(SY(e.a.y))}" x2="${f2(e.b.x)}" y2="${f2(SY(e.b.y))}" class="rel"/><text x="${f2((e.a.x + e.b.x) / 2)}" y="${f2(SY((e.a.y + e.b.y) / 2) - 0.3)}" class="dlabel">${r1(e.len)}"</text>`);
+    }
   }
   out.push(...badgeLayer);
   if (tDrag && tDrag.mode === "move" && tDrag.kind === "model") {
     const [m] = findModel(tDrag.id);
     out.push(`<line x1="${tDrag.start.x}" y1="${SY(tDrag.start.y)}" x2="${m.x}" y2="${SY(m.y)}" class="trail"/><text x="${m.x}" y="${SY(m.y) - m.r - 0.35}" class="dlabel">${r1(dist(tDrag.start, m))}"</text>`);
   }
-  if (tRuler) out.push(`<line x1="${tRuler.a.x}" y1="${SY(tRuler.a.y)}" x2="${tRuler.b.x}" y2="${SY(tRuler.b.y)}" class="ruler"/><text x="${(tRuler.a.x + tRuler.b.x) / 2}" y="${SY((tRuler.a.y + tRuler.b.y) / 2) - 0.3}" class="dlabel">${r1(dist(tRuler.a, tRuler.b))}"</text>`);
+  if (tRuler) { const e = rulerEnds(tRuler.a, tRuler.b);
+    out.push(`<line x1="${f2(e.a.x)}" y1="${f2(SY(e.a.y))}" x2="${f2(e.b.x)}" y2="${f2(SY(e.b.y))}" class="ruler"/><text x="${f2((e.a.x + e.b.x) / 2)}" y="${f2(SY((e.a.y + e.b.y) / 2) - 0.3)}" class="dlabel">${r1(e.len)}"</text>`); }
   out.push(losOverlay());
   out.push(inkMount());
   return out.join("");
@@ -512,7 +524,7 @@ function selectedHTML() {
       ${btb.length ? `<p><b>Base to base</b> with ${btb.map(([o, s]) => `<span class="${s === side ? "" : "btb-foe"}">${esc(o.name)}</span>`).join(", ")}</p>` : ""}${rel}
       ${ghostRelevant(m, side) ? `<label class="inline tsmall"><input type="checkbox" data-tghost="${m.id}" ${isGhost(m, side) ? "checked" : ""}> Moves through models and terrain (Cloudwalk, Intangible)</label>` : ""}
       ${losStates(m, side)}
-      <p class="muted tsmall">Hover another model to see the distance${tTool === "los" ? " and the sight lines" : tTool === "ruler" ? " (a line is drawn)" : ""}.</p>
+      <p class="muted tsmall">Hover another model to see the distance${tTool === "los" ? " and the sight lines" : tTool === "ruler" ? " (a line is drawn, edge to edge)" : ""}.</p>
       <details class="tfold" data-fold="los" ${foldOpen("los", true)}><summary>Line of sight</summary>${losPanel(m, side) || `<p class="muted tsmall">Place the model on the table to check its line of sight.</p>`}</details></div>`;
   }
   if (tSel.kind === "terrain") {

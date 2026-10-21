@@ -23,7 +23,7 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
   - Faction terrain: user-made pieces (name, faction, Passage, Visibility, Size), always 3.5" x 2.5"; kept in `bushido-terrain-v1`, and a table carries the definitions of the ones placed (`TBL.customTerrain`).
   - `terrain.js`: 40 themed terrain pieces with [Passage, Visibility, Size]; footprints no bigger than a playing card (3.5" x 2.5").
   - `table.js`: setup, terrain generator (follows pack p.19 placement rules), tokens with facing
-    (size and base read from the card's "Size & Base"), Elsewhere/Flank, deployment checks, ruler. Movement: bases stop at other bases and Impassable
+    (size and base read from the card's "Size & Base"), Elsewhere/Flank, deployment checks, ruler (edge to edge: ends inside a base snap to that model and stop at its edge). Movement: bases stop at other bases and Impassable
     terrain (Cloudwalk/Intangible pass through but can't end overlapping), exact contact (no snapping), base-to-base marks. Saved in
     `bushido-table-v1` and synced as `groups/{code}/table/current` (one table per sync code; whole-table, the most recently changed copy wins; "New table" deletes it everywhere). Undo (button, Ctrl+Z) keeps up to 100 steps in memory on this device only.
   - `los.js`: line of sight and cover from the rulebook (facing, Aware, Blind/Sixth Sense, Prone, Size rules for
