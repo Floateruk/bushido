@@ -278,7 +278,9 @@ function isGhost(m, side) {
 const tableModels = () => ["F", "E"].flatMap(s => TBL.sides[s].models.filter(m => m.where === "table" && !isGoneT(m)).map(m => [m, s]));
 /* What blocks m, leaving out anything it already overlaps (so a misplaced model can still be dragged clear) */
 function moveBlockers(m) {
-  const models = tableModels().map(([o]) => o).filter(o => o !== m);
+  /* in the Idols scenarios the objectives are idols standing on the table: models can't pass through them (zones are open ground) */
+  const idols = /idols$/.test(TBL.scenarioId || "") ? TBL.objectives.map(o => ({ x: o.x, y: o.y, r: objR() })) : [];
+  const models = tableModels().map(([o]) => o).filter(o => o !== m).concat(idols);
   const terr = TBL.terrain.filter(t => TBYID[t.typeId].passage === "Impassable").map(terrPoly);
   const B = { models, terr };
   return { models: models.filter(o => dist(o, m) >= o.r + m.r - 0.0005), terr: terr.filter(P => polyCircle(P, m, m.r) >= -0.0005), all: B };
