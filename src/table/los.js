@@ -10,7 +10,7 @@
    The board is flat, so heights are the Size categories, exactly as the rules use them. */
 const SIZE_RANK = { Zero: 0, Tiny: 1, Small: 2, Medium: 3, Large: 4, Huge: 5 };
 const AWARE_RE = /\bAware\b/;
-const LOS_PTS = 24;   /* points sampled round each base, plus its centre */
+const LOS_PTS = 24;   /* points sampled round each base rim */
 
 function cardOf(m, side) { const tm = linkedTM(m); if (tm) return tm.def; const wb = WB[TBL.sides[side].wbId]; return wb ? wb.models.find(x => x.name === m.name) : null; }
 function mentionsRe(m, side, re) {
@@ -22,7 +22,7 @@ function isAware(m, side) {
   return m.aware;
 }
 function basePoints(m) {
-  const P = [{ x: m.x, y: m.y }];
+  const P = [];  /* the rim only: sight lines start and end on bases, never at the centre */
   for (let i = 0; i < LOS_PTS; i++) { const a = i / LOS_PTS * Math.PI * 2; P.push({ x: m.x + Math.cos(a) * m.r * 0.999, y: m.y + Math.sin(a) * m.r * 0.999 }); }
   return P;
 }
@@ -86,7 +86,8 @@ function losOverlay() {
   if (b && b.where === "table") {
     const r = losCheck(a, sa, b, sb);
     if (r.los) for (const [p, q] of r.lines) out.push(`<line x1="${f2(p.x)}" y1="${f2(SY(p.y))}" x2="${f2(q.x)}" y2="${f2(SY(q.y))}" class="los-line"/>`);
-    else out.push(`<line x1="${f2(a.x)}" y1="${f2(SY(a.y))}" x2="${f2(b.x)}" y2="${f2(SY(b.y))}" class="los-no"/>`);
+    else { const d = dist(a, b) || 1, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d;
+      out.push(`<line x1="${f2(a.x + ux * a.r)}" y1="${f2(SY(a.y + uy * a.r))}" x2="${f2(b.x - ux * b.r)}" y2="${f2(SY(b.y - uy * b.r))}" class="los-no"/>`); }
     out.push(`<text x="${f2(b.x)}" y="${f2(SY(b.y) - b.r - 0.3)}" class="dlabel">${r.los ? (r.cover ? "LoS · cover" : "LoS") : "No LoS"}</text>`);
   } else {
     for (const [m, s] of tableModels()) {
