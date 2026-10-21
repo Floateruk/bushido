@@ -355,3 +355,4 @@ body.test-mode .xside{height:100%;overflow-y:auto;overscroll-behavior:contain;al
 .tturns li.now b{color:var(--accent)}
 .tturns li.past{color:var(--muted)}
 .tscoring li{line-height:1.4}
+.m-name .tav,.opp-row .nm .tav,.roster-row b .tav{width:2.1em;height:2.1em}

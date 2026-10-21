@@ -411,7 +411,7 @@ function renderPlay() {
       <p class="tap-hint">Underlined rules open their definition.</p>
     </div>` : "";
     return `<article class="m ${dead ? "dead" : ""} ${ls ? "on-ls" : ""}">
-      <div class="m-head"><div class="m-name">${esc(d.name)}${d.group ? "<small>Group</small>" : ""}${eqNames.length ? `<span class="m-eq">${eqNames.map(n => { const off = (m.discarded || {})[n]; return `<button class="eq-tag ${off ? "off" : ""}" data-eqtoggle="${esc(n)}" data-m="${m.id}" aria-pressed="${off ? "true" : "false"}" title="${off ? "Discarded. Tap to restore" : "Tap when discarded"}">${esc(n)}</button>`; }).join("")}</span>` : ""}</div>${pills}</div>
+      <div class="m-head"><div class="m-name">${avatar(d)}${esc(d.name)}${d.group ? "<small>Group</small>" : ""}${eqNames.length ? `<span class="m-eq">${eqNames.map(n => { const off = (m.discarded || {})[n]; return `<button class="eq-tag ${off ? "off" : ""}" data-eqtoggle="${esc(n)}" data-m="${m.id}" aria-pressed="${off ? "true" : "false"}" title="${off ? "Discarded. Tap to restore" : "Tap when discarded"}">${esc(n)}</button>`; }).join("")}</span>` : ""}</div>${pills}</div>
       <div class="track w"><span class="track-label">Wounds</span>${pips(d.w, m.dmg, "w", m.id)}<span class="track-val num"><b>${d.w - m.dmg}</b>/${d.w}</span></div>
       ${d.kiCap > 0 ? `<div class="track k"><span class="track-label">Ki</span>${pips(d.kiCap, m.ki, "k", m.id)}<span class="track-val num"><b>${m.ki}</b> +${d.kiGen}</span></div>` : ""}
       <div class="states">${chipsFor(m)}${dead ? "" : `<button class="add-state" data-addstate="${m.id}">+ State</button>`}</div>
@@ -434,7 +434,7 @@ function renderOpp() {
     <button class="opp-head" data-opptoggle="1" aria-expanded="${oppOpen}"><b>Opponent</b><span class="opp-sum">${sum}</span><span class="opp-vp num">VP ${o.vp}</span><span aria-hidden="true">${oppOpen ? "▴" : "▾"}</span></button>
     ${oppOpen ? `<div class="opp-body">
       <div class="opp-tools"><div class="score"><b>Their VP</b><button class="step" data-oppvp="-1" aria-label="Remove opponent VP">−</button><span class="v num">${o.vp}</span><button class="step" data-oppvp="1" aria-label="Add opponent VP">+</button></div></div>
-      ${o.models.map(m => `<div class="opp-row"><span class="nm">${esc(m.name)}</span>${chipsFor(m)}<button class="add-state" data-addstate="${m.id}">+ State</button><button class="x ${oppConfirm === m.id ? "confirm" : ""}" data-oppdel="${m.id}">${oppConfirm === m.id ? "Remove?" : "✕"}</button></div>`).join("")}
+      ${o.models.map(m => `<div class="opp-row"><span class="nm">${avatar(m)}${esc(m.name)}</span>${chipsFor(m)}<button class="add-state" data-addstate="${m.id}">+ State</button><button class="x ${oppConfirm === m.id ? "confirm" : ""}" data-oppdel="${m.id}">${oppConfirm === m.id ? "Remove?" : "✕"}</button></div>`).join("")}
       <form class="opp-add" id="oppAdd"><input id="oppName" placeholder="Enemy model name" autocomplete="off" aria-label="Enemy model name"><button type="submit">Add</button></form>
       ${Object.keys(WB).length ? `<div class="opp-add"><select id="oppWb" aria-label="Saved warband">${Object.values(WB).sort((a, b) => a.name.localeCompare(b.name)).map(w => `<option value="${w.id}">${esc(w.name)}</option>`).join("")}</select><button data-oppfill="">Add all from warband</button></div>` : ""}
     </div>` : ""}
@@ -549,7 +549,7 @@ function renderEnd(g) {
       const states = Object.entries(m.states).map(([k, c]) => k + (c > 1 ? " ×" + c : ""));
       const gone = Object.keys(m.discarded || {});
       const bits = [`Wounds ${m.dmg}/${m.def.w}`, `Ki ${m.ki}`, states.length ? states.join(", ") : "", gone.length ? "Discarded: " + gone.join(", ") : ""].filter(Boolean);
-      return `<div class="roster-row ${dead ? "is-dead" : ""}"><b>${esc(m.def.name)}</b>
+      return `<div class="roster-row ${dead ? "is-dead" : ""}"><b>${avatar(m.def)}${esc(m.def.name)}</b>
         <span class="st ${dead ? "dead" : "up"}">${dead ? "Dead" : ls ? "Last Stand" : "Standing"}</span>
         <span class="meta">${esc(bits.join(" · "))}</span></div>`;
     }).join("")}</div>

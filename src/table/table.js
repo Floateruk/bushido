@@ -605,6 +605,8 @@ function artOf(m, side) {
   }
   return card ? artFor(card) : "";
 }
+/* Portrait <img> for a model definition or opponent model (by name, else its card), for the list pages */
+const avatar = d => { const a = d && (artFor(d.name) || (d.card ? artFor(d.card) : "")); return a ? `<img class="tav" src="${a}" alt="">` : ""; };
 let tNames;   /* read on first use: load() is defined later in the page */
 const namesOn = () => (tNames === undefined && (tNames = load("bushido-names-v1", true)), tNames);
 function nameLines(name) {

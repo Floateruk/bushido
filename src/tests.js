@@ -171,7 +171,7 @@ function xModelHTML(tm) {
   const eqNames = [...weapons.filter(x => x.eq).map(x => x.n), ...(d.equip || []).map(e => e.n)];
   const open = xOpen.has(tm.id);
   return `<article class="m ${gone ? "dead" : ""} ${ls ? "on-ls" : ""}">
-    <div class="m-head"><div class="m-name">${esc(d.name)}${eqNames.length ? `<span class="m-eq">${eqNames.map(n => `<span class="eq-tag">${esc(n)}</span>`).join("")}</span>` : ""}</div>
+    <div class="m-head"><div class="m-name">${avatar(d)}${esc(d.name)}${eqNames.length ? `<span class="m-eq">${eqNames.map(n => `<span class="eq-tag">${esc(n)}</span>`).join("")}</span>` : ""}</div>
       ${(() => { const q = tableModel(tm.id); return q && !gone ? `<span class="pill xwhere ${q.where}">${WHERE[q.where] || ""}${q.where === "table" && q.act !== undefined ? ` · ${q.act} act` : ""}</span>` : ""; })()}
       ${gone ? `<span class="pill dead">Killed</span>` : ls ? `<button class="pill ls" data-rule="Last Stand">Last Stand</button>` : ""}</div>
     <div class="statline xstat">
