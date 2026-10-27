@@ -2,6 +2,7 @@
 
    python3 src/build_art.py CARDS.pdf --names "Inoue Kikuko|Oiwa Yoshitaka|..." [--r 132]
    A name can list more names for the same portrait with "/", e.g. "Tanaka Kazuo & Heir/Tanaka Kazuo".
+   --pick 0,1,4 keeps only those cards (counted over the detected ones) when the PDF also holds backs that look like fronts.
    --r is the radius cut from the card (default 140; use less when the card border is wide).
 
    CARDS.pdf is a PDF of card images (like the app's cards export). Front cards (the ones with the
@@ -37,6 +38,8 @@ def main():
         subprocess.run(['pdfimages', '-j', pdf, os.path.join(tmp, 'c')], check=True)
         fronts = [Image.open(f).convert('RGB') for f in sorted(glob.glob(os.path.join(tmp, 'c-*.jpg')))]
         fronts = [im for im in fronts if im.size == (780, 1063) and is_front(im)]
+    if '--pick' in args:
+        fronts = [fronts[int(i)] for i in args[args.index('--pick') + 1].split(',')]
     if len(fronts) != len(names):
         sys.exit(f'{len(fronts)} front cards found but {len(names)} names given')
     mf = os.path.join(ART, 'manifest.json')

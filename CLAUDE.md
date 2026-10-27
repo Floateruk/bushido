@@ -35,7 +35,7 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
   - `avatar(d)` (table.js): round portrait for a model definition, used on My lists and Testing lists cards, opponent rows and the end summary.
   - `dice.js`: opposed dice tool (Dice button or D key): floating panel with Attack and Defence d6 pools for each side, tap a die to re-roll it, × removes it from the result, modifiers, Melee Exchange result (highest + up to 2 supporting, 1s ignored, ties by dice above 1 then Active player). Unbiased `crypto.getRandomValues` d6. In memory only, not synced.
   - Card art: `art/<slug>.webp` (192px round portraits, slug = model name lowercased, accents and punctuation removed) with `art/manifest.json`.
-    `python3 src/build_art.py CARDS.pdf --names "A|B|C"` cuts them from a PDF of card images (front cards in order, one name each);
+    `python3 src/build_art.py CARDS.pdf --names "A|B|C"` cuts them from a PDF of card images (front cards in order, one name each; `--pick 0,2,4` when backs are mistaken for fronts);
     build.py lists the manifest in the page (`ART_SLUGS`), tokens and the table lists show the art by model name, and sw.js stores
     every file in the manifest for offline use. After adding art, run build.py and bump `VERSION` in `sw.js`.
   - `ink.js`: sumi-e drawing for the board (brushed terrain pictures per piece, ensō objectives and token rings,
