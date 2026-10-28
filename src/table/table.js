@@ -372,7 +372,7 @@ function boardSVG() {
     if (m.where !== "table" || isGoneT(m)) continue;
     const sel = tSel && tSel.id === m.id, bad = modelProblems(m, side).length;
     const ini = m.name.split(/\s+/).map(w => w[0]).join("").slice(0, 2), art = artOf(m, side);
-    out.push(`<g class="tok ${side} ${sel ? "sel" : ""} ${bad ? "bad" : ""} ${TBL.step === "play" && m.act === 0 ? "exh" : ""}" data-k="model" data-id="${m.id}" transform="translate(${m.x.toFixed(3)} ${SY(m.y).toFixed(3)})">
+    out.push(`<g class="tok ${side} ${sel ? "sel" : ""} ${bad ? "bad" : ""} ${TBL.step === "play" && m.act === 0 ? "exh" : ""} ${isInert(m) ? "inert" : ""}" data-k="model" data-id="${m.id}" transform="translate(${m.x.toFixed(3)} ${SY(m.y).toFixed(3)})">
       <circle r="${m.r}" class="base"/>
       ${art ? `<image href="${art}" x="${-m.r}" y="${-m.r}" width="${2 * m.r}" height="${2 * m.r}" class="portrait"/>` : ""}
       <path d="M ${-m.r} 0 A ${m.r} ${m.r} 0 0 1 ${m.r} 0 Z" class="arc" transform="rotate(${m.facing})"/>
@@ -382,7 +382,7 @@ function boardSVG() {
       ${art ? "" : `<text y="${m.r * 0.38}" class="ini" style="font-size:${(m.r * 0.75).toFixed(2)}px">${esc(ini)}</text>`}
       ${(() => { if (!namesOn()) return ""; const L = nameLines(m.name), up = nameAbove(m, L.length);
         return `<text class="tname">${L.map((l, i) => `<tspan x="0" y="${f2(up ? -(m.r + 0.16) - (L.length - 1 - i) * 0.38 : m.r + 0.3 + i * 0.34)}">${esc(l)}</tspan>`).join("")}</text>`; })()}
-      ${(() => { const nl = namesOn() && !nameAbove(m, nameLines(m.name).length) ? nameLines(m.name).length : 0; const st = [onLastStandT(m) && "Last Stand"].filter(Boolean); return st.length ? `<text y="${f2(m.r + 0.32 + nl * 0.38)}" class="tstate">${st.join(" · ")}</text>` : ""; })()}</g>`);
+      ${(() => { const nl = namesOn() && !nameAbove(m, nameLines(m.name).length) ? nameLines(m.name).length : 0; const st = [onLastStandT(m) && "Last Stand", isInert(m) && "Inert Warrior"].filter(Boolean); return st.length ? `<text y="${f2(m.r + 0.32 + nl * 0.38)}" class="tstate">${st.join(" · ")}</text>` : ""; })()}</g>`);
     badgeLayer.push(stateBadges(m));
     if (sel) {
       const hx = Math.sin(rad(m.facing)) * (m.r + 0.45), hy = -Math.cos(rad(m.facing)) * (m.r + 0.45);

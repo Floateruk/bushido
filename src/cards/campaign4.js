@@ -11,9 +11,9 @@ const models = {
     traits: "Armour (1), Channel (4/6\"), Immovable",
     weapons: [{ n: "Runed Earth Sword", s: "+3", t: "Brutal (3), Powerful Attack (1), Stun Attack (0)", eq: false }],
     feats: [
-      feat("Return to Serve", 0, "Simple", "Target 6\"", "OpG",
-        "Costs X Ki. Target a Friendly Shìbīng or Rui Jin. Return to play another of the same model type and Deploy it in BtB with the Target with X unmarked Wound Boxes that was recruited into the Warband but has been Killed or removed from play. This Warband may only use this Ki Feat once per game.",
-        "X Ki, once per game"),
+      feat("Return to Serve", "X", "Simple", "Target 6\"", "OpG",
+        "Target a Friendly Shìbīng or Rui Jin. Return to play another of the same model type and Deploy it in BtB with the Target with X unmarked Wound Boxes that was recruited into the Warband but has been Killed or removed from play. This Warband may only use this Ki Feat once per game.",
+        "once per game"),
       feat("Stone Spike", 1, "Instant", "Personal", "",
         "Until the end of the current activation, when this model takes Damage in a Melee Exchange, the Enemy model suffers 1 Damage, ignoring Tough."),
       feat("Tiger Strike", 2, "Active", "Personal", "",

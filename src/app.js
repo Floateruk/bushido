@@ -24,13 +24,16 @@ function addToLibrary(parsed) {
 
 const STATES = [
   ["Aggressive","good"],["Berserk","neutral"],["Bleed 1","harm"],["Bleed 2","harm"],["Bleed 3","harm"],["Blind","harm"],["Controlled","harm"],
-  ["Cowardly","harm"],["Death Sentence","harm"],["Diseased","harm"],["Disguised","good"],["Frightened","harm"],["Held","harm"],
+  ["Cowardly","harm"],["Death Sentence","harm"],["Diseased","harm"],["Disguised","good"],["Earth","good"],["Frightened","harm"],["Held","harm"],
   ["Immobilised","harm"],["Impetuous","harm"],["Last Stand","good"],["Oni Rage","neutral"],["On Fire 1","fire"],["On Fire 2","fire"],["On Fire 3","fire"],
   ["Poisoned 1","poison"],["Poisoned 2","poison"],["Poisoned 3","poison"],["Prone","harm"],["Reloading","neutral"],
   ["Run","neutral"],["Spirit Block","harm"],["Stunned","harm"],["Virtue","good"],["Special","neutral"]
 ];
 const CAT = Object.fromEntries(STATES);
 const baseState = k => k.replace(/ \d$/, "");
+/* Ki feats costing X ("Return to Serve"): usable with 1 Ki or more; the player takes the X off the Ki track */
+const xCost = f => String(f.c).toUpperCase() === "X";
+const kiCost = f => xCost(f) ? 1 : +f.c;
 const TICKING = ["Bleed", "On Fire", "Poisoned"];
 /* States with something to resolve in the Starting Phase */
 const START_RULES = { Diseased: "remove a Disease marker and an Activation Counter", "Death Sentence": "may spend 3 Ki to remove one Death Sentence marker" };
@@ -416,7 +419,7 @@ function renderPlay() {
     const pills = dead ? `<span class="pill dead">Dead</span>` : ls ? `<button class="pill ls" data-rule="Last Stand">Last Stand</button>` : d.zeroKiSlow && m.ki === 0 ? `<span class="pill slow">Slow</span>` : "";
     const feats = d.feats.map(f => {
       const used = f.lim && m.used[f.n];
-      const can = !dead && !used && m.ki >= f.c;
+      const can = !dead && !used && m.ki >= kiCost(f);
       return `<button class="feat ${used ? "used" : ""}" data-feat="${esc(f.n)}" data-m="${m.id}" ${can ? "" : "disabled"} title="${esc(f.d)}"><span class="cost">${f.c}</span>${esc(f.n)}${f.lim ? ` · ${f.lim}` : ""}</button>`;
     }).join("");
     const st = d.stats;
@@ -738,7 +741,7 @@ document.addEventListener("click", e => {
   if (ds.pick) { const m = find(ds.m); closeSheet(); openChip = `${m.id}:${ds.pick}`; return mutate(() => { m.states[ds.pick] = (m.states[ds.pick] || 0) + 1; }); }
   if (ds.chip) { openChip = openChip === ds.chip ? null : ds.chip; return render(); }
   if (ds.st) { const m = find(ds.m); return mutate(() => { const n = (m.states[ds.st] || 0) + +ds.d; if (n <= 0) { delete m.states[ds.st]; openChip = null; } else m.states[ds.st] = n; }); }
-  if (ds.feat) { const m = find(ds.m), f = m.def.feats.find(x => x.n === ds.feat); mutate(() => { m.ki -= f.c; if (f.lim) m.used[f.n] = f.lim; }); return toast(`${m.def.name}: ${f.n} (−${f.c} Ki)`, true); }
+  if (ds.feat) { const m = find(ds.m), f = m.def.feats.find(x => x.n === ds.feat); mutate(() => { if (!xCost(f)) m.ki -= f.c; if (f.lim) m.used[f.n] = f.lim; }); return toast(xCost(f) ? `${m.def.name}: ${f.n}. Take off the X Ki you spend on the Ki track.` : `${m.def.name}: ${f.n} (−${f.c} Ki)`, true); }
   if (ds.detail) { openDetail.has(ds.detail) ? openDetail.delete(ds.detail) : openDetail.add(ds.detail); return render(); }
   if (ds.rule) return glossSheet(ds.rule);
   if (ds.eqtoggle) { const m = find(ds.m), n = ds.eqtoggle; let off; mutate(() => { m.discarded = m.discarded || {}; off = !m.discarded[n]; if (off) m.discarded[n] = 1; else delete m.discarded[n]; }); return toast(off ? `${n} discarded` : `${n} restored`, true); }

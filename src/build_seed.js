@@ -2,7 +2,7 @@
    Run from the repo root:  node src/build_seed.js && python3 src/build.py
    Bump SEED_REV when card data changes, so installed apps apply it on next open. */
 const fs = require("fs"), path = require("path");
-const SEED_REV = 4;
+const SEED_REV = 5;
 const seedPath = path.join(__dirname, "seed.json");
 const seed = JSON.parse(fs.readFileSync(seedPath, "utf8"));
 const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim().toLowerCase();

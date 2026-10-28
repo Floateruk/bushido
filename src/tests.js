@@ -90,9 +90,11 @@ function mergeTest(mine, theirs) {
 /* Starting Phase: Ki Generation (first number of the Ki statistic, up to the cap); once-per-turn feats reset;
    Run and Blind markers from last turn go. End Phase of the previous turn: Last Stand models are removed. */
 function testStartTurn(tg, n) {
-  const notes = [], gone = [];
+  const notes = [], gone = [], earth = [];
   for (const s of ["F", "E"]) for (const tm of tg.sides[s].models) {
     if (n > 1 && xOnLS(tm)) { tm.removed = true; gone.push(tm.def.name); }
+    /* Earth Tokens (Zuo Ci's Channel) are removed in the End Phase */
+    if (n > 1 && tm.states && tm.states.Earth) { delete tm.states.Earth; earth.push(xDef(tm).name); tm.u = Date.now(); }
     if (xGone(tm)) continue;
     const d = xDef(tm);
     tm.ki = Math.min(+d.kiCap || 0, (tm.ki || 0) + (+d.kiGen || 0));
@@ -101,14 +103,19 @@ function testStartTurn(tg, n) {
     tm.u = Date.now();
   }
   if (gone.length) notes.push(`removed at the End Phase (Last Stand): ${gone.join(", ")}`);
+  if (earth.length) notes.push(`Earth Tokens removed (End Phase): ${earth.join(", ")}`);
   /* States to resolve in the Starting Phase (the app doesn't change them: tick them off on the cards) */
-  const dis = [], ds = [];
+  /* The Imperial March: the opposing warband's models cannot spend Ki to remove Death Sentence */
+  const march = s => (tg.sides[s].cards || []).some(c => norm(c.name) === "the imperial march");
+  const dis = [], ds = [], dsLocked = [];
   for (const s of ["F", "E"]) for (const tm of tg.sides[s].models) {
     if (xGone(tm)) continue;
-    for (const k in tm.states || {}) { const b = baseState(k); if (b === "Diseased") dis.push(xDef(tm).name); else if (b === "Death Sentence") ds.push(xDef(tm).name); }
+    const locked = march(s === "F" ? "E" : "F");
+    for (const k in tm.states || {}) { const b = baseState(k); if (b === "Diseased") dis.push(xDef(tm).name); else if (b === "Death Sentence") (locked ? dsLocked : ds).push(xDef(tm).name); }
   }
   if (dis.length) notes.push(`Diseased, remove a Disease marker and an Activation Counter: ${[...new Set(dis)].join(", ")}`);
   if (ds.length) notes.push(`Death Sentence, may spend 3 Ki to remove one: ${[...new Set(ds)].join(", ")}`);
+  if (dsLocked.length) notes.push(`Death Sentence stays (The Imperial March: no Ki to remove it): ${[...new Set(dsLocked)].join(", ")}`);
   touchTest(tg); xHistReset(tg);
   return notes;
 }
@@ -173,7 +180,7 @@ function xModelHTML(tm) {
   const d = fixDef(xDef(tm)), st = d.stats || {}, gone = xGone(tm), ls = xOnLS(tm), w = xW(tm), cap = +d.kiCap || 0;
   const weapons = (d.weapons || []).filter(x => !(!x.s && /,/.test(x.n)));
   const feats = (d.feats || []).map(f => {
-    const used = f.lim && (tm.used || {})[f.n], can = !gone && !used && (tm.ki || 0) >= f.c;
+    const used = f.lim && (tm.used || {})[f.n], can = !gone && !used && (tm.ki || 0) >= kiCost(f);
     return `<button class="feat ${used ? "used" : ""}" data-xfeat="${esc(f.n)}" data-xm="${tm.id}" ${can ? "" : "disabled"} title="${esc(f.d || "")}"><span class="cost">${f.c}</span>${esc(f.n)}${f.lim ? ` · ${f.lim}` : ""}</button>`;
   }).join("");
   const eqNames = [...weapons.filter(x => x.eq).map(x => x.n), ...(d.equip || []).map(e => e.n)];
@@ -293,8 +300,8 @@ document.addEventListener("click", e => {
   }
   if (d.xfeat && tm) {
     const f = (tm.def.feats || []).find(x => x.n === d.xfeat); if (!f) return;
-    xChange(tg, tm, () => { tm.ki = Math.max(0, (tm.ki || 0) - f.c); if (f.lim) { tm.used = tm.used || {}; tm.used[f.n] = f.lim; } });
-    return toast(`${tm.def.name}: ${f.n} (−${f.c} Ki)`);
+    xChange(tg, tm, () => { if (!xCost(f)) tm.ki = Math.max(0, (tm.ki || 0) - f.c); if (f.lim) { tm.used = tm.used || {}; tm.used[f.n] = f.lim; } });
+    return toast(xCost(f) ? `${tm.def.name}: ${f.n}. Take off the X Ki you spend on the Ki track.` : `${tm.def.name}: ${f.n} (−${f.c} Ki)`);
   }
   if (d.xaddstate && tm) return xStateSheet(tg, findTM(tg, d.xaddstate)[0]);
   if (d.xaddstate) return xStateSheet(tg, findTM(tg, d.xaddstate)[0]);

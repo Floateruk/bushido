@@ -36,6 +36,9 @@ const inFacing = (a, q) => (q.x - a.x) * Math.sin(rad(a.facing)) + (q.y - a.y) *
 
 function losCheck(a, sa, b, sb) {
   const res = { los: false, cover: false, coverBy: [], blockedBy: [], lines: [], seen: 0, total: 0, note: "" };
+  /* an Exhausted Bǎi Qiān is Inert Warrior terrain in the Main Phase: it can't be seen or targeted as a model, and sees nothing */
+  if (isInert(b)) { res.note = "Inert Warrior: terrain, not a model"; return res; }
+  if (isInert(a)) { res.note = "Inert Warrior: not a model this Main Phase"; return res; }
   const touching = dist(a, b) - a.r - b.r <= BTB_GAP;
   const sixth = /\bSixth Sense\b/.test((cardOf(a, sa) || {}).traits || "");  /* Immune [Blind] */
   if (tFlag(a, "blind") && !sixth && !touching) { res.note = "Blind: no LoS outside base contact"; return res; }

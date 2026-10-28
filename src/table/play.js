@@ -5,7 +5,22 @@
    State: TBL.play = { turn, sp: {F, E}, vp: {F, E} }; each model keeps m.act (counters left).
    Wounds, Ki and states are in the linked Testing lists game (TBL.testId), see tests.js. */
 const ACT_PER_TURN = 2;
-let tUndo = null;          /* snapshot for the Undo on "Next turn" */
+let tUndo = null;
+/* Bǎi Qiān (Imperial clay soldiers, the card's "Bǎi Qiān" unique effect): they gain only 1 Activation Counter,
+   and while Exhausted in the Main Phase they are an Inert Warrior terrain element, not a model. */
+const plainName = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+function defOfT(m) { const [, s] = findModel(m.id); return s ? cardOf(m, s) : null; }
+const isBaiQian = m => ((defOfT(m) || {}).notes || []).some(n => plainName(n.n) === "bai qian");
+const maxAct = m => isBaiQian(m) ? 1 : ACT_PER_TURN;
+const actsLeft = m => m.act ?? maxAct(m);
+const isInert = m => TBL.step === "play" && m.where === "table" && actsLeft(m) === 0 && isBaiQian(m);
+/* Group: every model on the same profile card activates in the same single activation */
+function groupMates(m) {
+  const [, s] = findModel(m.id), d = defOfT(m);
+  if (!s || !d || !d.group) return [];
+  const key = plainName(d.card || d.name);
+  return TBL.sides[s].models.filter(x => x !== m && x.where === "table" && !isGoneT(x) && plainName((cardOf(x, s) || {}).card || "") === key);
+}          /* snapshot for the Undo on "Next turn" */
 
 function playState() {
   if (!TBL.play) TBL.play = { turn: TBL.step === "play" ? 1 : 0, sp: { F: 0, E: 0 }, vp: { F: 0, E: 0 } };
@@ -33,7 +48,7 @@ function startTurn(n) {
   const tg = linkedTest();
   tUndo = JSON.stringify({ TBL, test: tg });
   P.turn = n;
-  for (const m of allModels()) { m.act = ACT_PER_TURN; m.blind = false; }   /* Blind markers go in the End Phase */
+  for (const m of allModels()) { m.act = maxAct(m); m.blind = false; }   /* Blind markers go in the End Phase; Bǎi Qiān gain 1 counter */
   /* Wounds, Ki and states live in the linked test: Ki Generation, Last Stand removals, Run/Blind cleared there */
   if (tg) notes.push(...testStartTurn(tg, n), "Ki generated");
   for (const r of s.rules || []) {
@@ -56,7 +71,7 @@ function gameCardHTML() {
   const roll = L.kind === "Variable" && P.turn >= L.n && !last && P.rolled !== P.turn
     ? `<div class="troll"><p class="tsmall"><b>Starting Phase:</b> roll a D6. On 4+ the game ends after this turn.</p>
         <div class="tacts"><button class="tbtn" data-tlast="yes">4+: last turn</button><button class="tbtn" data-tlast="no">1–3: carry on</button></div></div>` : "";
-  const exhausted = side => TBL.sides[side].models.filter(m => m.where === "table" && (m.act ?? ACT_PER_TURN) === 0).length;
+  const exhausted = side => TBL.sides[side].models.filter(m => m.where === "table" && actsLeft(m) === 0).length;
   const onTable = side => TBL.sides[side].models.filter(m => m.where === "table").length;
   return `<div class="tcard tgame">
     <div class="tturn"><button class="tstep" data-tturnback aria-label="Previous turn" ${P.turn <= 1 ? "disabled" : ""}>‹</button>
@@ -77,20 +92,22 @@ function gameCardHTML() {
 function actDots(m) {
   if (TBL.step !== "play" || m.act == null) return "";
   /* inside the base, just in from its back edge, so they never fall off the table edge */
-  const back = rad(m.facing + 180), out = [], R = m.r * 0.74, gap = 0.17 / R;
-  for (let i = 0; i < ACT_PER_TURN; i++) {
-    const a = back + (i - (ACT_PER_TURN - 1) / 2) * gap;
+  const back = rad(m.facing + 180), out = [], R = m.r * 0.74, gap = 0.17 / R, k = Math.max(maxAct(m), m.act);
+  for (let i = 0; i < k; i++) {
+    const a = back + (i - (k - 1) / 2) * gap;
     out.push(`<circle cx="${f2(Math.sin(a) * R)}" cy="${f2(-Math.cos(a) * R)}" r="0.065" class="actdot ${i < m.act ? "on" : ""}"/>`);
   }
   return out.join("");
 }
 function actHTML(m) {
   if (TBL.step !== "play" || m.where !== "table") return "";
-  const n = m.act ?? ACT_PER_TURN;
-  const dots = Array.from({ length: Math.max(ACT_PER_TURN, n) }, (_, i) => `<i class="${i < n ? "on" : ""}"></i>`).join("");
+  const n = actsLeft(m), mates = groupMates(m);
+  const dots = Array.from({ length: Math.max(maxAct(m), n) }, (_, i) => `<i class="${i < n ? "on" : ""}"></i>`).join("");
   return `<div class="tact"><span class="tact-dots" aria-label="${n} activation counters">${dots}</span>
-    <b>${n ? `${n} activation${n > 1 ? "s" : ""} left` : "Exhausted"}</b>
-    <span class="tacts"><button class="tbtn" data-tact="-1" data-id="${m.id}" ${n < 1 ? "disabled" : ""} title="Key 1">Simple −1</button><button class="tbtn" data-tact="-2" data-id="${m.id}" ${n < 2 ? "disabled" : ""} title="Key 2">Complex −2</button><button class="tbtn" data-tact="1" data-id="${m.id}" title="Key +">+1</button></span></div>`;
+    <b>${n ? `${n} activation${n > 1 ? "s" : ""} left` : isInert(m) ? "Exhausted · Inert Warrior" : "Exhausted"}</b>
+    <span class="tacts"><button class="tbtn" data-tact="-1" data-id="${m.id}" ${n < 1 ? "disabled" : ""} title="Key 1">Simple −1</button><button class="tbtn" data-tact="-2" data-id="${m.id}" ${n < 2 ? "disabled" : ""} title="Key 2">Complex −2</button><button class="tbtn" data-tact="1" data-id="${m.id}" title="Key +">+1</button></span>
+    ${mates.length ? `<p class="tsmall">Group: activates together with ${mates.map(x => esc(x.name)).join(", ")}. <button class="tbtn" data-tactgroup="-1" data-id="${m.id}">Whole group −1</button></p>` : ""}
+    ${isBaiQian(m) ? `<p class="tsmall muted">Bǎi Qiān: 1 Activation Counter a turn. While Exhausted in the Main Phase it is an Inert Warrior (Impassable, Blocking, Small terrain), not a model; it is a model again in the End Phase.</p>` : ""}</div>`;
 }
 
 /* The model's full card from its warband, in the side panel */
@@ -116,7 +133,7 @@ function modelCardHTML(m, side) {
 
 function spendAct(id, d) {
   const [m] = findModel(id); if (!m) return;
-  m.act = Math.max(0, Math.min(9, (m.act ?? ACT_PER_TURN) + d));
+  m.act = Math.max(0, Math.min(9, actsLeft(m) + d));
   tSave(); renderTable();
 }
 
@@ -125,11 +142,12 @@ document.addEventListener("click", e => {
   const t = e.target.closest("button"); if (!t) return;
   const d = t.dataset;
   if (d.tact) return spendAct(d.id, +d.tact);
+  if (d.tactgroup) { const [m] = findModel(d.id); if (!m) return; for (const x of [m, ...groupMates(m)]) x.act = Math.max(0, Math.min(9, actsLeft(x) + +d.tactgroup)); tSave(); return renderTable(); }
   if (d.tscore) { const P = playState(); P[d.tscore][d.side] = Math.max(0, P[d.tscore][d.side] + +d.d); tSave(); return renderTable(); }
   if (d.tnextturn !== undefined) {
     const n = playState().turn + 1, notes = startTurn(n);
     renderTable();
-    return toast(`Turn ${n}: ${ACT_PER_TURN} activation counters each${notes.length ? "; " + notes.join("; ") : ""}.`, false, `<button data-tundoturn="">Undo</button>`);
+    return toast(`Turn ${n}: ${ACT_PER_TURN} activation counters each${allModels().some(isBaiQian) ? " (Bǎi Qiān 1)" : ""}${notes.length ? "; " + notes.join("; ") : ""}.`, false, `<button data-tundoturn="">Undo</button>`);
   }
   if (d.tundoturn !== undefined && tUndo) {
     const u = JSON.parse(tUndo); TBL = u.TBL; tUndo = null; tHistReset(); tSave();
