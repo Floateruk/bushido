@@ -26,7 +26,9 @@ const models = {
 
 const equip = [
   { n: "Finesse", d: "While involved in a Melee Exchange with Attached model, Enemy models lose the Brutal Trait. Exclusion [Models with Brutal, Minimoto, Tadao, Taiki]" },
-  { n: "Veteran Sentinel", d: "Attached Golden Sentinel gains Agile and can Walk into BtB with Enemy models, ignoring Zones of Control when they do. Requirement [Golden Sentinel]" }
+  /* Veteran Sentinel is a Faction Enhancement: a Golden Sentinel outside The Eternal Legion is a Ronin model and can't take it */
+  { n: "Demon-Face Mask", d: "Attached model gains Immune [Blind] and Fear (3). Requirement [Model with the Armour Trait]" },
+  { n: "Wolf Heart Talisman", d: "Attached model gains Bravery for its first failed Fear Test. The Attached model treats fear values above 5 as Fear (5)." }
 ];
 
 const cards = [
@@ -41,9 +43,9 @@ const list = {
   sub: "Risen Sun [95 Rice] (The Imperial March)",
   models: [
     ["Yūkan'na", ["Finesse"], { rice: 18 }],
-    ["Golden Sentinel", ["Veteran Sentinel"], { name: "Golden Sentinel" }],
+    ["Golden Sentinel", ["Demon-Face Mask"], { name: "Golden Sentinel" }],
     ["Yu", [], { rice: 12 }],
-    ["Zuǒ Cí", []],
+    ["Zuǒ Cí", ["Wolf Heart Talisman"]],
     ["Shìbīng", [], { name: "Shìbīng (A)" }],
     ["Shìbīng", [], { name: "Shìbīng (B)" }],
     ["Shìbīng", [], { name: "Shìbīng (C)" }]
