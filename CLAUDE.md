@@ -14,7 +14,7 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
   - `seed.json`: card library and three starter lists bundled into the app.
   - `build.py`: run `python3 src/build.py` from the repo root to regenerate `index.html`.
   - `cards/*.js`: card sets transcribed by hand (e.g. from card images) for lists whose PDF lacks rules.
-    `node src/build_seed.js` merges them into `seed.json`; bump `SEED_REV` there when card data changes,
+    `node src/build_seed.js` merges them into `seed.json` (a set's `list` becomes a ready-made warband; its models can also be library cards, with per-model overrides such as rice or name); bump `SEED_REV` there when card data changes,
     and installed apps apply it once on next open (library, matching warband, and games in progress).
 - `src/table/`: the Table area (laptop-first), built into `index.html` before `app.js`.
   - Scenario panel (`scenarioCard` in table.js): "Turn by turn" (`scenarioTimeline`: Start-phase resets and variable-length roll, End-phase VPs, current turn highlighted in play) and "How it scores" (`scoringLines`: Influence, Prayer, Zones, VIM, Decreasing), both foldable.
