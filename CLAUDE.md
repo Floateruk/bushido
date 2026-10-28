@@ -32,6 +32,7 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
     SP/alignment, Flank reminders, Undo), activation dots inside tokens, and state badges on the base (`stateBadges`: from the linked test's states, else the table's own Prone/Blind; two letters, value, count). The table shows only position, facing, LoS, Prone/Blind and activations;
     a table made from a test (TBL.testId) shares its model ids: killed models leave the board, Prone/Blind are the
     test's states, and Next turn runs Ki Generation and Last Stand removals in the test (testStartTurn).
+  - `traitBlock(s, cls)` (app.js): trait lists on My lists and Testing lists cards are split into a highlighted "Melee exchange" group (`MELEE_TRAITS`: Parry, Dodge, Prowess, Armour, Brutal, Strong, Indomitable, Feint, special attacks/defences...) and "Other".
   - `avatar(d)` (table.js): round portrait for a model definition, used on My lists and Testing lists cards, opponent rows and the end summary.
   - `dice.js`: opposed dice tool (Dice button or D key): floating panel with Attack and Defence d6 pools for each side, tap a die to re-roll it, × removes it from the result, modifiers, Melee Exchange result (highest + up to 2 supporting, 1s ignored, ties by dice above 1 then Active player). Unbiased `crypto.getRandomValues` d6. In memory only, not synced.
   - Card art: `art/<slug>.webp` (192px round portraits, slug = model name lowercased, accents and punctuation removed) with `art/manifest.json`.

@@ -312,6 +312,15 @@ function glossKey(token) {
   return null;
 }
 const ruleList = s => BP.splitTop(s).map(tok => { const k = glossKey(tok); return k ? `<button class="rule" data-rule="${esc(k)}">${esc(tok)}</button>` : esc(tok); }).join(", ");
+/* Traits used while resolving a Melee Exchange (defences, dice and damage modifiers, special attacks and defences), shown first and apart from the rest */
+const MELEE_TRAITS = new Set(["parry","dodge","prowess","indomitable","feint","impenetrable defence","counterstrike defence","brutal","strong","weak","pierce","powerful attack","combo attack","armour","tough","durable","reach","slow","lightning reflexes","kata","co-ordinated attack","coordinated attack","defensive","aggressive","chain weapon","sharp","endurance","tireless","unblockable","forceback attack","push attack","push defence","sidestep attack","sidestep defence","slam attack","sweep attack","sweep defence","split attack","stun attack","bear stands alone"]);
+const meleeTrait = tok => MELEE_TRAITS.has(tok.replace(/\[.*?\]|\(.*?\)|:.*$/g, "").trim().toLowerCase().replace(/\s+/g, " "));
+function traitBlock(s, cls) {
+  const toks = BP.splitTop(s || ""), mel = toks.filter(meleeTrait), rest = toks.filter(t => !meleeTrait(t));
+  const one = list => ruleList(list.join(", "));
+  if (!mel.length) return `<p class="${cls}">${one(rest)}</p>`;
+  return `<div class="tgroups ${cls}"><p class="tg-melee"><span class="tg-label">Melee exchange</span>${one(mel)}</p>${rest.length ? `<p class="tg-other"><span class="tg-label">Other</span>${one(rest)}</p>` : ""}</div>`;
+}
 function pips(n, filled, cls, mid) {
   const box = (i, label) => `<button class="pip ${i < filled ? "on" : ""}" data-pip="${cls}" data-m="${mid}" data-i="${i}" aria-label="${cls === "w" ? "Wound box" : "Ki"} ${label}"></button>`;
   if (cls !== "w") {
@@ -404,7 +413,7 @@ function renderPlay() {
         <div><small>Base</small><b class="num">${esc((st.size || "").replace(/^\w+\s*/, "") || "–")}</b></div></div>
       ${d.weapons.length ? `<div><h4>Weapons</h4>${d.weapons.map(w => `<div class="wpn"><b>${esc(w.n)} ${esc(w.s)}${w.range ? ` · ${esc(w.range)}"` : ""}${w.eq ? '<span class="eq">Equip</span>' : ""}</b><em>${ruleList(w.t)}</em></div>`).join("")}</div>` : ""}
       ${(d.equip || []).length ? `<div><h4>Equipment</h4>${d.equip.map(e => `<p class="${(m.discarded || {})[e.n] ? "eq-off" : ""}"><b>${esc(e.n)}</b>${(m.discarded || {})[e.n] ? " (discarded)" : ""}: ${esc(e.d)}</p>`).join("")}</div>` : ""}
-      ${d.traits ? `<div><h4>Traits</h4><p>${ruleList(d.traits)}</p></div>` : ""}
+      ${d.traits ? `<div><h4>Traits</h4>${traitBlock(d.traits, "")}</div>` : ""}
       ${d.feats.length ? `<div><h4>Ki feats</h4>${d.feats.map(f => `<p><b>${esc(f.n)}</b> (${f.c} Ki, ${esc(f.tm)}${f.sub ? ", " + esc(f.sub) : ""}${f.limText ? ", " + esc(f.limText) : ""}): ${esc(f.d)}</p>`).join("")}</div>` : ""}
       ${d.notes.length ? `<div><h4>Unique effects</h4>${d.notes.map(n => `<p><b>${esc(n.n)}</b>: ${esc(n.d)}</p>`).join("")}</div>` : ""}
       ${d.immune.length ? `<div><h4>Immune to</h4><p>${d.immune.join(", ")}</p></div>` : ""}

@@ -182,7 +182,7 @@ function xModelHTML(tm) {
     ${cap ? `<div class="track k"><span class="track-label">Ki</span>${xPips(cap, tm.ki || 0, "k", tm.id)}<span class="track-val num"><b>${tm.ki || 0}</b> <span class="muted">+${+d.kiGen || 0} each turn</span></span></div>` : ""}
     <div class="states">${xChips(tm)}${gone ? "" : `<button class="add-state" data-xaddstate="${tm.id}">+ State</button>`}</div>
     ${feats ? `<div class="feats">${feats}</div>` : ""}
-    ${d.traits ? `<p class="xtraits">${ruleList(d.traits)}</p>` : ""}
+    ${d.traits ? traitBlock(d.traits, "xtraits") : ""}
     <button class="more" data-xdetail="${tm.id}">${open ? "Hide card ▴" : "Full card ▾"}</button>
     ${open ? `<div class="detail">
       ${weapons.length ? `<div><h4>Weapons</h4>${weapons.map(x => `<div class="wpn"><b>${esc(x.n)} ${esc(x.s || "")}${x.range ? ` · ${esc(x.range)}"` : ""}${x.eq ? '<span class="eq">Equip</span>' : ""}</b><em>${ruleList(x.t || "")}</em></div>`).join("")}</div>` : ""}
