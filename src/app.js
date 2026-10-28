@@ -320,7 +320,17 @@ function glossKey(token) {
 const ruleList = s => BP.splitTop(s).map(tok => { const k = glossKey(tok); return k ? `<button class="rule" data-rule="${esc(k)}">${esc(tok)}</button>` : esc(tok); }).join(", ");
 /* Traits used while resolving a Melee Exchange (defences, dice and damage modifiers, special attacks and defences), shown first and apart from the rest */
 const MELEE_TRAITS = new Set(["parry","dodge","prowess","indomitable","feint","impenetrable defence","counterstrike defence","brutal","strong","weak","pierce","powerful attack","combo attack","armour","tough","durable","reach","slow","lightning reflexes","kata","co-ordinated attack","coordinated attack","defensive","aggressive","chain weapon","sharp","endurance","tireless","unblockable","forceback attack","push attack","push defence","sidestep attack","sidestep defence","slam attack","sweep attack","sweep defence","split attack","stun attack","bear stands alone"]);
-const meleeTrait = tok => MELEE_TRAITS.has(tok.replace(/\[.*?\]|\(.*?\)|:.*$/g, "").trim().toLowerCase().replace(/\s+/g, " "));
+const meleeTrait = tok => { const t = tok.replace(/\[.*?\]|\(.*?\)|:.*$/g, "").trim().toLowerCase().replace(/\s+/g, " "); return MELEE_TRAITS.has(t) || [...MELEE_TRAITS].some(n => t.startsWith(n + " ")); };
+/* Corrections for card data that lost its brackets and numbers when it was read from a list PDF (checked against the printed cards).
+   Applied in place whenever a model is drawn, so existing lists, games and tests on a device are repaired too. */
+function fixDef(d) {
+  if (!d || !d.name) return d;
+  if (norm(d.name) === "yukan'na") {
+    if (d.traits && /Prowess\s+Melee(?![\]\w])/.test(d.traits)) d.traits = d.traits.replace(/Prowess\s+Melee(\s*\(\d\))?/, "Prowess [Melee](1)");
+    (d.feats || []).forEach(f => { if (f.d && /Bodyguard Imperial\s*\./.test(f.d)) f.d = f.d.replace(/Bodyguard Imperial\s*\./, 'Bodyguard [Imperial](3").'); });
+  }
+  return d;
+}
 function traitBlock(s, cls) {
   const toks = BP.splitTop(s || ""), mel = toks.filter(meleeTrait), rest = toks.filter(t => !meleeTrait(t));
   const one = list => ruleList(list.join(", "));
@@ -401,7 +411,7 @@ function renderPlay() {
   $("woundTotal").textContent = `${S.models.reduce((a, m) => a + m.dmg, 0)} wounds taken`;
 
   $("models").innerHTML = S.models.map(m => {
-    const d = m.def, dead = !alive(m);
+    const d = fixDef(m.def), dead = !alive(m);
     const ls = onLastStand(m);
     const pills = dead ? `<span class="pill dead">Dead</span>` : ls ? `<button class="pill ls" data-rule="Last Stand">Last Stand</button>` : d.zeroKiSlow && m.ki === 0 ? `<span class="pill slow">Slow</span>` : "";
     const feats = d.feats.map(f => {
