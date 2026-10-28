@@ -32,6 +32,8 @@ const STATES = [
 const CAT = Object.fromEntries(STATES);
 const baseState = k => k.replace(/ \d$/, "");
 const TICKING = ["Bleed", "On Fire", "Poisoned"];
+/* States with something to resolve in the Starting Phase */
+const START_RULES = { Diseased: "remove a Disease marker and an Activation Counter", "Death Sentence": "may spend 3 Ki to remove one Death Sentence marker" };
 
 const SAMPLE = `The Imperial Court - Campaign 3 - [90 Rice]
 
@@ -290,6 +292,10 @@ function reminders() {
       if (phaseOf(s) === S.phase && !/^Play/.test(s)) push(`${m.id}n${ni}s${si}`, `<strong>${esc(m.def.name)}</strong> · ${esc(n.n)}: ${esc(s)}`);
     }));
     if (S.phase === "start" && m.def.intimidate) push(`${m.id}int`, `<strong>${esc(m.def.name)}</strong> may Intimidate an enemy within 8".`);
+    if (S.phase === "start") {
+      const st = Object.keys(m.states).filter(k => START_RULES[baseState(k)]);
+      st.forEach(k => push(`${m.id}start${baseState(k)}`, `<strong>${esc(m.def.name)}</strong> · ${esc(k)}${m.states[k] > 1 ? " ×" + m.states[k] : ""}: ${START_RULES[baseState(k)]}.`));
+    }
     if (S.phase === "end") {
       const tick = Object.keys(m.states).filter(k => TICKING.includes(baseState(k)));
       if (tick.length) push(`${m.id}tick`, `<strong>${esc(m.def.name)}</strong>: resolve ${tick.map(k => esc(k) + (m.states[k] > 1 ? " ×" + m.states[k] : "")).join(", ")}.`);

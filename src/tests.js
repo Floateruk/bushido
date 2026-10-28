@@ -101,6 +101,14 @@ function testStartTurn(tg, n) {
     tm.u = Date.now();
   }
   if (gone.length) notes.push(`removed at the End Phase (Last Stand): ${gone.join(", ")}`);
+  /* States to resolve in the Starting Phase (the app doesn't change them: tick them off on the cards) */
+  const dis = [], ds = [];
+  for (const s of ["F", "E"]) for (const tm of tg.sides[s].models) {
+    if (xGone(tm)) continue;
+    for (const k in tm.states || {}) { const b = baseState(k); if (b === "Diseased") dis.push(xDef(tm).name); else if (b === "Death Sentence") ds.push(xDef(tm).name); }
+  }
+  if (dis.length) notes.push(`Diseased, remove a Disease marker and an Activation Counter: ${[...new Set(dis)].join(", ")}`);
+  if (ds.length) notes.push(`Death Sentence, may spend 3 Ki to remove one: ${[...new Set(ds)].join(", ")}`);
   touchTest(tg); xHistReset(tg);
   return notes;
 }
