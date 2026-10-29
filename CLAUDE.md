@@ -53,6 +53,14 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
 - `sw.js`: service worker for offline use.
 - `pdf.min.mjs`, `pdf.worker.min.mjs`: bundled pdf.js 6.2.108 so PDF import works offline.
 
+## Reference material (not in this repo)
+The rulebook text, Tournament Pack text, card notes and campaign notes live in the owner's private Claude **Project "Bushido"**
+(docs: `claude/rules-revision-2.md`, `claude/tournament-pack-2510-1.md`, `claude/card-notes.md`, `claude/campaign-notes.md`).
+They are copyrighted game text, so they are deliberately not committed to this public repo. In a session attached to the project,
+use the Projects tool (`project_search` / `project_read`) before answering rules questions, and read `campaign-notes.md` first
+(current list, opponent, banned models, rulings already settled). Keep campaign-notes.md up to date when a list or ruling changes.
+The big card PDFs are not stored anywhere: ask the owner to attach them when card images are needed.
+
 ## Releasing a change
 1. Edit files in `src/` (or `sync.js`). If card data changed, run `node src/build_seed.js`. Then run `python3 src/build.py`.
 2. Bump `VERSION` in `sw.js`. Devices only fetch the new version when this changes.
