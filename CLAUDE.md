@@ -49,6 +49,9 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
   this turn and 2 activations) or rejoins; the combined model killed becomes Mizuko (`dragonGone`), Mizuko killed removes him.
   `tSyncForms` (play.js) keeps table tokens in step (name, base, extra token). Models with `communal: true` (Okami, Ki max "*")
   generate into and spend from the "Communion with the Dragon" card's `pool` (`kiGenerate`, `kiAvail`, `kiSpend`).
+  Passing the Night: "Shame" is a state only in warbands with that theme (`stateList`), one per model except Ton (`stateRefused`);
+  a Samurai or Shisai (`types` on the card) without Shame is shown with the theme's benefits applied (`themeDef`, `themeLine`:
+  Fearless, Melee Boost 2, Spirit +1, +1 melee strength, no Slow); feats that remove a Shame Token need one and remove it (`shameFeat`).
 - `src/tests.js`: Testing lists (`tests`, `test:<id>`): two warbands side by side with full cards, wounds, Ki, feats,
   states and cards (step 1); the Table setup picks a test (step 2). A test shows the table's turn, SP, VP and where each model is; "Generate Ki" runs Ki Generation by hand; an unlinked table with the same models can be linked (matched by name). Saved in `bushido-tests-v1` and synced as
   `groups/{code}/tests/{id}`, merged per model by its `u` timestamp so tablet and laptop can edit at once.

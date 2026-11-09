@@ -30,6 +30,7 @@ const STATES = [
   ["Run","neutral"],["Spirit Block","harm"],["Stunned","harm"],["Virtue","good"],["Special","neutral"]
 ];
 const CAT = Object.fromEntries(STATES);
+CAT.Shame = "harm";          /* Passing the Night (src/forms.js) */
 const baseState = k => k.replace(/ \d$/, "");
 /* Ki feats costing X ("Return to Serve"): usable with 1 Ki or more; the player takes the X off the Ki track */
 const xCost = f => String(f.c).toUpperCase() === "X";
@@ -415,12 +416,12 @@ function renderPlay() {
   $("woundTotal").textContent = `${S.models.reduce((a, m) => a + m.dmg, 0)} wounds taken`;
 
   $("models").innerHTML = S.models.map(m => {
-    const d = fixDef(m.def), dead = !alive(m);
+    const d = themeDef(fixDef(m.def), m, S.cards), dead = !alive(m);
     const ls = onLastStand(m);
     const pills = formPill(m) + (dead ? `<span class="pill dead">Dead</span>` : ls ? `<button class="pill ls" data-rule="Last Stand">Last Stand</button>` : d.zeroKiSlow && m.ki === 0 ? `<span class="pill slow">Slow</span>` : "");
     const feats = d.feats.map(f => {
       const used = f.lim && m.used[f.n];
-      const can = !dead && !used && kiAvail(m, S.cards) >= kiCost(f) && !(f.n === "Fly High" && S.phase !== "main") && !(f.n === "Eight Petal Comet" && S.phase !== "start");
+      const can = !dead && !used && kiAvail(m, S.cards) >= kiCost(f) && !(f.n === "Fly High" && S.phase !== "main") && !(f.n === "Eight Petal Comet" && S.phase !== "start") && !(shameFeat(f) && !m.states.Shame);
       return `<button class="feat ${used ? "used" : ""}" data-feat="${esc(f.n)}" data-m="${m.id}" ${can ? "" : "disabled"} title="${esc(f.d)}"><span class="cost">${f.c}</span>${esc(f.n)}${f.lim ? ` · ${f.lim}` : ""}</button>`;
     }).join("");
     const st = d.stats;
@@ -443,6 +444,7 @@ function renderPlay() {
       <div class="m-head"><div class="m-name">${avatar(d)}${esc(d.name)}${d.group ? "<small>Group</small>" : ""}${eqNames.length ? `<span class="m-eq">${eqNames.map(n => { const off = (m.discarded || {})[n]; return `<button class="eq-tag ${off ? "off" : ""}" data-eqtoggle="${esc(n)}" data-m="${m.id}" aria-pressed="${off ? "true" : "false"}" title="${off ? "Discarded. Tap to restore" : "Tap when discarded"}">${esc(n)}</button>`; }).join("")}</span>` : ""}</div>${pills}</div>
       <div class="track w"><span class="track-label">Wounds</span>${pips(d.w, m.dmg, "w", m.id)}<span class="track-val num"><b>${d.w - m.dmg}</b>/${d.w}</span></div>
       ${usesPool(d, S.cards) ? poolLine(d, S.cards) : d.kiCap > 0 ? `<div class="track k"><span class="track-label">Ki</span>${pips(d.kiCap, m.ki, "k", m.id)}<span class="track-val num"><b>${m.ki}</b> +${d.kiGen}</span></div>` : ""}
+      ${themeLine(d, m, S.cards)}
       <div class="states">${chipsFor(m)}${dead ? "" : `<button class="add-state" data-addstate="${m.id}">+ State</button>`}</div>
       ${feats ? `<div class="feats">${feats}</div>` : ""}
       <button class="more" data-detail="${m.id}">${openDetail.has(m.id) ? "Hide card ▴" : "Card details ▾"}</button>
@@ -474,11 +476,11 @@ function renderOpp() {
 const sheet = html => $("sheetHost").innerHTML = `<div class="scrim" data-close="1"><div class="sheet" role="dialog">${html}</div></div>`;
 function closeSheet() { $("sheetHost").innerHTML = ""; }
 function stateSheet(mid) {
-  const m = findAny(mid), imm = m.def ? m.def.immune : [];
+  const m = findAny(mid), cards = S.models.includes(m) ? S.cards : [], imm = m.def ? themeDef(m.def, m, cards).immune : [];
   const isImm = k => imm.includes(baseState(k)) || imm.includes(k);
   const name = m.def ? m.def.name : m.name;
   sheet(`<h3>${esc(name)}</h3><p class="sub">Tap a state to add it. Tap it on the card to change the count.</p>
-    <div class="grid-states">${STATES.map(([k, c]) => `<button data-pick="${esc(k)}" data-m="${mid}" ${isImm(k) ? "disabled" : ""}><i style="background:var(--${c === "harm" ? "harm" : c === "fire" ? "fire" : c === "poison" ? "poison" : c === "good" ? "ki" : "muted"})"></i>${esc(k)}${isImm(k) ? "<small>Immune</small>" : m.states[k] ? `<small>×${m.states[k]}</small>` : ""}</button>`).join("")}</div>`);
+    <div class="grid-states">${stateList(cards).map(([k, c]) => `<button data-pick="${esc(k)}" data-m="${mid}" ${isImm(k) ? "disabled" : ""}><i style="background:var(--${c === "harm" ? "harm" : c === "fire" ? "fire" : c === "poison" ? "poison" : c === "good" ? "ki" : "muted"})"></i>${esc(k)}${isImm(k) ? "<small>Immune</small>" : m.states[k] ? `<small>×${m.states[k]}</small>` : ""}</button>`).join("")}</div>`);
 }
 function enemySheet(state, remKey, temp, card) {
   sheet(`<h3>${esc(state)}</h3><p class="sub">Which enemy model gains it?</p>
@@ -741,12 +743,12 @@ document.addEventListener("click", e => {
     return;
   }
   if (ds.addstate) return stateSheet(ds.addstate);
-  if (ds.pick) { const m = find(ds.m); closeSheet(); openChip = `${m.id}:${ds.pick}`; return mutate(() => { m.states[ds.pick] = (m.states[ds.pick] || 0) + 1; }); }
+  if (ds.pick) { const m = find(ds.m); closeSheet(); const no = stateRefused(m, ds.pick); if (no) return toast(no); openChip = `${m.id}:${ds.pick}`; return mutate(() => { m.states[ds.pick] = (m.states[ds.pick] || 0) + 1; }); }
   if (ds.chip) { openChip = openChip === ds.chip ? null : ds.chip; return render(); }
-  if (ds.st) { const m = find(ds.m); return mutate(() => { const n = (m.states[ds.st] || 0) + +ds.d; if (n <= 0) { delete m.states[ds.st]; openChip = null; } else m.states[ds.st] = n; }); }
+  if (ds.st) { const m = find(ds.m); if (+ds.d > 0) { const no = stateRefused(m, ds.st); if (no) return toast(no); } return mutate(() => { const n = (m.states[ds.st] || 0) + +ds.d; if (n <= 0) { delete m.states[ds.st]; openChip = null; } else m.states[ds.st] = n; }); }
   if (ds.feat) {
     const m = find(ds.m), f = m.def.feats.find(x => x.n === ds.feat);
-    mutate(() => { if (!xCost(f)) kiSpend(m, S.cards, f.c); if (f.lim) m.used[f.n] = f.lim; if (f.n === "Fly High" && isCombined(m)) formSplit(S, m, newModel); });
+    mutate(() => { if (!xCost(f)) kiSpend(m, S.cards, f.c); if (f.lim) m.used[f.n] = f.lim; useShameFeat(m, f); if (f.n === "Fly High" && isCombined(m)) formSplit(S, m, newModel); });
     if (f.n === "Fly High" && isMizuko(m)) return toast("Fly High: Mizuko stays (Ki, states and counters), Shōgo-Ryu goes Elsewhere with the dragon's wounds.", true);
     if (f.n === "Eight Petal Comet" && m.partOf) return sheet(formSheet(m, "form")); return toast(xCost(f) ? `${m.def.name}: ${f.n}. Take off the X Ki you spend on the Ki track.` : `${m.def.name}: ${f.n} (−${f.c} Ki)`, true); }
   if (ds.detail) { openDetail.has(ds.detail) ? openDetail.delete(ds.detail) : openDetail.add(ds.detail); return render(); }

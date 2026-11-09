@@ -97,3 +97,44 @@ function communalHTML(c, attr, key) {
 const poolLine = (d, cards) => `<div class="track k"><span class="track-label">Ki</span><span class="pool-note">On ${esc(communalCard(cards).name)}: <b class="num">${communalCard(cards).pool || 0}</b> <span class="muted">+${+d.kiGen || 0} each turn</span></span></div>`;
 const formPill = m => m.partOf ? (formDead(m) ? "" : m.elsewhere ? `<span class="pill xwhere elsewhere">Elsewhere</span>` : m.flyIn && m.flyIn !== true ? `<span class="pill xwhere">Flew in turn ${m.flyIn}</span>` : "")
   : isMizuko(m) && !formDead(m) ? `<span class="pill xwhere">${m.dragonGone ? "Mizuko alone" : "Split from Shōgo-Ryu"}</span>` : "";
+
+/* ---------- Passing the Night: Shame tokens and the theme's benefits ----------
+   Models in a warband with the Passing the Night theme can carry Shame (one each, Ton any number; it is a
+   state here). A Friendly Faction Samurai or Shisai with no Shame gains Fearless, Melee Boost (2), Spirit (+1),
+   +1 Melee Weapon Strength and loses Slow: `themeDef` shows the card with those applied. Model types come
+   from `types` on the card (src/cards/passing-night.js). */
+const PTN = "passing the night";
+const hasPTN = cards => (cards || []).some(c => c && norm(c.name || "") === PTN);
+const shameCap = d => norm((d && d.name) || "") === "ton" ? 99 : 1;
+const ptnModel = (d, cards) => hasPTN(cards) && ((d && d.types) || []).some(t => /^(samurai|shisai)$/i.test(t));
+const stateList = cards => hasPTN(cards) ? [...STATES, ["Shame", "harm"]].sort((a, b) => a[0].localeCompare(b[0])) : STATES;
+function themeDef(d, m, cards) {
+  if (!ptnModel(d, cards) || ((m && m.states) || {}).Shame) return d;
+  const o = JSON.parse(JSON.stringify(d));
+  let tr = BP.splitTop(o.traits || "").filter(t => !/^Slow\b/i.test(t.trim()));
+  if (!tr.some(t => /^Fearless\b/i.test(t))) tr.push("Fearless");
+  const sp = tr.findIndex(t => /^Spirit\b/i.test(t));
+  if (sp >= 0) tr[sp] = tr[sp].replace(/(-?\d+)/, n => String(+n + 1)); else tr.push("Spirit (1)");
+  o.traits = tr.map(t => t.trim()).join(", ");
+  o.immune = [...new Set([...(o.immune || []), "Frightened"])];
+  o.stats = { ...o.stats, mb: String(Math.max(+(o.stats && o.stats.mb) || 0, 2)) };
+  o.weapons = (o.weapons || []).map(w => w.range ? w : { ...w, s: (n => (n >= 0 ? "+" : "") + n)((parseInt(w.s, 10) || 0) + 1) });
+  o.zeroKiSlow = false;
+  o.ptn = true;
+  return o;
+}
+function themeLine(d, m, cards) {
+  if (!ptnModel(d, cards)) return "";
+  return ((m && m.states) || {}).Shame
+    ? `<p class="theme-line shamed">Shame: no Passing the Night benefits until it is removed.</p>`
+    : `<p class="theme-line">Passing the Night, no Shame: Fearless, Melee Boost 2, Spirit +1, +1 melee weapon strength, not Slow (shown on the card).</p>`;
+}
+/* Adding a state: Shame is capped at one token (Ton any number). Returns a message when refused. */
+function stateRefused(m, k, cards) {
+  if (k === "Shame" && ((m.states || {}).Shame || 0) >= shameCap(m.def)) return `${m.def.name} can only have one Shame Token (only Ton can hold more).`;
+  return "";
+}
+/* Kazu, Nagisa and Takanibu's feats that start "Remove one/a Shame Token from this model": usable only with
+   Shame, and using one removes the token (so the theme's benefits come back on the card) */
+const shameFeat = f => /^Remove (one|a) Shame Token from this model/i.test((f && f.d) || "");
+function useShameFeat(m, f) { if (!shameFeat(f) || !(m.states || {}).Shame) return; if (--m.states.Shame <= 0) delete m.states.Shame; }

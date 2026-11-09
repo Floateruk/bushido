@@ -6,7 +6,7 @@
 const okami = { communal: true, kiCap: 0 };
 
 const mizuko = {
-  name: "Mizuko", card: "Mizuko", rice: "Sp", ...okami,
+  name: "Mizuko", card: "Mizuko", rice: "Sp", ...okami, types: ["Okami", "Shisai"],
   stats: { name: "Mizuko", mp: "2", mb: "3", rp: "3", rb: "", mv: "4", mvb: "", ki: 3, kib: "", kic: 0, w: 5, size: "Small 30mm" },
   w: 5, kiGen: 3,
   traits: "Bravery, Dodge (1), Immune [Fire], Ranged Defence (2)",
@@ -23,7 +23,7 @@ const mizuko = {
 };
 
 const shogo = {
-  name: "Shōgo-Ryu", card: "Shōgo-Ryu", rice: "Su", ...okami,
+  name: "Shōgo-Ryu", card: "Shōgo-Ryu", rice: "Su", ...okami, types: ["Dragon", "Okami"],
   stats: { name: "Shōgo-Ryu", mp: "3", mb: "3", rp: "3", rb: "3", mv: "5", mvb: "3", ki: 0, kib: "3", kic: 0, w: 10, size: "Large 50mm" },
   w: 10, kiGen: 0,
   traits: "Cloudwalk, Fearless, Fear (5), Immune [Fire, Prone], Mettle (1), Ranged Defence (2), Sixth Sense, Spirit (3)",
@@ -40,6 +40,9 @@ const shogo = {
   ],
   immune: ["On Fire", "Prone", "Frightened"], zeroKiSlow: false, intimidate: false, group: false
 };
+
+const TYPES = { "Mizuko & Shōgo-Ryu": ["Dragon", "Okami", "Shisai"], "Takashi Hida": ["Novice", "Shisai", "Takashi"], "Takashi Kazu": ["Samurai", "Shamed", "Takashi"],
+  "Takashi Nagisa": ["Samurai", "Shamed", "Takashi"], "Takashi Takanibu": ["Samurai", "Shamed", "Takashi"], "Tama": ["Mourner", "Shisai"], "Ton": ["Shisai"] };
 
 const combined = Object.assign({
   "name": "Mizuko & Shōgo-Ryu",
@@ -520,5 +523,7 @@ const list = {
   models: [["Mizuko & Shōgo-Ryu", []], ["Takashi Hida", ["The Dragon Banner"]], ["Takashi Kazu", []], ["Takashi Nagisa", []], ["Takashi Takanibu", []], ["Tama", []], ["Ton", []]],
   cards: ["Passing the Night", "Communion with the Dragon"]
 };
+
+for (const [n, t] of Object.entries(TYPES)) models[n].types = t;
 
 module.exports = { models, equip, cards, list };

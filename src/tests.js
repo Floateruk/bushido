@@ -182,10 +182,10 @@ function xChips(tm) {
   return Object.entries(tm.states || {}).map(([k, c]) => `<button class="chip cat-${CAT[k] || "neutral"}" data-xchip="${esc(k)}" data-xm="${tm.id}"><i></i>${esc(k)}${c > 1 ? `<span class="c num">${c}</span>` : ""}</button>`).join("");
 }
 function xModelHTML(tm, side) {
-  const d = fixDef(xDef(tm)), st = d.stats || {}, gone = xGone(tm), ls = xOnLS(tm), w = xW(tm), cap = +d.kiCap || 0, cards = side.cards;
+  const cards = side.cards, d = themeDef(fixDef(xDef(tm)), tm, cards), st = d.stats || {}, gone = xGone(tm), ls = xOnLS(tm), w = xW(tm), cap = +d.kiCap || 0;
   const weapons = (d.weapons || []).filter(x => !(!x.s && /,/.test(x.n)));
   const feats = (d.feats || []).map(f => {
-    const used = f.lim && (tm.used || {})[f.n], can = !gone && !used && kiAvail(tm, cards) >= kiCost(f);
+    const used = f.lim && (tm.used || {})[f.n], can = !gone && !used && kiAvail(tm, cards) >= kiCost(f) && !(shameFeat(f) && !(tm.states || {}).Shame);
     return `<button class="feat ${used ? "used" : ""}" data-xfeat="${esc(f.n)}" data-xm="${tm.id}" ${can ? "" : "disabled"} title="${esc(f.d || "")}"><span class="cost">${f.c}</span>${esc(f.n)}${f.lim ? ` · ${f.lim}` : ""}</button>`;
   }).join("");
   const eqNames = [...weapons.filter(x => x.eq).map(x => x.n), ...(d.equip || []).map(e => e.n)];
@@ -200,6 +200,7 @@ function xModelHTML(tm, side) {
       <div><small>Size</small><b class="num">${esc(st.size || "–")}</b></div></div>
     <div class="track w"><span class="track-label">Wounds</span>${xPips(w, tm.dmg || 0, "w", tm.id)}<span class="track-val num"><b>${Math.max(0, w - (tm.dmg || 0))}</b>/${w}</span></div>
     ${usesPool(d, cards) ? poolLine(d, cards) : cap ? `<div class="track k"><span class="track-label">Ki</span>${xPips(cap, tm.ki || 0, "k", tm.id)}<span class="track-val num"><b>${tm.ki || 0}</b> <span class="muted">+${+d.kiGen || 0} each turn</span></span></div>` : ""}
+    ${themeLine(d, tm, cards)}
     <div class="states">${xChips(tm)}${gone ? "" : `<button class="add-state" data-xaddstate="${tm.id}">+ State</button>`}</div>
     ${feats ? `<div class="feats">${feats}</div>` : ""}
     ${d.traits ? traitBlock(d.traits, "xtraits") : ""}
@@ -242,9 +243,9 @@ function renderTest(id) {
 /* ---------- Changes ---------- */
 function xChange(tg, tm, fn) { fn(); touchTest(tg, tm); render(); }
 function xStateSheet(tg, tm) {
-  const imm = xDef(tm).immune || [], isImm = k => imm.includes(baseState(k)) || imm.includes(k);
+  const cards = tg.sides[findTM(tg, tm.id)[1]].cards, imm = themeDef(xDef(tm), tm, cards).immune || [], isImm = k => imm.includes(baseState(k)) || imm.includes(k);
   sheet(`<h3>${esc(tm.def.name)}</h3><p class="sub">Tap a state to add it. Tap it on the card to change it.</p>
-    <div class="grid-states">${STATES.map(([k, c]) => `<button data-xpick="${esc(k)}" data-xm="${tm.id}" ${isImm(k) ? "disabled" : ""}><i style="background:var(--${c === "harm" ? "harm" : c === "fire" ? "fire" : c === "poison" ? "poison" : c === "good" ? "ki" : "muted"})"></i>${esc(k)}${isImm(k) ? "<small>Immune</small>" : tm.states[k] ? `<small>×${tm.states[k]}</small>` : ""}</button>`).join("")}</div>`);
+    <div class="grid-states">${stateList(cards).map(([k, c]) => `<button data-xpick="${esc(k)}" data-xm="${tm.id}" ${isImm(k) ? "disabled" : ""}><i style="background:var(--${c === "harm" ? "harm" : c === "fire" ? "fire" : c === "poison" ? "poison" : c === "good" ? "ki" : "muted"})"></i>${esc(k)}${isImm(k) ? "<small>Immune</small>" : tm.states[k] ? `<small>×${tm.states[k]}</small>` : ""}</button>`).join("")}</div>`);
 }
 function xChipSheet(tm, k) {
   sheet(`<h3>${esc(k)}</h3><p class="sub">${esc(tm.def.name)}</p>
@@ -311,6 +312,7 @@ document.addEventListener("click", e => {
     xChange(tg, tm, () => {
       if (!xCost(f)) kiSpend(tm, side.cards, f.c);
       if (f.lim) { tm.used = tm.used || {}; tm.used[f.n] = f.lim; }
+      useShameFeat(tm, f);
       if (f.n === "Fly High" && isCombined(tm)) formSplit(side, tm, def => ({ def, dmg: 0, ki: 0, used: {}, states: {}, u: now }));
     });
     if (f.n === "Fly High" && isMizuko(tm)) return toast("Fly High: Mizuko stays (Ki, states and counters), Shōgo-Ryu goes Elsewhere with the dragon's wounds.");
@@ -319,9 +321,10 @@ document.addEventListener("click", e => {
   }
   if (d.xaddstate && tm) return xStateSheet(tg, findTM(tg, d.xaddstate)[0]);
   if (d.xaddstate) return xStateSheet(tg, findTM(tg, d.xaddstate)[0]);
-  if (d.xpick && tm) { closeSheet(); return xChange(tg, tm, () => { tm.states[d.xpick] = (tm.states[d.xpick] || 0) + 1; }); }
+  if (d.xpick && tm) { closeSheet(); const no = stateRefused(tm, d.xpick); if (no) return toast(no); return xChange(tg, tm, () => { tm.states[d.xpick] = (tm.states[d.xpick] || 0) + 1; }); }
   if (d.xchip && tm) return xChipSheet(tm, d.xchip);
   if (d.xst && tm) {
+    if (+d.d > 0) { const no = stateRefused(tm, d.xst); if (no) return toast(no); }
     xChange(tg, tm, () => { const n = (tm.states[d.xst] || 0) + +d.d; if (n <= 0) delete tm.states[d.xst]; else tm.states[d.xst] = n; });
     return tm.states[d.xst] ? xChipSheet(tm, d.xst) : closeSheet();
   }
