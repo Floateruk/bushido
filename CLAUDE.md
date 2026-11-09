@@ -42,6 +42,13 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
   - `ink.js`: sumi-e drawing for the board (brushed terrain pictures per piece, ensō objectives and token rings,
     ink filters, scroll mount and seal). Seeded by piece id so pictures stay stable between redraws.
   - `table.css`: table styles, inlined into the page's `<style>`.
+- `src/forms.js`: models that change profile card and communal Ki, shared by My lists, Testing lists and the Table.
+  Mizuko & Shōgo-Ryu (`src/cards/passing-night.js`, combined card with `forms: {mizuko, shogo}`): Fly High splits it (the model
+  keeps its id and non-wound effects as Mizuko, her own wounds kept in `mDmg` while combined; Shōgo-Ryu is added as a model
+  with `partOf`, Elsewhere, with the dragon's wounds); Eight Petal Comet flies him in (`flyIn`, the Table gives his token Flank
+  this turn and 2 activations) or rejoins; the combined model killed becomes Mizuko (`dragonGone`), Mizuko killed removes him.
+  `tSyncForms` (play.js) keeps table tokens in step (name, base, extra token). Models with `communal: true` (Okami, Ki max "*")
+  generate into and spend from the "Communion with the Dragon" card's `pool` (`kiGenerate`, `kiAvail`, `kiSpend`).
 - `src/tests.js`: Testing lists (`tests`, `test:<id>`): two warbands side by side with full cards, wounds, Ki, feats,
   states and cards (step 1); the Table setup picks a test (step 2). A test shows the table's turn, SP, VP and where each model is; "Generate Ki" runs Ki Generation by hand; an unlinked table with the same models can be linked (matched by name). Saved in `bushido-tests-v1` and synced as
   `groups/{code}/tests/{id}`, merged per model by its `u` timestamp so tablet and laptop can edit at once.

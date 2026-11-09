@@ -170,6 +170,34 @@ document.addEventListener("keydown", e => {
    test's states (shown and set on both screens). A table without a test keeps Prone/Blind on its own models. */
 const linkedTest = () => (TBL && TBL.testId && typeof findTest === "function") ? findTest(TBL.testId) : null;
 function linkedTM(m) { const tg = linkedTest(); return tg ? findTM(tg, m.id)[0] : null; }
+/* Models that change profile card in the linked test (Mizuko & Shōgo-Ryu, src/forms.js): the token takes the
+   new card's name and base (same centre, so the larger base covers the smaller), Shōgo-Ryu gets a token of his
+   own (Elsewhere, then Flank when he flies in, with 2 Activation Counters), and leaves when he rejoins. */
+function tSyncForms() {
+  const tg = linkedTest(); if (!tg) return;
+  let changed = false;
+  for (const s of ["F", "E"]) {
+    const tms = tg.sides[s].models, side = TBL.sides[s];
+    const keep = side.models.filter(m => tms.some(x => x.id === m.id));
+    if (keep.length !== side.models.length) { side.models = keep; changed = true; }
+    tms.forEach((tm, i) => {
+      let m = side.models.find(x => x.id === tm.id);
+      const fresh = modelsFromWb({ models: [tm.def] }, [tm.id])[0];
+      if (!m) {
+        m = Object.assign(fresh, { where: "elsewhere", flank: true });
+        const at = side.models.findIndex(x => x.id === tm.partOf);
+        side.models.splice(at < 0 ? side.models.length : at + 1, 0, m); changed = true;
+      } else if (m.name !== fresh.name) {
+        Object.assign(m, { name: fresh.name, card: fresh.card, size: fresh.size, base: fresh.base, r: fresh.r, ghost: fresh.ghost });
+        delete m.aware; changed = true;
+      }
+      if (tm.partOf && tm.flyIn && !m.flown && m.where === "elsewhere") {
+        Object.assign(m, { flank: true, flankTurn: TBL.play ? TBL.play.turn : 2, flankEdge: m.flankEdge || "left edge", act: 2, flown: true }); changed = true;
+      }
+    });
+  }
+  if (changed) tSave();
+}
 const isGoneT = m => { const tm = linkedTM(m); return !!tm && xGone(tm); };
 const onLastStandT = m => { const tm = linkedTM(m); return !!tm && xOnLS(tm); };
 function tFlag(m, k) {           /* k: "prone" | "blind" */

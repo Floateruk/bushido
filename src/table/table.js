@@ -505,7 +505,7 @@ function trayHTML(side) {
         ${isGoneT(m) ? "" : m.where !== "elsewhere" ? `<button class="tbtn" data-telse="${m.id}">${m.flank ? "Flank" : "Elsewhere"}</button>` : `<button class="tbtn" data-ttray="${m.id}">Back</button>`}
         ${s.vim ? `<button class="tbtn ${m.vim ? "on" : ""}" data-tvim="${m.id}" aria-pressed="${m.vim}">VIM</button>` : ""}
       </div>
-      ${m.where === "elsewhere" && m.flank ? `<div class="tflank">Arrives turn <select data-tfturn="${m.id}">${[2, 3, 4].map(n => `<option ${m.flankTurn == n ? "selected" : ""}>${n}</option>`).join("")}</select>
+      ${m.where === "elsewhere" && m.flank ? `<div class="tflank">Arrives turn <select data-tfturn="${m.id}">${[...new Set([2, 3, 4, +m.flankTurn || 2])].sort((a, b) => a - b).map(n => `<option ${m.flankTurn == n ? "selected" : ""}>${n}</option>`).join("")}</select>
         on <select data-tfedge="${m.id}">${edgesFor.map(e => `<option ${m.flankEdge === e ? "selected" : ""}>${e}</option>`).join("")}</select> <span class="muted">Hidden information</span></div>` : ""}
     </div>`).join("")}
     <div class="row"><button class="btn small" data-tauto="${side}">Deploy the rest in the zone</button></div>
@@ -663,6 +663,7 @@ function addTerrain(typeId) {
 }
 function renderTable() {
   if (TBL === undefined) { TBL = load(TBLKEY, null); tHistReset(); }
+  if (TBL) tSyncForms();
   regAllCustom();
   const v = $("tableView");
   if (!TBL) {

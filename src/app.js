@@ -188,7 +188,7 @@ if (!WB) {
     WB[id] = { ...clone(t), id, added: mine.length ? mine[0].added : now, updated: now };
     for (const g of Object.values(GAMES)) {
       if (g.wbId !== id && !(g.state.listName === t.name && (g.state.sub || "") === (t.sub || ""))) continue;
-      g.state.models.forEach(m => { const d = t.models.find(x => norm(x.name) === norm(m.def.name)); if (d) m.def = clone(d); });
+      g.state.models.forEach(m => { const d = t.models.find(x => norm(x.name) === norm(m.def.name)); if (d) m.def = clone(d); const b = m.base && t.models.find(x => norm(x.name) === norm(m.base.name)); if (b) m.base = clone(b); });
       g.state.cards.forEach(c => { const d = t.cards.find(x => norm(x.name) === norm(c.name)); if (d) { c.text = d.text; c.type = d.type; } });
       g.updated = now;
     }
@@ -236,10 +236,11 @@ function nextPhase() {
       let gained = 0;
       S.models.forEach(m => {
         for (const k in m.used) if (m.used[k] === "OpT") delete m.used[k];
-        if (alive(m)) { const b = m.ki; m.ki = Math.min(m.def.kiCap, m.ki + m.def.kiGen); gained += m.ki - b; }
+        if (alive(m)) gained += kiGenerate(m, S.cards);
         delete m.states["Run"];
       });
-      setTimeout(() => toast(`Turn ${S.turn}: +${gained} Ki generated`, true), 0);
+      const fn = formStartNotes(S);
+      setTimeout(() => toast(`Turn ${S.turn}: +${gained} Ki generated${fn.length ? ". " + fn.join(". ") : ""}`, true), 0);
     } else if (S.phase === "start") S.phase = "main";
     else if (S.phase === "main") {
       S.phase = "end";
@@ -416,10 +417,10 @@ function renderPlay() {
   $("models").innerHTML = S.models.map(m => {
     const d = fixDef(m.def), dead = !alive(m);
     const ls = onLastStand(m);
-    const pills = dead ? `<span class="pill dead">Dead</span>` : ls ? `<button class="pill ls" data-rule="Last Stand">Last Stand</button>` : d.zeroKiSlow && m.ki === 0 ? `<span class="pill slow">Slow</span>` : "";
+    const pills = formPill(m) + (dead ? `<span class="pill dead">Dead</span>` : ls ? `<button class="pill ls" data-rule="Last Stand">Last Stand</button>` : d.zeroKiSlow && m.ki === 0 ? `<span class="pill slow">Slow</span>` : "");
     const feats = d.feats.map(f => {
       const used = f.lim && m.used[f.n];
-      const can = !dead && !used && m.ki >= kiCost(f);
+      const can = !dead && !used && kiAvail(m, S.cards) >= kiCost(f) && !(f.n === "Fly High" && S.phase !== "main") && !(f.n === "Eight Petal Comet" && S.phase !== "start");
       return `<button class="feat ${used ? "used" : ""}" data-feat="${esc(f.n)}" data-m="${m.id}" ${can ? "" : "disabled"} title="${esc(f.d)}"><span class="cost">${f.c}</span>${esc(f.n)}${f.lim ? ` · ${f.lim}` : ""}</button>`;
     }).join("");
     const st = d.stats;
@@ -441,7 +442,7 @@ function renderPlay() {
     return `<article class="m ${dead ? "dead" : ""} ${ls ? "on-ls" : ""}">
       <div class="m-head"><div class="m-name">${avatar(d)}${esc(d.name)}${d.group ? "<small>Group</small>" : ""}${eqNames.length ? `<span class="m-eq">${eqNames.map(n => { const off = (m.discarded || {})[n]; return `<button class="eq-tag ${off ? "off" : ""}" data-eqtoggle="${esc(n)}" data-m="${m.id}" aria-pressed="${off ? "true" : "false"}" title="${off ? "Discarded. Tap to restore" : "Tap when discarded"}">${esc(n)}</button>`; }).join("")}</span>` : ""}</div>${pills}</div>
       <div class="track w"><span class="track-label">Wounds</span>${pips(d.w, m.dmg, "w", m.id)}<span class="track-val num"><b>${d.w - m.dmg}</b>/${d.w}</span></div>
-      ${d.kiCap > 0 ? `<div class="track k"><span class="track-label">Ki</span>${pips(d.kiCap, m.ki, "k", m.id)}<span class="track-val num"><b>${m.ki}</b> +${d.kiGen}</span></div>` : ""}
+      ${usesPool(d, S.cards) ? poolLine(d, S.cards) : d.kiCap > 0 ? `<div class="track k"><span class="track-label">Ki</span>${pips(d.kiCap, m.ki, "k", m.id)}<span class="track-val num"><b>${m.ki}</b> +${d.kiGen}</span></div>` : ""}
       <div class="states">${chipsFor(m)}${dead ? "" : `<button class="add-state" data-addstate="${m.id}">+ State</button>`}</div>
       ${feats ? `<div class="feats">${feats}</div>` : ""}
       <button class="more" data-detail="${m.id}">${openDetail.has(m.id) ? "Hide card ▴" : "Card details ▾"}</button>
@@ -449,7 +450,7 @@ function renderPlay() {
     </article>`;
   }).join("") || `<p class="note">No models loaded. Open “Games &amp; warbands” below.</p>`;
 
-  $("cards").innerHTML = S.cards.map((c, i) => `<div class="card ${c.done ? "done" : ""}"><button class="check ${c.done ? "on" : ""}" data-cardcheck="${i}" aria-label="Mark ${esc(c.name)} as resolved">${c.done ? "✓" : ""}</button><div><span class="card-type">${esc(c.type)}</span><b>${esc(c.name)}</b><p>${esc(c.text)}</p></div></div>`).join("") || `<p class="note">No event, terrain or theme cards in this list.</p>`;
+  $("cards").innerHTML = S.cards.map((c, i) => `<div class="card ${c.done ? "done" : ""}"><button class="check ${c.done ? "on" : ""}" data-cardcheck="${i}" aria-label="Mark ${esc(c.name)} as resolved">${c.done ? "✓" : ""}</button><div><span class="card-type">${esc(c.type)}</span><b>${esc(c.name)}</b><p>${esc(c.text)}</p>${communalHTML(c, "pool", i)}</div></div>`).join("") || `<p class="note">No event, terrain or theme cards in this list.</p>`;
 }
 
 function renderOpp() {
@@ -733,7 +734,9 @@ document.addEventListener("click", e => {
     const m = find(ds.m), i = +ds.i, f = ds.pip === "w" ? "dmg" : "ki";
     const next = (m[f] === i + 1) ? i : i + 1;
     if (f === "dmg" && hasLS(m) && m.dmg >= m.def.w && next < m.dmg) return toast("Last Stand: wounds can't be recovered. Use Undo to fix a mistake.");
-    mutate(() => { m[f] = next; if (f === "dmg" && next >= m.def.w && hasLS(m) && S.phase === "end") m.removed = true; });
+    let fnotes = [];
+    mutate(() => { m[f] = next; if (f === "dmg" && next >= m.def.w && hasLS(m) && S.phase === "end") m.removed = true; if (f === "dmg") fnotes = formAfterDamage(S); });
+    if (fnotes.length) return toast(fnotes.join(" "), true);
     if (f === "dmg" && next >= m.def.w && hasLS(m)) toast(S.phase === "end" ? `${m.def.name} is removed from play (Last Stand)` : `${m.def.name} is on Last Stand until the End Phase`, true);
     return;
   }
@@ -741,11 +744,21 @@ document.addEventListener("click", e => {
   if (ds.pick) { const m = find(ds.m); closeSheet(); openChip = `${m.id}:${ds.pick}`; return mutate(() => { m.states[ds.pick] = (m.states[ds.pick] || 0) + 1; }); }
   if (ds.chip) { openChip = openChip === ds.chip ? null : ds.chip; return render(); }
   if (ds.st) { const m = find(ds.m); return mutate(() => { const n = (m.states[ds.st] || 0) + +ds.d; if (n <= 0) { delete m.states[ds.st]; openChip = null; } else m.states[ds.st] = n; }); }
-  if (ds.feat) { const m = find(ds.m), f = m.def.feats.find(x => x.n === ds.feat); mutate(() => { if (!xCost(f)) m.ki -= f.c; if (f.lim) m.used[f.n] = f.lim; }); return toast(xCost(f) ? `${m.def.name}: ${f.n}. Take off the X Ki you spend on the Ki track.` : `${m.def.name}: ${f.n} (−${f.c} Ki)`, true); }
+  if (ds.feat) {
+    const m = find(ds.m), f = m.def.feats.find(x => x.n === ds.feat);
+    mutate(() => { if (!xCost(f)) kiSpend(m, S.cards, f.c); if (f.lim) m.used[f.n] = f.lim; if (f.n === "Fly High" && isCombined(m)) formSplit(S, m, newModel); });
+    if (f.n === "Fly High" && isMizuko(m)) return toast("Fly High: Mizuko stays (Ki, states and counters), Shōgo-Ryu goes Elsewhere with the dragon's wounds.", true);
+    if (f.n === "Eight Petal Comet" && m.partOf) return sheet(formSheet(m, "form")); return toast(xCost(f) ? `${m.def.name}: ${f.n}. Take off the X Ki you spend on the Ki track.` : `${m.def.name}: ${f.n} (−${f.c} Ki)`, true); }
   if (ds.detail) { openDetail.has(ds.detail) ? openDetail.delete(ds.detail) : openDetail.add(ds.detail); return render(); }
   if (ds.rule) return glossSheet(ds.rule);
   if (ds.eqtoggle) { const m = find(ds.m), n = ds.eqtoggle; let off; mutate(() => { m.discarded = m.discarded || {}; off = !m.discarded[n]; if (off) m.discarded[n] = 1; else delete m.discarded[n]; }); return toast(off ? `${n} discarded` : `${n} restored`, true); }
   if (ds.cardcheck !== undefined) return mutate(() => { S.cards[+ds.cardcheck].done = !S.cards[+ds.cardcheck].done; });
+  if (ds.form) {
+    const s = find(ds.fm); closeSheet(); if (!s) return;
+    mutate(() => { if (ds.form === "flyin") formFlyIn(s, S.turn); else formRejoin(S, s); });
+    return toast(ds.form === "flyin" ? "Shōgo-Ryu flies in this turn by Flank along a neutral edge (2 Activation Counters)." : "Mizuko & Shōgo-Ryu rejoined: the dragon's wounds are back, Mizuko's stay on her card.", true);
+  }
+  if (ds.pool) { const [i, n] = ds.pool.split(":"); return mutate(() => { const c = S.cards[+i]; c.pool = Math.max(0, (c.pool || 0) + +n); }); }
   if (ds.do === "done") return mutate(() => { S.dismissed[ds.rem] = 1; if (ds.card !== "") S.cards[+ds.card].done = true; });
   if (ds.do === "ki") { mutate(() => { S.models.forEach(m => { if (alive(m)) m.ki = Math.min(m.def.kiCap, m.ki + 1); }); S.dismissed[ds.rem] = 1; if (ds.card !== "") S.cards[+ds.card].done = true; }); return toast("All models gained 1 Ki", true); }
   if (ds.do === "enemy") return enemySheet(ds.state, ds.rem, ds.temp, ds.card);

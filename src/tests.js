@@ -81,6 +81,11 @@ function mergeTest(mine, theirs) {
     const a = mine.sides[s], b = out.sides[s];
     b.models = b.models.map(bm => { const am = a.models.find(x => x.id === bm.id); if (am && (am.u || 0) > (bm.u || 0)) { mineNewer = true; return am; } return bm; });
     b.cards = b.cards.map((bc, i) => { const ac = a.cards[i]; if (ac && (ac.u || 0) > (bc.u || 0)) { mineNewer = true; return ac; } return bc; });
+    /* models added or removed on one device (Shōgo-Ryu splitting off or rejoining Mizuko) */
+    for (const am of a.models) if (!b.models.some(x => x.id === am.id) && (am.u || 0) > (theirs.updated || 0)) {
+      const i = b.models.findIndex(x => x.id === am.partOf); b.models.splice(i < 0 ? b.models.length : i + 1, 0, am); mineNewer = true;
+    }
+    b.models = b.models.filter(bm => !(bm.partOf && !a.models.some(x => x.id === bm.id) && ((a.models.find(x => x.id === bm.partOf) || {}).u || 0) > (bm.u || 0)));
   }
   out.updated = Math.max(mine.updated || 0, theirs.updated || 0);
   return [out, mineNewer];
@@ -96,13 +101,13 @@ function testStartTurn(tg, n) {
     /* Earth Tokens (Zuo Ci's Channel) are removed in the End Phase */
     if (n > 1 && tm.states && tm.states.Earth) { delete tm.states.Earth; earth.push(xDef(tm).name); tm.u = Date.now(); }
     if (xGone(tm)) continue;
-    const d = xDef(tm);
-    tm.ki = Math.min(+d.kiCap || 0, (tm.ki || 0) + (+d.kiGen || 0));
+    kiGenerate(tm, tg.sides[s].cards);
     for (const k in tm.used || {}) if (tm.used[k] === "OpT") delete tm.used[k];
     delete tm.states.Run; delete tm.states.Blind;
     tm.u = Date.now();
   }
   if (gone.length) notes.push(`removed at the End Phase (Last Stand): ${gone.join(", ")}`);
+  for (const s of ["F", "E"]) notes.push(...formStartNotes(tg.sides[s]));
   if (earth.length) notes.push(`Earth Tokens removed (End Phase): ${earth.join(", ")}`);
   /* States to resolve in the Starting Phase (the app doesn't change them: tick them off on the cards) */
   /* The Imperial March: the opposing warband's models cannot spend Ki to remove Death Sentence */
@@ -176,25 +181,25 @@ function xPips(n, filled, kind, id) {
 function xChips(tm) {
   return Object.entries(tm.states || {}).map(([k, c]) => `<button class="chip cat-${CAT[k] || "neutral"}" data-xchip="${esc(k)}" data-xm="${tm.id}"><i></i>${esc(k)}${c > 1 ? `<span class="c num">${c}</span>` : ""}</button>`).join("");
 }
-function xModelHTML(tm) {
-  const d = fixDef(xDef(tm)), st = d.stats || {}, gone = xGone(tm), ls = xOnLS(tm), w = xW(tm), cap = +d.kiCap || 0;
+function xModelHTML(tm, side) {
+  const d = fixDef(xDef(tm)), st = d.stats || {}, gone = xGone(tm), ls = xOnLS(tm), w = xW(tm), cap = +d.kiCap || 0, cards = side.cards;
   const weapons = (d.weapons || []).filter(x => !(!x.s && /,/.test(x.n)));
   const feats = (d.feats || []).map(f => {
-    const used = f.lim && (tm.used || {})[f.n], can = !gone && !used && (tm.ki || 0) >= kiCost(f);
+    const used = f.lim && (tm.used || {})[f.n], can = !gone && !used && kiAvail(tm, cards) >= kiCost(f);
     return `<button class="feat ${used ? "used" : ""}" data-xfeat="${esc(f.n)}" data-xm="${tm.id}" ${can ? "" : "disabled"} title="${esc(f.d || "")}"><span class="cost">${f.c}</span>${esc(f.n)}${f.lim ? ` · ${f.lim}` : ""}</button>`;
   }).join("");
   const eqNames = [...weapons.filter(x => x.eq).map(x => x.n), ...(d.equip || []).map(e => e.n)];
   const open = xOpen.has(tm.id);
   return `<article class="m ${gone ? "dead" : ""} ${ls ? "on-ls" : ""}">
     <div class="m-head"><div class="m-name">${avatar(d)}${esc(d.name)}${eqNames.length ? `<span class="m-eq">${eqNames.map(n => `<span class="eq-tag">${esc(n)}</span>`).join("")}</span>` : ""}</div>
-      ${(() => { const q = tableModel(tm.id); return q && !gone ? `<span class="pill xwhere ${q.where}">${WHERE[q.where] || ""}${q.where === "table" && q.act !== undefined ? ` · ${q.act} act` : ""}</span>` : ""; })()}
+      ${(() => { const q = tableModel(tm.id); return q && !gone ? `<span class="pill xwhere ${q.where}">${WHERE[q.where] || ""}${q.where === "table" && q.act !== undefined ? ` · ${q.act} act` : ""}</span>` : formPill(tm); })()}
       ${gone ? `<span class="pill dead">Killed</span>` : ls ? `<button class="pill ls" data-rule="Last Stand">Last Stand</button>` : ""}</div>
     <div class="statline xstat">
       <div><small>Mel</small><b class="num">${stat(st.mp, st.mb)}</b></div><div><small>Rng</small><b class="num">${stat(st.rp, st.rb)}</b></div>
       <div><small>Mov</small><b class="num">${stat(st.mv, st.mvb)}</b></div><div><small>Ki</small><b class="num">${d.kiGen ?? "–"}/${d.kiCap ?? "–"}</b></div>
       <div><small>Size</small><b class="num">${esc(st.size || "–")}</b></div></div>
     <div class="track w"><span class="track-label">Wounds</span>${xPips(w, tm.dmg || 0, "w", tm.id)}<span class="track-val num"><b>${Math.max(0, w - (tm.dmg || 0))}</b>/${w}</span></div>
-    ${cap ? `<div class="track k"><span class="track-label">Ki</span>${xPips(cap, tm.ki || 0, "k", tm.id)}<span class="track-val num"><b>${tm.ki || 0}</b> <span class="muted">+${+d.kiGen || 0} each turn</span></span></div>` : ""}
+    ${usesPool(d, cards) ? poolLine(d, cards) : cap ? `<div class="track k"><span class="track-label">Ki</span>${xPips(cap, tm.ki || 0, "k", tm.id)}<span class="track-val num"><b>${tm.ki || 0}</b> <span class="muted">+${+d.kiGen || 0} each turn</span></span></div>` : ""}
     <div class="states">${xChips(tm)}${gone ? "" : `<button class="add-state" data-xaddstate="${tm.id}">+ State</button>`}</div>
     ${feats ? `<div class="feats">${feats}</div>` : ""}
     ${d.traits ? traitBlock(d.traits, "xtraits") : ""}
@@ -216,8 +221,8 @@ function renderTest(id) {
     const S = tg.sides[s], up = S.models.filter(m => !xGone(m)).length, wd = S.models.reduce((a, m) => a + Math.min(m.dmg || 0, xW(m)), 0);
     return `<section class="xside ${s}">
       <div class="xside-h"><b>${esc(S.name)}</b><span>${up} of ${S.models.length} standing · ${wd} wounds taken</span></div>
-      ${S.models.map(xModelHTML).join("")}
-      ${S.cards.length ? `<div class="sec-h"><h2>Cards</h2></div>${S.cards.map((c, i) => `<div class="card ${c.done ? "done" : ""}"><button class="check ${c.done ? "on" : ""}" data-xcard="${s}:${i}" aria-label="Mark ${esc(c.name)} as resolved">${c.done ? "✓" : ""}</button><div><span class="card-type">${esc(c.type)}</span><b>${esc(c.name)}</b><p>${esc(c.text)}</p></div></div>`).join("")}` : ""}
+      ${S.models.map(tm => xModelHTML(tm, S)).join("")}
+      ${S.cards.length ? `<div class="sec-h"><h2>Cards</h2></div>${S.cards.map((c, i) => `<div class="card ${c.done ? "done" : ""}"><button class="check ${c.done ? "on" : ""}" data-xcard="${s}:${i}" aria-label="Mark ${esc(c.name)} as resolved">${c.done ? "✓" : ""}</button><div><span class="card-type">${esc(c.type)}</span><b>${esc(c.name)}</b><p>${esc(c.text)}</p>${communalHTML(c, "xpool", s + ":" + i)}</div></div>`).join("")}` : ""}
     </section>`;
   };
   const onTable = !!(tbl() && TBL.testId === tg.id), other = !!tbl() && !onTable, canLink = other && xCanLink(tg);
@@ -273,16 +278,16 @@ document.addEventListener("click", e => {
   }
   if (d.xlink) return xLinkTable(findTest(d.xlink));
   if (d.xki) {
-    const tg = findTest(d.xki), before = {}; let gained = 0;
+    const tg = findTest(d.xki), before = {}, pools = ["F", "E"].map(sd => (communalCard(tg.sides[sd].cards) || {}).pool || 0); let gained = 0;
     for (const sd of ["F", "E"]) for (const tm of tg.sides[sd].models) {
       before[tm.id] = tm.ki || 0; if (xGone(tm)) continue;
-      const b = tm.ki || 0; tm.ki = Math.min(+xDef(tm).kiCap || 0, b + (+xDef(tm).kiGen || 0)); gained += tm.ki - b; tm.u = Date.now();
+      gained += kiGenerate(tm, tg.sides[sd].cards); tm.u = Date.now();
     }
-    xKiUndo = { id: tg.id, before }; touchTest(tg); render();
+    xKiUndo = { id: tg.id, before, pools }; touchTest(tg); render();
     return toast(`+${gained} Ki generated`, false, `<button data-xkiundo="1">Undo</button>`);
   }
   if (d.xkiundo && xKiUndo) {
-    const tg = findTest(xKiUndo.id); if (tg) { for (const sd of ["F", "E"]) for (const tm of tg.sides[sd].models) if (tm.id in xKiUndo.before) { tm.ki = xKiUndo.before[tm.id]; tm.u = Date.now(); } touchTest(tg); }
+    const tg = findTest(xKiUndo.id); if (tg) { for (const sd of ["F", "E"]) { for (const tm of tg.sides[sd].models) if (tm.id in xKiUndo.before) { tm.ki = xKiUndo.before[tm.id]; tm.u = Date.now(); } const c = communalCard(tg.sides[sd].cards); if (c) { c.pool = xKiUndo.pools[sd === "F" ? 0 : 1]; c.u = Date.now(); } } touchTest(tg); }
     xKiUndo = null; $("toastHost").innerHTML = ""; return render();
   }
   if (d.xtable) {
@@ -296,11 +301,20 @@ document.addEventListener("click", e => {
   if (d.xpip && tm) {
     const i = +d.i, f = d.xpip === "w" ? "dmg" : "ki", next = (tm[f] || 0) === i + 1 ? i : i + 1;
     if (f === "dmg" && xLS(tm) && (tm.dmg || 0) >= xW(tm) && next < tm.dmg) return toast("Last Stand: wounds can't be recovered.");
-    return xChange(tg, tm, () => { tm[f] = next; if (f === "dmg" && next < xW(tm)) tm.removed = false; });
+    let fnotes = [];
+    xChange(tg, tm, () => { tm[f] = next; if (f === "dmg" && next < xW(tm)) tm.removed = false; if (f === "dmg") { const sd = findTM(tg, tm.id)[1]; fnotes = formAfterDamage(tg.sides[sd]); fnotes.length && touchTest(tg); } });
+    return fnotes.length ? toast(fnotes.join(" ")) : undefined;
   }
   if (d.xfeat && tm) {
     const f = (tm.def.feats || []).find(x => x.n === d.xfeat); if (!f) return;
-    xChange(tg, tm, () => { if (!xCost(f)) tm.ki = Math.max(0, (tm.ki || 0) - f.c); if (f.lim) { tm.used = tm.used || {}; tm.used[f.n] = f.lim; } });
+    const side = tg.sides[findTM(tg, tm.id)[1]], now = Date.now();
+    xChange(tg, tm, () => {
+      if (!xCost(f)) kiSpend(tm, side.cards, f.c);
+      if (f.lim) { tm.used = tm.used || {}; tm.used[f.n] = f.lim; }
+      if (f.n === "Fly High" && isCombined(tm)) formSplit(side, tm, def => ({ def, dmg: 0, ki: 0, used: {}, states: {}, u: now }));
+    });
+    if (f.n === "Fly High" && isMizuko(tm)) return toast("Fly High: Mizuko stays (Ki, states and counters), Shōgo-Ryu goes Elsewhere with the dragon's wounds.");
+    if (f.n === "Eight Petal Comet" && tm.partOf) return sheet(formSheet(tm, "xform"));
     return toast(xCost(f) ? `${tm.def.name}: ${f.n}. Take off the X Ki you spend on the Ki track.` : `${tm.def.name}: ${f.n} (−${f.c} Ki)`);
   }
   if (d.xaddstate && tm) return xStateSheet(tg, findTM(tg, d.xaddstate)[0]);
@@ -312,6 +326,12 @@ document.addEventListener("click", e => {
     return tm.states[d.xst] ? xChipSheet(tm, d.xst) : closeSheet();
   }
   if (d.xdetail) { xOpen.has(d.xdetail) ? xOpen.delete(d.xdetail) : xOpen.add(d.xdetail); return render(); }
+  if (d.xform) {
+    closeSheet(); const [s, sd] = findTM(tg, d.fm); if (!s) return;
+    xChange(tg, s, () => { if (d.xform === "flyin") formFlyIn(s, (tbl() && TBL.testId === tg.id && TBL.play && TBL.play.turn) || true); else { const m = formRejoin(tg.sides[sd], s); if (m) m.u = Date.now(); } });
+    return toast(d.xform === "flyin" ? "Shōgo-Ryu flies in this turn by Flank along a neutral edge (2 Activation Counters)." : "Mizuko & Shōgo-Ryu rejoined: the dragon's wounds are back, Mizuko's stay on her card.");
+  }
+  if (d.xpool) { const [s, i, n] = d.xpool.split(":"), c = tg.sides[s].cards[+i]; c.pool = Math.max(0, (c.pool || 0) + +n); c.u = Date.now(); touchTest(tg); return render(); }
   if (d.xcard) { const [s, i] = d.xcard.split(":"), c = tg.sides[s].cards[+i]; c.done = !c.done; c.u = Date.now(); touchTest(tg); return render(); }
 });
 document.addEventListener("change", async e => {
