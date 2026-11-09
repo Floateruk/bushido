@@ -117,7 +117,7 @@ function themeDef(d, m, cards) {
   if (sp >= 0) tr[sp] = tr[sp].replace(/(-?\d+)/, n => String(+n + 1)); else tr.push("Spirit (1)");
   o.traits = tr.map(t => t.trim()).join(", ");
   o.immune = [...new Set([...(o.immune || []), "Frightened"])];
-  o.stats = { ...o.stats, mb: String(Math.max(+(o.stats && o.stats.mb) || 0, 2)) };
+  o.stats = { ...o.stats, mb: "2" }; /* no Shame: Melee Boost 2 (the printed 3 is the Shamed card) */
   o.weapons = (o.weapons || []).map(w => w.range ? w : { ...w, s: (n => (n >= 0 ? "+" : "") + n)((parseInt(w.s, 10) || 0) + 1) });
   o.zeroKiSlow = false;
   o.ptn = true;
@@ -127,7 +127,7 @@ function themeLine(d, m, cards) {
   if (!ptnModel(d, cards)) return "";
   return ((m && m.states) || {}).Shame
     ? `<p class="theme-line shamed">Shame: no Passing the Night benefits until it is removed.</p>`
-    : `<p class="theme-line">Passing the Night, no Shame: Fearless, Melee Boost 2, Spirit +1, +1 melee weapon strength, not Slow (shown on the card).</p>`;
+    : `<p class="theme-line">Passing the Night, no Shame: Fearless, Melee Boost 2 (3 when Shamed), Spirit +1, +1 melee weapon strength, not Slow (shown on the card).</p>`;
 }
 /* Adding a state: Shame is capped at one token (Ton any number). Returns a message when refused. */
 function stateRefused(m, k, cards) {
