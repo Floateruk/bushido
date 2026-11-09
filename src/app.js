@@ -324,7 +324,7 @@ function glossKey(token) {
 }
 const ruleList = s => BP.splitTop(s).map(tok => { const k = glossKey(tok); return k ? `<button class="rule" data-rule="${esc(k)}">${esc(tok)}</button>` : esc(tok); }).join(", ");
 /* Traits used while resolving a Melee Exchange (defences, dice and damage modifiers, special attacks and defences), shown first and apart from the rest */
-const MELEE_TRAITS = new Set(["parry","dodge","prowess","indomitable","feint","impenetrable defence","counterstrike defence","brutal","strong","weak","pierce","powerful attack","combo attack","armour","tough","durable","reach","slow","lightning reflexes","kata","co-ordinated attack","coordinated attack","defensive","aggressive","chain weapon","sharp","endurance","tireless","unblockable","forceback attack","push attack","push defence","sidestep attack","sidestep defence","slam attack","sweep attack","sweep defence","split attack","stun attack","bear stands alone"]);
+const MELEE_TRAITS = new Set(["parry","dodge","prowess","indomitable","feint","impenetrable defence","counterstrike defence","brutal","strong","weak","pierce","powerful attack","combo attack","armour","tough","durable","reach","slow","lightning reflexes","kata","co-ordinated attack","coordinated attack","defensive","aggressive","chain weapon","sharp","endurance","tireless","unblockable","forceback attack","push attack","push defence","sidestep attack","sidestep defence","slam attack","sweep attack","sweep defence","split attack","stun attack","bear stands alone","vengeance"]);
 const meleeTrait = tok => { const t = tok.replace(/\[.*?\]|\(.*?\)|:.*$/g, "").trim().toLowerCase().replace(/\s+/g, " "); return MELEE_TRAITS.has(t) || [...MELEE_TRAITS].some(n => t.startsWith(n + " ")); };
 /* Corrections for card data that lost its brackets and numbers when it was read from a list PDF (checked against the printed cards).
    Applied in place whenever a model is drawn, so existing lists, games and tests on a device are repaired too. */
@@ -416,7 +416,7 @@ function renderPlay() {
   $("woundTotal").textContent = `${S.models.reduce((a, m) => a + m.dmg, 0)} wounds taken`;
 
   $("models").innerHTML = S.models.map(m => {
-    const d = themeDef(fixDef(m.def), m, S.cards), dead = !alive(m);
+    const bst = bannerState(m, S.models, false), d = bannerDef(themeDef(fixDef(m.def), m, S.cards), bst), dead = !alive(m);
     const ls = onLastStand(m);
     const pills = formPill(m) + (dead ? `<span class="pill dead">Dead</span>` : ls ? `<button class="pill ls" data-rule="Last Stand">Last Stand</button>` : d.zeroKiSlow && m.ki === 0 ? `<span class="pill slow">Slow</span>` : "");
     const feats = d.feats.map(f => {
@@ -445,6 +445,7 @@ function renderPlay() {
       <div class="track w"><span class="track-label">Wounds</span>${pips(d.w, m.dmg, "w", m.id)}<span class="track-val num"><b>${d.w - m.dmg}</b>/${d.w}</span></div>
       ${usesPool(d, S.cards) ? poolLine(d, S.cards) : d.kiCap > 0 ? `<div class="track k"><span class="track-label">Ki</span>${pips(d.kiCap, m.ki, "k", m.id)}<span class="track-val num"><b>${m.ki}</b> +${d.kiGen}</span></div>` : ""}
       ${themeLine(d, m, S.cards)}
+      ${dead ? "" : bannerLine(bst, "banner", m.id)}
       <div class="states">${chipsFor(m)}${dead ? "" : `<button class="add-state" data-addstate="${m.id}">+ State</button>`}</div>
       ${feats ? `<div class="feats">${feats}</div>` : ""}
       <button class="more" data-detail="${m.id}">${openDetail.has(m.id) ? "Hide card ▴" : "Card details ▾"}</button>
@@ -743,6 +744,7 @@ document.addEventListener("click", e => {
     return;
   }
   if (ds.addstate) return stateSheet(ds.addstate);
+  if (ds.banner) { const m = find(ds.banner); return mutate(() => { m.banner = !m.banner; }); }
   if (ds.pick) { const m = find(ds.m); closeSheet(); const no = stateRefused(m, ds.pick); if (no) return toast(no); openChip = `${m.id}:${ds.pick}`; return mutate(() => { m.states[ds.pick] = (m.states[ds.pick] || 0) + 1; }); }
   if (ds.chip) { openChip = openChip === ds.chip ? null : ds.chip; return render(); }
   if (ds.st) { const m = find(ds.m); if (+ds.d > 0) { const no = stateRefused(m, ds.st); if (no) return toast(no); } return mutate(() => { const n = (m.states[ds.st] || 0) + +ds.d; if (n <= 0) { delete m.states[ds.st]; openChip = null; } else m.states[ds.st] = n; }); }

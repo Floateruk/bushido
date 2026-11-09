@@ -282,6 +282,9 @@ textarea{width:100%;min-height:220px;font:13px/1.4 ui-monospace,Menlo,Consolas,m
 .form-choice small{font-weight:400;opacity:.8;margin-top:2px}
 .theme-line{font-size:12.5px;margin:6px 0 2px;padding:5px 8px;border-radius:6px;background:color-mix(in srgb,var(--ki) 12%,transparent)}
 .theme-line.shamed{background:color-mix(in srgb,var(--harm) 14%,transparent)}
+.banner-line{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:12.5px;margin:6px 0 2px;padding:5px 8px;border-radius:6px;border:1px dashed color-mix(in srgb,var(--ki) 40%,transparent)}
+.banner-line.on{border-style:solid;background:color-mix(in srgb,var(--ki) 12%,transparent)}
+.banner-line>span{flex:1 1 220px}
 /* ---------- Hub ---------- */
 .hub{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:18px}
 .hub-tile{display:grid;gap:6px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;min-height:120px;align-content:start}
@@ -2954,6 +2957,41 @@ function stateRefused(m, k, cards) {
 const shameFeat = f => /^Remove (one|a) Shame Token from this model/i.test((f && f.d) || "");
 function useShameFeat(m, f) { if (!shameFeat(f) || !(m.states || {}).Shame) return; if (--m.states.Shame <= 0) delete m.states.Shame; }
 
+/* ---------- The Dragon Banner (Takashi Hida's equipment) ----------
+   "While this model is within 6" of any Enemy model, any Friendly Ashigaru or Samurai model with LoS to this
+   model gains Vengeance [Enemy models with RC > 10]. For this ability this model is Medium Sized and Friendly
+   models have Aware." Each Samurai/Ashigaru card gets a "Sees the banner" switch; on a Table made from a test
+   both conditions are worked out from the board (`bannerTable` in tests.js). Vengeance [X]: melee weapons gain
+   Brutal (+1) and +1 Melee Strength in a melee exchange against an X model. */
+const BANNER = "the dragon banner";
+const BANNER_TRAIT = "Vengeance [Enemy models with RC > 10]";
+const bannerModel = d => ((d && d.types) || []).some(t => /^(samurai|ashigaru)$/i.test(t));
+function bannerBearer(models) {
+  return (models || []).find(x => x.def && (x.def.equip || []).some(e => norm(e.n) === BANNER) && !(x.discarded || {})["The Dragon Banner"] && !formDead(x));
+}
+/* {on, auto, why} for model m among its side's models, or null when the banner doesn't apply to it */
+function bannerState(m, models, useTable) {
+  const b = bannerBearer(models);
+  if (!b || b === m || !bannerModel(m.def) || formDead(m)) return null;
+  const t = useTable && typeof bannerTable === "function" ? bannerTable(m.id, b.id) : null;
+  return t || { on: !!m.banner, auto: false, bearer: b.def.name };
+}
+function bannerDef(d, st) {
+  if (!st || !st.on || (d.traits || "").includes(BANNER_TRAIT)) return d;
+  const o = JSON.parse(JSON.stringify(d));
+  o.traits = [o.traits, BANNER_TRAIT].filter(Boolean).join(", ");
+  return o;
+}
+/* The line on the card; attr is the data attribute the screen listens for; foes are qualifying enemy names */
+function bannerLine(st, attr, id, foes) {
+  if (!st) return "";
+  const who = foes && foes.length ? ` (${foes.map(esc).join(", ")})` : "";
+  const what = st.on ? `<b>Vengeance</b> against enemies over 10 rice${who}: melee weapons +1 strength and Brutal (+1).` : "No Vengeance from the banner.";
+  const ctl = st.auto ? `<span class="muted">From the table: ${esc(st.why)}</span>`
+    : `<button class="btn small ${st.on ? "primary" : ""}" data-${attr}="${id}" aria-pressed="${st.on}" title="Hida within 6&quot; of an enemy and this model can see him (he counts as Medium, and this model has Aware for it)">${st.on ? "✓ Sees the banner" : "Sees the banner?"}</button>`;
+  return `<div class="banner-line ${st.on ? "on" : ""}"><span>Dragon Banner: ${what}</span>${ctl}</div>`;
+}
+
 /* ---------- Testing lists: two warbands side by side with every stat, wounds, Ki, feats and states ----------
    Step 1 of the testing flow: import or pick two lists here. Step 2: the Table picks this test in its setup,
    and its models are linked to these (same ids). Wounds, Ki and states live here; position, facing,
@@ -3137,8 +3175,30 @@ function xPips(n, filled, kind, id) {
 function xChips(tm) {
   return Object.entries(tm.states || {}).map(([k, c]) => `<button class="chip cat-${CAT[k] || "neutral"}" data-xchip="${esc(k)}" data-xm="${tm.id}"><i></i>${esc(k)}${c > 1 ? `<span class="c num">${c}</span>` : ""}</button>`).join("");
 }
+/* The Dragon Banner on a Table made from this test: Hida within 6" of an enemy (edge to edge) and LoS from the
+   model to him, with Hida counted as Medium and the model as Aware. null when either isn't on the table. */
+function bannerTable(mid, bid) {
+  const t = tbl(); if (!t || !t.testId || typeof losCheck !== "function" || TBL !== t) return null;
+  const tg = curTest(); if (!tg || tg.id !== t.testId) return null;
+  const on = id => { for (const s of ["F", "E"]) { const q = t.sides[s].models.find(x => x.id === id); if (q) return [q, s]; } return [null, null]; };
+  const [a, sa] = on(mid), [b, sb] = on(bid);
+  if (!a || !b || a.where !== "table" || b.where !== "table") return null;
+  const near = t.sides[sb === "F" ? "E" : "F"].models.some(e => e.where === "table" && !isGoneT(e) && dist(e, b) - e.r - b.r <= 6 + 1e-6);
+  if (!near) return { on: false, auto: true, why: "Hida isn't within 6\" of an enemy" };
+  const size = b.size, aware = a.aware;
+  if ((SIZE_RANK[b.size] || 2) < SIZE_RANK.Medium) b.size = "Medium";
+  a.aware = true;
+  let r; try { r = losCheck(a, sa, b, sb); } finally { b.size = size; a.aware = aware; }
+  return { on: r.los, auto: true, why: r.los ? "Hida is within 6\" of an enemy and in sight" : losText(r) };
+}
+/* Enemy models in this test costing more than 10 rice (the banner's Vengeance targets) */
+function bannerFoes(tm) {
+  const tg = curTest(); if (!tg) return null;
+  const s = findTM(tg, tm.id)[1]; if (!s) return null;
+  return tg.sides[s === "F" ? "E" : "F"].models.filter(x => !xGone(x) && +xDef(x).rice > 10).map(x => xDef(x).name);
+}
 function xModelHTML(tm, side) {
-  const cards = side.cards, d = themeDef(fixDef(xDef(tm)), tm, cards), st = d.stats || {}, gone = xGone(tm), ls = xOnLS(tm), w = xW(tm), cap = +d.kiCap || 0;
+  const cards = side.cards, bst = bannerState(tm, side.models, true), d = bannerDef(themeDef(fixDef(xDef(tm)), tm, cards), bst), st = d.stats || {}, gone = xGone(tm), ls = xOnLS(tm), w = xW(tm), cap = +d.kiCap || 0;
   const weapons = (d.weapons || []).filter(x => !(!x.s && /,/.test(x.n)));
   const feats = (d.feats || []).map(f => {
     const used = f.lim && (tm.used || {})[f.n], can = !gone && !used && kiAvail(tm, cards) >= kiCost(f) && !(shameFeat(f) && !(tm.states || {}).Shame);
@@ -3157,6 +3217,7 @@ function xModelHTML(tm, side) {
     <div class="track w"><span class="track-label">Wounds</span>${xPips(w, tm.dmg || 0, "w", tm.id)}<span class="track-val num"><b>${Math.max(0, w - (tm.dmg || 0))}</b>/${w}</span></div>
     ${usesPool(d, cards) ? poolLine(d, cards) : cap ? `<div class="track k"><span class="track-label">Ki</span>${xPips(cap, tm.ki || 0, "k", tm.id)}<span class="track-val num"><b>${tm.ki || 0}</b> <span class="muted">+${+d.kiGen || 0} each turn</span></span></div>` : ""}
     ${themeLine(d, tm, cards)}
+    ${gone ? "" : bannerLine(bst, "xbanner", tm.id, bst && bst.on ? bannerFoes(tm) : null)}
     <div class="states">${xChips(tm)}${gone ? "" : `<button class="add-state" data-xaddstate="${tm.id}">+ State</button>`}</div>
     ${feats ? `<div class="feats">${feats}</div>` : ""}
     ${d.traits ? traitBlock(d.traits, "xtraits") : ""}
@@ -3275,6 +3336,7 @@ document.addEventListener("click", e => {
     if (f.n === "Eight Petal Comet" && tm.partOf) return sheet(formSheet(tm, "xform"));
     return toast(xCost(f) ? `${tm.def.name}: ${f.n}. Take off the X Ki you spend on the Ki track.` : `${tm.def.name}: ${f.n} (−${f.c} Ki)`);
   }
+  if (d.xbanner) { const [bm] = findTM(tg, d.xbanner); if (bm) return xChange(tg, bm, () => { bm.banner = !bm.banner; }); }
   if (d.xaddstate && tm) return xStateSheet(tg, findTM(tg, d.xaddstate)[0]);
   if (d.xaddstate) return xStateSheet(tg, findTM(tg, d.xaddstate)[0]);
   if (d.xpick && tm) { closeSheet(); const no = stateRefused(tm, d.xpick); if (no) return toast(no); return xChange(tg, tm, () => { tm.states[d.xpick] = (tm.states[d.xpick] || 0) + 1; }); }
@@ -3641,7 +3703,7 @@ function glossKey(token) {
 }
 const ruleList = s => BP.splitTop(s).map(tok => { const k = glossKey(tok); return k ? `<button class="rule" data-rule="${esc(k)}">${esc(tok)}</button>` : esc(tok); }).join(", ");
 /* Traits used while resolving a Melee Exchange (defences, dice and damage modifiers, special attacks and defences), shown first and apart from the rest */
-const MELEE_TRAITS = new Set(["parry","dodge","prowess","indomitable","feint","impenetrable defence","counterstrike defence","brutal","strong","weak","pierce","powerful attack","combo attack","armour","tough","durable","reach","slow","lightning reflexes","kata","co-ordinated attack","coordinated attack","defensive","aggressive","chain weapon","sharp","endurance","tireless","unblockable","forceback attack","push attack","push defence","sidestep attack","sidestep defence","slam attack","sweep attack","sweep defence","split attack","stun attack","bear stands alone"]);
+const MELEE_TRAITS = new Set(["parry","dodge","prowess","indomitable","feint","impenetrable defence","counterstrike defence","brutal","strong","weak","pierce","powerful attack","combo attack","armour","tough","durable","reach","slow","lightning reflexes","kata","co-ordinated attack","coordinated attack","defensive","aggressive","chain weapon","sharp","endurance","tireless","unblockable","forceback attack","push attack","push defence","sidestep attack","sidestep defence","slam attack","sweep attack","sweep defence","split attack","stun attack","bear stands alone","vengeance"]);
 const meleeTrait = tok => { const t = tok.replace(/\[.*?\]|\(.*?\)|:.*$/g, "").trim().toLowerCase().replace(/\s+/g, " "); return MELEE_TRAITS.has(t) || [...MELEE_TRAITS].some(n => t.startsWith(n + " ")); };
 /* Corrections for card data that lost its brackets and numbers when it was read from a list PDF (checked against the printed cards).
    Applied in place whenever a model is drawn, so existing lists, games and tests on a device are repaired too. */
@@ -3733,7 +3795,7 @@ function renderPlay() {
   $("woundTotal").textContent = `${S.models.reduce((a, m) => a + m.dmg, 0)} wounds taken`;
 
   $("models").innerHTML = S.models.map(m => {
-    const d = themeDef(fixDef(m.def), m, S.cards), dead = !alive(m);
+    const bst = bannerState(m, S.models, false), d = bannerDef(themeDef(fixDef(m.def), m, S.cards), bst), dead = !alive(m);
     const ls = onLastStand(m);
     const pills = formPill(m) + (dead ? `<span class="pill dead">Dead</span>` : ls ? `<button class="pill ls" data-rule="Last Stand">Last Stand</button>` : d.zeroKiSlow && m.ki === 0 ? `<span class="pill slow">Slow</span>` : "");
     const feats = d.feats.map(f => {
@@ -3762,6 +3824,7 @@ function renderPlay() {
       <div class="track w"><span class="track-label">Wounds</span>${pips(d.w, m.dmg, "w", m.id)}<span class="track-val num"><b>${d.w - m.dmg}</b>/${d.w}</span></div>
       ${usesPool(d, S.cards) ? poolLine(d, S.cards) : d.kiCap > 0 ? `<div class="track k"><span class="track-label">Ki</span>${pips(d.kiCap, m.ki, "k", m.id)}<span class="track-val num"><b>${m.ki}</b> +${d.kiGen}</span></div>` : ""}
       ${themeLine(d, m, S.cards)}
+      ${dead ? "" : bannerLine(bst, "banner", m.id)}
       <div class="states">${chipsFor(m)}${dead ? "" : `<button class="add-state" data-addstate="${m.id}">+ State</button>`}</div>
       ${feats ? `<div class="feats">${feats}</div>` : ""}
       <button class="more" data-detail="${m.id}">${openDetail.has(m.id) ? "Hide card ▴" : "Card details ▾"}</button>
@@ -4060,6 +4123,7 @@ document.addEventListener("click", e => {
     return;
   }
   if (ds.addstate) return stateSheet(ds.addstate);
+  if (ds.banner) { const m = find(ds.banner); return mutate(() => { m.banner = !m.banner; }); }
   if (ds.pick) { const m = find(ds.m); closeSheet(); const no = stateRefused(m, ds.pick); if (no) return toast(no); openChip = `${m.id}:${ds.pick}`; return mutate(() => { m.states[ds.pick] = (m.states[ds.pick] || 0) + 1; }); }
   if (ds.chip) { openChip = openChip === ds.chip ? null : ds.chip; return render(); }
   if (ds.st) { const m = find(ds.m); if (+ds.d > 0) { const no = stateRefused(m, ds.st); if (no) return toast(no); } return mutate(() => { const n = (m.states[ds.st] || 0) + +ds.d; if (n <= 0) { delete m.states[ds.st]; openChip = null; } else m.states[ds.st] = n; }); }

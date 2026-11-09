@@ -181,8 +181,30 @@ function xPips(n, filled, kind, id) {
 function xChips(tm) {
   return Object.entries(tm.states || {}).map(([k, c]) => `<button class="chip cat-${CAT[k] || "neutral"}" data-xchip="${esc(k)}" data-xm="${tm.id}"><i></i>${esc(k)}${c > 1 ? `<span class="c num">${c}</span>` : ""}</button>`).join("");
 }
+/* The Dragon Banner on a Table made from this test: Hida within 6" of an enemy (edge to edge) and LoS from the
+   model to him, with Hida counted as Medium and the model as Aware. null when either isn't on the table. */
+function bannerTable(mid, bid) {
+  const t = tbl(); if (!t || !t.testId || typeof losCheck !== "function" || TBL !== t) return null;
+  const tg = curTest(); if (!tg || tg.id !== t.testId) return null;
+  const on = id => { for (const s of ["F", "E"]) { const q = t.sides[s].models.find(x => x.id === id); if (q) return [q, s]; } return [null, null]; };
+  const [a, sa] = on(mid), [b, sb] = on(bid);
+  if (!a || !b || a.where !== "table" || b.where !== "table") return null;
+  const near = t.sides[sb === "F" ? "E" : "F"].models.some(e => e.where === "table" && !isGoneT(e) && dist(e, b) - e.r - b.r <= 6 + 1e-6);
+  if (!near) return { on: false, auto: true, why: "Hida isn't within 6\" of an enemy" };
+  const size = b.size, aware = a.aware;
+  if ((SIZE_RANK[b.size] || 2) < SIZE_RANK.Medium) b.size = "Medium";
+  a.aware = true;
+  let r; try { r = losCheck(a, sa, b, sb); } finally { b.size = size; a.aware = aware; }
+  return { on: r.los, auto: true, why: r.los ? "Hida is within 6\" of an enemy and in sight" : losText(r) };
+}
+/* Enemy models in this test costing more than 10 rice (the banner's Vengeance targets) */
+function bannerFoes(tm) {
+  const tg = curTest(); if (!tg) return null;
+  const s = findTM(tg, tm.id)[1]; if (!s) return null;
+  return tg.sides[s === "F" ? "E" : "F"].models.filter(x => !xGone(x) && +xDef(x).rice > 10).map(x => xDef(x).name);
+}
 function xModelHTML(tm, side) {
-  const cards = side.cards, d = themeDef(fixDef(xDef(tm)), tm, cards), st = d.stats || {}, gone = xGone(tm), ls = xOnLS(tm), w = xW(tm), cap = +d.kiCap || 0;
+  const cards = side.cards, bst = bannerState(tm, side.models, true), d = bannerDef(themeDef(fixDef(xDef(tm)), tm, cards), bst), st = d.stats || {}, gone = xGone(tm), ls = xOnLS(tm), w = xW(tm), cap = +d.kiCap || 0;
   const weapons = (d.weapons || []).filter(x => !(!x.s && /,/.test(x.n)));
   const feats = (d.feats || []).map(f => {
     const used = f.lim && (tm.used || {})[f.n], can = !gone && !used && kiAvail(tm, cards) >= kiCost(f) && !(shameFeat(f) && !(tm.states || {}).Shame);
@@ -201,6 +223,7 @@ function xModelHTML(tm, side) {
     <div class="track w"><span class="track-label">Wounds</span>${xPips(w, tm.dmg || 0, "w", tm.id)}<span class="track-val num"><b>${Math.max(0, w - (tm.dmg || 0))}</b>/${w}</span></div>
     ${usesPool(d, cards) ? poolLine(d, cards) : cap ? `<div class="track k"><span class="track-label">Ki</span>${xPips(cap, tm.ki || 0, "k", tm.id)}<span class="track-val num"><b>${tm.ki || 0}</b> <span class="muted">+${+d.kiGen || 0} each turn</span></span></div>` : ""}
     ${themeLine(d, tm, cards)}
+    ${gone ? "" : bannerLine(bst, "xbanner", tm.id, bst && bst.on ? bannerFoes(tm) : null)}
     <div class="states">${xChips(tm)}${gone ? "" : `<button class="add-state" data-xaddstate="${tm.id}">+ State</button>`}</div>
     ${feats ? `<div class="feats">${feats}</div>` : ""}
     ${d.traits ? traitBlock(d.traits, "xtraits") : ""}
@@ -319,6 +342,7 @@ document.addEventListener("click", e => {
     if (f.n === "Eight Petal Comet" && tm.partOf) return sheet(formSheet(tm, "xform"));
     return toast(xCost(f) ? `${tm.def.name}: ${f.n}. Take off the X Ki you spend on the Ki track.` : `${tm.def.name}: ${f.n} (−${f.c} Ki)`);
   }
+  if (d.xbanner) { const [bm] = findTM(tg, d.xbanner); if (bm) return xChange(tg, bm, () => { bm.banner = !bm.banner; }); }
   if (d.xaddstate && tm) return xStateSheet(tg, findTM(tg, d.xaddstate)[0]);
   if (d.xaddstate) return xStateSheet(tg, findTM(tg, d.xaddstate)[0]);
   if (d.xpick && tm) { closeSheet(); const no = stateRefused(tm, d.xpick); if (no) return toast(no); return xChange(tg, tm, () => { tm.states[d.xpick] = (tm.states[d.xpick] || 0) + 1; }); }

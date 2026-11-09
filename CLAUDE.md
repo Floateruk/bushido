@@ -52,6 +52,9 @@ Pushing to `main` publishes it to https://floateruk.github.io/bushido/ within a 
   Passing the Night: "Shame" is a state only in warbands with that theme (`stateList`), one per model except Ton (`stateRefused`);
   a Samurai or Shisai (`types` on the card) without Shame is shown with the theme's benefits applied (`themeDef`, `themeLine`:
   Fearless, Melee Boost 2, Spirit +1, +1 melee strength, no Slow); feats that remove a Shame Token need one and remove it (`shameFeat`).
+  The Dragon Banner (Hida's equipment): Samurai/Ashigaru cards get a "Sees the banner" switch (`bannerState`, `bannerDef`, `bannerLine`)
+  that adds Vengeance [Enemy models with RC > 10]; on a Table made from the test it is worked out from the board instead
+  (`bannerTable` in tests.js: Hida within 6" of an enemy, LoS with Hida as Medium and the model Aware).
 - `src/tests.js`: Testing lists (`tests`, `test:<id>`): two warbands side by side with full cards, wounds, Ki, feats,
   states and cards (step 1); the Table setup picks a test (step 2). A test shows the table's turn, SP, VP and where each model is; "Generate Ki" runs Ki Generation by hand; an unlinked table with the same models can be linked (matched by name). Saved in `bushido-tests-v1` and synced as
   `groups/{code}/tests/{id}`, merged per model by its `u` timestamp so tablet and laptop can edit at once.

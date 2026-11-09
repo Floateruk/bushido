@@ -138,3 +138,38 @@ function stateRefused(m, k, cards) {
    Shame, and using one removes the token (so the theme's benefits come back on the card) */
 const shameFeat = f => /^Remove (one|a) Shame Token from this model/i.test((f && f.d) || "");
 function useShameFeat(m, f) { if (!shameFeat(f) || !(m.states || {}).Shame) return; if (--m.states.Shame <= 0) delete m.states.Shame; }
+
+/* ---------- The Dragon Banner (Takashi Hida's equipment) ----------
+   "While this model is within 6" of any Enemy model, any Friendly Ashigaru or Samurai model with LoS to this
+   model gains Vengeance [Enemy models with RC > 10]. For this ability this model is Medium Sized and Friendly
+   models have Aware." Each Samurai/Ashigaru card gets a "Sees the banner" switch; on a Table made from a test
+   both conditions are worked out from the board (`bannerTable` in tests.js). Vengeance [X]: melee weapons gain
+   Brutal (+1) and +1 Melee Strength in a melee exchange against an X model. */
+const BANNER = "the dragon banner";
+const BANNER_TRAIT = "Vengeance [Enemy models with RC > 10]";
+const bannerModel = d => ((d && d.types) || []).some(t => /^(samurai|ashigaru)$/i.test(t));
+function bannerBearer(models) {
+  return (models || []).find(x => x.def && (x.def.equip || []).some(e => norm(e.n) === BANNER) && !(x.discarded || {})["The Dragon Banner"] && !formDead(x));
+}
+/* {on, auto, why} for model m among its side's models, or null when the banner doesn't apply to it */
+function bannerState(m, models, useTable) {
+  const b = bannerBearer(models);
+  if (!b || b === m || !bannerModel(m.def) || formDead(m)) return null;
+  const t = useTable && typeof bannerTable === "function" ? bannerTable(m.id, b.id) : null;
+  return t || { on: !!m.banner, auto: false, bearer: b.def.name };
+}
+function bannerDef(d, st) {
+  if (!st || !st.on || (d.traits || "").includes(BANNER_TRAIT)) return d;
+  const o = JSON.parse(JSON.stringify(d));
+  o.traits = [o.traits, BANNER_TRAIT].filter(Boolean).join(", ");
+  return o;
+}
+/* The line on the card; attr is the data attribute the screen listens for; foes are qualifying enemy names */
+function bannerLine(st, attr, id, foes) {
+  if (!st) return "";
+  const who = foes && foes.length ? ` (${foes.map(esc).join(", ")})` : "";
+  const what = st.on ? `<b>Vengeance</b> against enemies over 10 rice${who}: melee weapons +1 strength and Brutal (+1).` : "No Vengeance from the banner.";
+  const ctl = st.auto ? `<span class="muted">From the table: ${esc(st.why)}</span>`
+    : `<button class="btn small ${st.on ? "primary" : ""}" data-${attr}="${id}" aria-pressed="${st.on}" title="Hida within 6&quot; of an enemy and this model can see him (he counts as Medium, and this model has Aware for it)">${st.on ? "✓ Sees the banner" : "Sees the banner?"}</button>`;
+  return `<div class="banner-line ${st.on ? "on" : ""}"><span>Dragon Banner: ${what}</span>${ctl}</div>`;
+}
