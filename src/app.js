@@ -402,6 +402,7 @@ function renderPlay() {
   $("next").textContent = S.phase === "deploy" ? "Start turn 1" : S.phase === "start" ? "Main phase ▸" : S.phase === "main" ? "End phase ▸" : `Turn ${S.turn + 1} ▸`;
   $("vp").textContent = S.vp; $("sp").textContent = S.sp;
   $("undo").disabled = !undoStack.length;
+  { const all = S.models.length && S.models.every(m => openDetail.has(m.id)); $("allcards").firstElementChild.textContent = all ? "Hide cards" : "Expand cards"; }
 
   $("reminders").innerHTML = reminders().map(r => {
     const btn = r.action && r.action.kind === "ki" ? `<button class="act" data-rem="${r.key}" data-do="ki" data-card="${r.card ?? ""}">+1 Ki all</button>`
@@ -662,6 +663,7 @@ document.addEventListener("click", e => {
   if (ds.close && e.target === t) return closeSheet();
   if (t.id === "next") return nextPhase();
   if (t.id === "undo" || ds.undo) return undo();
+  if (t.id === "allcards") { const all = S.models.every(m => openDetail.has(m.id)); S.models.forEach(m => all ? openDetail.delete(m.id) : openDetail.add(m.id)); return render(); }
   if (ds.lundo !== undefined) return doListUndo();
   if (!ds.sdel) sheetConfirm = null;
   if (t.id !== "endGame") disarmEnd();

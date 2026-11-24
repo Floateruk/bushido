@@ -669,6 +669,7 @@ body.test-mode .xside{height:100%;overflow-y:auto;overscroll-behavior:contain;al
     <div class="score"><b>SP</b><button class="step" data-score="sp" data-d="-1" aria-label="Remove SP">−</button><span class="v num" id="sp">0</span><button class="step" data-score="sp" data-d="1" aria-label="Add SP">+</button></div>
     <button class="icon-btn" id="restart" aria-label="Restart at Deployment"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg></button>
     <button class="icon-btn undo-btn" id="undo" aria-label="Undo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>Undo</span></button>
+    <button class="icon-btn undo-btn" id="allcards" aria-label="Expand all cards" title="Expand or hide every model's card"><span>Expand cards</span></button>
   </div>
   <div class="bar-foot">
     <div class="phases" id="phases"></div>
@@ -3250,6 +3251,7 @@ function renderTest(id) {
   if (!xHist[tg.id]) xHistReset(tg);
   v.innerHTML = `<div class="thead"><button class="btn small" data-area="tests">‹ Testing lists</button><h1>${esc(tg.name)}</h1><span class="spacer"></span>
       <button class="btn small" data-xundo="${tg.id}" title="Undo the last change (Ctrl+Z)" ${xHist[tg.id].stack.length ? "" : "disabled"}>↶ Undo</button>
+      <button class="btn small" data-xallcards="${tg.id}" title="Expand or hide every model's full card">${["F", "E"].every(sd => tg.sides[sd].models.every(m => xOpen.has(m.id))) ? "Hide cards" : "Expand cards"}</button>
       <button class="btn small" data-xki="${tg.id}" title="Ki Generation for every standing model, as at the start of a turn">Generate Ki</button>
       <button class="btn small ${onTable ? "" : "primary"}" data-xtable="${tg.id}">${onTable ? "Open the table" : "Set up the table"}</button></div>
     ${onTable ? xTableStrip() : `<p class="note">Wounds, Ki, feats and states. Turn, scores, positions and activations are on the Table: ${other ? "the table that is set up isn't linked to this test." : "set it up there (this device or another one with your sync code) and pick this test."}${canLink ? ` <button class="btn small" data-xlink="${tg.id}">Link that table to this test</button>` : ""}</p>`}
@@ -3346,6 +3348,7 @@ document.addEventListener("click", e => {
     xChange(tg, tm, () => { const n = (tm.states[d.xst] || 0) + +d.d; if (n <= 0) delete tm.states[d.xst]; else tm.states[d.xst] = n; });
     return tm.states[d.xst] ? xChipSheet(tm, d.xst) : closeSheet();
   }
+  if (d.xallcards) { const tg = findTest(d.xallcards); if (!tg) return; const ms = [...tg.sides.F.models, ...tg.sides.E.models], all = ms.every(m => xOpen.has(m.id)); ms.forEach(m => all ? xOpen.delete(m.id) : xOpen.add(m.id)); return render(); }
   if (d.xdetail) { xOpen.has(d.xdetail) ? xOpen.delete(d.xdetail) : xOpen.add(d.xdetail); return render(); }
   if (d.xform) {
     closeSheet(); const [s, sd] = findTM(tg, d.fm); if (!s) return;
@@ -3781,6 +3784,7 @@ function renderPlay() {
   $("next").textContent = S.phase === "deploy" ? "Start turn 1" : S.phase === "start" ? "Main phase ▸" : S.phase === "main" ? "End phase ▸" : `Turn ${S.turn + 1} ▸`;
   $("vp").textContent = S.vp; $("sp").textContent = S.sp;
   $("undo").disabled = !undoStack.length;
+  { const all = S.models.length && S.models.every(m => openDetail.has(m.id)); $("allcards").firstElementChild.textContent = all ? "Hide cards" : "Expand cards"; }
 
   $("reminders").innerHTML = reminders().map(r => {
     const btn = r.action && r.action.kind === "ki" ? `<button class="act" data-rem="${r.key}" data-do="ki" data-card="${r.card ?? ""}">+1 Ki all</button>`
@@ -4041,6 +4045,7 @@ document.addEventListener("click", e => {
   if (ds.close && e.target === t) return closeSheet();
   if (t.id === "next") return nextPhase();
   if (t.id === "undo" || ds.undo) return undo();
+  if (t.id === "allcards") { const all = S.models.every(m => openDetail.has(m.id)); S.models.forEach(m => all ? openDetail.delete(m.id) : openDetail.add(m.id)); return render(); }
   if (ds.lundo !== undefined) return doListUndo();
   if (!ds.sdel) sheetConfirm = null;
   if (t.id !== "endGame") disarmEnd();

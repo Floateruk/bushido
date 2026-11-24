@@ -256,6 +256,7 @@ function renderTest(id) {
   if (!xHist[tg.id]) xHistReset(tg);
   v.innerHTML = `<div class="thead"><button class="btn small" data-area="tests">‹ Testing lists</button><h1>${esc(tg.name)}</h1><span class="spacer"></span>
       <button class="btn small" data-xundo="${tg.id}" title="Undo the last change (Ctrl+Z)" ${xHist[tg.id].stack.length ? "" : "disabled"}>↶ Undo</button>
+      <button class="btn small" data-xallcards="${tg.id}" title="Expand or hide every model's full card">${["F", "E"].every(sd => tg.sides[sd].models.every(m => xOpen.has(m.id))) ? "Hide cards" : "Expand cards"}</button>
       <button class="btn small" data-xki="${tg.id}" title="Ki Generation for every standing model, as at the start of a turn">Generate Ki</button>
       <button class="btn small ${onTable ? "" : "primary"}" data-xtable="${tg.id}">${onTable ? "Open the table" : "Set up the table"}</button></div>
     ${onTable ? xTableStrip() : `<p class="note">Wounds, Ki, feats and states. Turn, scores, positions and activations are on the Table: ${other ? "the table that is set up isn't linked to this test." : "set it up there (this device or another one with your sync code) and pick this test."}${canLink ? ` <button class="btn small" data-xlink="${tg.id}">Link that table to this test</button>` : ""}</p>`}
@@ -352,6 +353,7 @@ document.addEventListener("click", e => {
     xChange(tg, tm, () => { const n = (tm.states[d.xst] || 0) + +d.d; if (n <= 0) delete tm.states[d.xst]; else tm.states[d.xst] = n; });
     return tm.states[d.xst] ? xChipSheet(tm, d.xst) : closeSheet();
   }
+  if (d.xallcards) { const tg = findTest(d.xallcards); if (!tg) return; const ms = [...tg.sides.F.models, ...tg.sides.E.models], all = ms.every(m => xOpen.has(m.id)); ms.forEach(m => all ? xOpen.delete(m.id) : xOpen.add(m.id)); return render(); }
   if (d.xdetail) { xOpen.has(d.xdetail) ? xOpen.delete(d.xdetail) : xOpen.add(d.xdetail); return render(); }
   if (d.xform) {
     closeSheet(); const [s, sd] = findTM(tg, d.fm); if (!s) return;
